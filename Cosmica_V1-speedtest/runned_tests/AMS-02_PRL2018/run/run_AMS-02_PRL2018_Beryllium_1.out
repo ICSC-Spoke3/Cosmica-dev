@@ -1,0 +1,2106 @@
+-- --- Init ---
+-- you entered 4 arguments:
+-->  /home/nfsdisk/DevGC/NewArchitecture/Cosmica_speed_test/Cosmica_V1-speedtest/exefiles/Cosmica 
+-->  -vv 
+-->  -i 
+-->  /home/nfsdisk/DevGC/NewArchitecture/Cosmica_speed_test/Cosmica_V1-speedtest/runned_tests/AMS-02_PRL2018/Input_Beryl10_20110509_20160509_r00100_lat00000.txt 
+
+Simulation started at: Tue Jun 18 21:42:58 2024
+  
+----- GPU infos -----
+There are 1 CUDA enabled devices 
+--   --- General Information for device 0 ---
+-- Name:  NVIDIA A30
+-- Compute capability:  8.0
+-- Clock rate:  1440000
+-- Device copy overlap:  Enabled
+-- Kernel execution timeout :  Disabled
+--    --- Memory Information for device 0 ---
+-- Total global mem:  25229983744
+-- Total constant Mem:  65536
+-- Max mem pitch:  2147483647
+-- Texture Alignment:  512
+--    --- MP Information for device 0 ---
+-- Multiprocessor count:  56
+-- Shared mem per mp:  49152
+-- Registers per mp:  65536
+-- Threads in warp:  32
+-- Max threads per block:  1024
+-- Max thread dimensions:  (1024, 1024, 64)
+-- Max grid dimensions:  (2147483647, 65535, 65535)
+-- 
+
+
+----- Global CPU infos -----
+Number of host CPUs:	64
+Number of host CPUs allocated:	1
+Welcome to COSMICA, enjoy the speedy side of propagation
+Verbose level: high
+### Particle_NucleonRestMass--> 0.931494061
+### Particle_MassNumber--> 10.0
+### Particle_Charge--> 4.0
+### number of input energies from configuration file is 5
+### energies--> 0.305500 3.051000 14.100000 47.279999 919.099976 
+### number of input SourcePos_theta from configuration file is 68
+### SourcePos_theta--> 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 1.570800 
+### number of input SourcePos_phi from configuration file is 68
+### SourcePos_phi--> 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 
+### number of input SourcePos_r from configuration file is 68
+### SourcePos_r--> 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 
+### Npart--> 5024
+### Nregions--> 15
+### HeliosphericParameters--> 0.0,	44.509,	445.57,	42.60,	44.742,	5.671,	1,	1,	278.041,	86.26,	92.89,	118.58,	128.43
+### HeliosphericParameters--> 0.0,	47.154,	434.93,	43.50,	45.542,	6.681,	1,	1,	269.214,	85.91,	92.45,	118.60,	128.42
+### HeliosphericParameters--> 0.0,	48.576,	422.41,	47.90,	46.483,	6.189,	1,	1,	273.145,	85.49,	91.97,	118.63,	128.34
+### HeliosphericParameters--> 0.0,	50.626,	415.22,	47.50,	47.167,	6.263,	1,	1,	270.919,	85.04,	91.47,	118.65,	128.25
+### HeliosphericParameters--> 0.0,	53.026,	398.00,	51.20,	48.033,	7.118,	1,	1,	271.256,	84.57,	90.84,	118.67,	128.08
+### HeliosphericParameters--> 0.0,	55.318,	450.67,	50.30,	48.442,	6.619,	1,	1,	266.468,	83.99,	90.12,	118.66,	127.95
+### HeliosphericParameters--> 0.0,	58.090,	467.70,	50.60,	49.283,	7.211,	1,	1,	265.635,	83.34,	89.37,	118.61,	127.75
+### HeliosphericParameters--> 0.0,	59.956,	430.32,	51.40,	49.942,	6.525,	1,	1,	267.402,	82.66,	88.48,	118.55,	127.47
+### HeliosphericParameters--> 0.0,	63.383,	448.33,	50.40,	49.558,	6.000,	1,	1,	264.750,	81.87,	87.51,	118.44,	127.13
+### HeliosphericParameters--> 0.0,	67.005,	450.22,	48.70,	49.317,	6.796,	1,	1,	262.624,	81.02,	86.46,	118.32,	126.77
+### HeliosphericParameters--> 0.0,	67.349,	429.48,	49.80,	49.150,	7.270,	1,	1,	262.628,	80.08,	85.38,	118.14,	126.34
+### HeliosphericParameters--> 0.0,	67.279,	441.64,	47.40,	49.175,	6.096,	1,	1,	264.879,	79.14,	84.33,	117.89,	125.84
+### HeliosphericParameters--> 0.0,	69.189,	452.22,	52.70,	49.558,	6.359,	1,	1,	260.573,	78.20,	83.25,	117.59,	125.32
+### HeliosphericParameters--> 0.0,	72.785,	405.93,	51.40,	49.758,	5.752,	1,	1,	259.480,	77.23,	82.27,	117.33,	124.74
+### HeliosphericParameters--> 0.0,	76.739,	404.26,	43.30,	49.933,	6.667,	1,	1,	258.015,	76.35,	81.38,	117.04,	124.09
+### HeliosphericParameters--> 0.0,	79.095,	439.25,	44.60,	51.917,	6.996,	1,	1,	255.067,	75.54,	80.56,	116.68,	123.52
+### HeliosphericParameters--> 0.0,	81.819,	487.89,	49.20,	53.525,	7.011,	1,	1,	250.664,	74.80,	79.78,	116.26,	122.95
+### HeliosphericParameters--> 0.0,	86.433,	412.19,	50.60,	54.575,	6.796,	1,	1,	254.381,	74.09,	79.11,	115.76,	122.37
+### HeliosphericParameters--> 0.0,	90.469,	408.96,	55.20,	55.083,	7.475,	1,	1,	250.593,	73.48,	78.56,	115.18,	121.69
+### HeliosphericParameters--> 0.0,	93.367,	463.93,	53.80,	54.808,	7.515,	1,	1,	248.906,	72.97,	78.10,	114.59,	120.91
+### HeliosphericParameters--> 0.0,	94.941,	448.15,	52.50,	55.267,	7.615,	1,	1,	248.016,	72.55,	77.84,	114.02,	120.22
+### HeliosphericParameters--> 0.0,	96.614,	438.56,	72.50,	56.275,	6.978,	1,	1,	247.124,	72.28,	77.66,	113.49,	119.54
+### HeliosphericParameters--> 0.0,	100.419,	390.79,	69.10,	57.400,	6.400,	1,	1,	260.318,	72.08,	77.62,	112.87,	118.84
+### HeliosphericParameters--> 0.0,	105.192,	386.41,	60.00,	58.225,	7.007,	1,	1,	256.853,	72.01,	77.70,	112.23,	118.20
+### HeliosphericParameters--> 0.0,	109.886,	368.56,	58.80,	59.350,	6.004,	1,	1,	264.389,	72.03,	77.78,	111.63,	117.63
+### HeliosphericParameters--> 0.0,	112.194,	334.07,	48.10,	60.233,	4.941,	1,	1,	264.650,	72.10,	77.94,	111.01,	117.14
+### HeliosphericParameters--> 0.0,	113.110,	382.93,	48.80,	61.400,	5.443,	1,	1,	256.877,	72.25,	78.13,	110.35,	116.79
+### HeliosphericParameters--> 0.0,	114.350,	358.70,	56.70,	60.933,	5.300,	1,	1,	259.487,	72.43,	78.33,	109.71,	116.54
+### HeliosphericParameters--> 0.0,	116.090,	391.33,	62.70,	60.775,	5.548,	1,	1,	261.903,	72.62,	78.54,	109.13,	116.29
+### HeliosphericParameters--> 0.0,	116.698,	383.86,	60.50,	61.642,	5.361,	1,	1,	257.015,	72.80,	78.75,	108.63,	116.11
+### HeliosphericParameters--> 0.0,	113.798,	415.11,	68.70,	62.433,	5.904,	1,	1,	259.304,	72.99,	78.97,	108.26,	116.03
+### HeliosphericParameters--> 0.0,	111.305,	381.19,	64.40,	64.117,	5.519,	1,	1,	260.958,	73.18,	79.17,	108.01,	116.09
+### HeliosphericParameters--> 0.0,	110.071,	402.41,	66.50,	66.133,	5.156,	1,	1,	259.460,	73.35,	79.38,	107.84,	116.37
+### HeliosphericParameters--> 0.0,	108.371,	370.39,	66.90,	67.383,	5.207,	1,	1,	257.655,	73.52,	79.55,	107.68,	116.69
+### HeliosphericParameters--> 0.0,	106.960,	376.85,	67.20,	67.900,	5.104,	1,	1,	262.366,	73.68,	79.73,	107.57,	117.02
+### HeliosphericParameters--> 0.0,	105.875,	375.48,	70.40,	68.700,	4.841,	1,	1,	263.643,	73.83,	79.89,	107.67,	117.49
+### HeliosphericParameters--> 0.0,	102.912,	407.71,	68.30,	69.108,	4.411,	1,	1,	264.583,	73.97,	80.02,	107.86,	118.03
+### HeliosphericParameters--> 0.0,	98.989,	450.15,	68.30,	69.142,	5.141,	1,	1,	259.704,	74.08,	80.16,	108.13,	118.56
+### HeliosphericParameters--> 0.0,	94.892,	400.07,	73.00,	69.558,	5.719,	1,	1,	259.861,	74.19,	80.26,	108.50,	119.05
+### HeliosphericParameters--> 0.0,	92.027,	407.33,	71.70,	70.075,	5.830,	1,	1,	257.906,	74.29,	80.35,	108.94,	119.53
+### HeliosphericParameters--> 0.0,	88.414,	481.89,	68.90,	69.633,	5.882,	1,	1,	251.784,	74.37,	80.44,	109.51,	120.02
+### HeliosphericParameters--> 0.0,	84.666,	395.00,	70.10,	69.725,	5.115,	1,	1,	260.443,	74.45,	80.54,	110.Configuration file loaded 
+----- Recap of Simulation parameters ----
+NucleonRestMass         : 0.931 Gev/n 
+MassNumber              : 10.0 
+Charge                  : 4.0 
+Number of sources       : 68 
+position              :0 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :1 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :2 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :3 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :4 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :5 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :6 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :7 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :8 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :9 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :10 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :11 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :12 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :13 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :14 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :15 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :16 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :17 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :18 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :19 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :20 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :21 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :22 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :23 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :24 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :25 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :26 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :27 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :28 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :29 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :30 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :31 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :32 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :33 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :34 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :35 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :36 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :37 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :38 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :39 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :40 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :41 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :42 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :43 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :44 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :45 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :46 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :47 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :48 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :49 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :50 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :51 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :52 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :53 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :54 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :55 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :56 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :57 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :58 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :59 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :60 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :61 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :62 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :63 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :64 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :65 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :66 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+position              :67 
+  Init Pos (real) - r     : 1.00 
+  Init Pos (real) - theta : 1.57 
+  Init Pos (real) - phi   : 0.00 
+output_file_name        : Beryl10_20110509_20160509_r00100_lat00000 
+number of input energies: 5 
+input energies          : 0.31 3.05 14.10 47.28 919.10 
+Events to be generated  : 5024 
+
+for each simulated periods:
+position              :0 
+  IsHighActivityPeriod    : false 
+  Rts nose direction      : 86.26 AU
+  Rts tail direction      : 92.89 AU
+  Rhp nose direction      : 118.58 AU
+  Rhp tail direction      : 128.43 AU
+position              :1 
+  IsHighActivityPeriod    : false 
+  Rts nose direction      : 85.91 AU
+  Rts tail direction      : 92.45 AU
+  Rhp nose direction      : 118.60 AU
+  Rhp tail direction      : 128.42 AU
+position              :2 
+  IsHighActivityPeriod    : false 
+  Rts nose direction      : 85.49 AU
+  Rts tail direction      : 91.97 AU
+  Rhp nose direction      : 118.63 AU
+  Rhp tail direction      : 128.34 AU
+position              :3 
+  IsHighActivityPeriod    : false 
+  Rts nose direction      : 85.04 AU
+  Rts tail direction      : 91.47 AU
+  Rhp nose direction      : 118.65 AU
+  Rhp tail direction      : 128.25 AU
+position              :4 
+  IsHighActivityPeriod    : false 
+  Rts nose direction      : 84.57 AU
+  Rts tail direction      : 90.84 AU
+  Rhp nose direction      : 118.67 AU
+  Rhp tail direction      : 128.08 AU
+position              :5 
+  IsHighActivityPeriod    : false 
+  Rts nose direction      : 83.99 AU
+  Rts tail direction      : 90.12 AU
+  Rhp nose direction      : 118.66 AU
+  Rhp tail direction      : 127.95 AU
+position              :6 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 83.34 AU
+  Rts tail direction      : 89.37 AU
+  Rhp nose direction      : 118.61 AU
+  Rhp tail direction      : 127.75 AU
+position              :7 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 82.66 AU
+  Rts tail direction      : 88.48 AU
+  Rhp nose direction      : 118.55 AU
+  Rhp tail direction      : 127.47 AU
+position              :8 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 81.87 AU
+  Rts tail direction      : 87.51 AU
+  Rhp nose direction      : 118.44 AU
+  Rhp tail direction      : 127.13 AU
+position              :9 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 81.02 AU
+  Rts tail direction      : 86.46 AU
+  Rhp nose direction      : 118.32 AU
+  Rhp tail direction      : 126.77 AU
+position              :10 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 80.08 AU
+  Rts tail direction      : 85.38 AU
+  Rhp nose direction      : 118.14 AU
+  Rhp tail direction      : 126.34 AU
+position              :11 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 79.14 AU
+  Rts tail direction      : 84.33 AU
+  Rhp nose direction      : 117.89 AU
+  Rhp tail direction      : 125.84 AU
+position              :12 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 78.20 AU
+  Rts tail direction      : 83.25 AU
+  Rhp nose direction      : 117.59 AU
+  Rhp tail direction      : 125.32 AU
+position              :13 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 77.23 AU
+  Rts tail direction      : 82.27 AU
+  Rhp nose direction      : 117.33 AU
+  Rhp tail direction      : 124.74 AU
+position              :14 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 76.35 AU
+  Rts tail direction      : 81.38 AU
+  Rhp nose direction      : 117.04 AU
+  Rhp tail direction      : 124.09 AU
+position              :15 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 75.54 AU
+  Rts tail direction      : 80.56 AU
+  Rhp nose direction      : 116.68 AU
+  Rhp tail direction      : 123.52 AU
+position              :16 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 74.80 AU
+  Rts tail direction      : 79.78 AU
+  Rhp nose direction      : 116.26 AU
+  Rhp tail direction      : 122.95 AU
+position              :17 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 74.09 AU
+  Rts tail direction      : 79.11 AU
+  Rhp nose direction      : 115.76 AU
+  Rhp tail direction      : 122.37 AU
+position              :18 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 73.48 AU
+  Rts tail direction      : 78.56 AU
+  Rhp nose direction      : 115.18 AU
+  Rhp tail direction      : 121.69 AU
+position              :19 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 72.97 AU
+  Rts tail direction      : 78.10 AU
+  Rhp nose direction      : 114.59 AU
+  Rhp tail direction      : 120.91 AU
+position              :20 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 72.55 AU
+  Rts tail direction      : 77.84 AU
+  Rhp nose direction      : 114.02 AU
+  Rhp tail direction      : 120.22 AU
+position              :21 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 72.28 AU
+  Rts tail direction      : 77.66 AU
+  Rhp nose direction      : 113.49 AU
+  Rhp tail direction      : 119.54 AU
+position              :22 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 72.08 AU
+  Rts tail direction      : 77.62 AU
+  Rhp nose direction      : 112.87 AU
+  Rhp tail direction      : 118.84 AU
+position              :23 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 72.01 AU
+  Rts tail direction      : 77.70 AU
+  Rhp nose direction      : 112.23 AU
+  Rhp tail direction      : 118.20 AU
+position              :24 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 72.03 AU
+  Rts tail direction      : 77.78 AU
+  Rhp nose direction      : 111.63 AU
+  Rhp tail direction      : 117.63 AU
+position              :25 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 72.10 AU
+  Rts tail direction      : 77.94 AU
+  Rhp nose direction      : 111.01 AU
+  Rhp tail direction      : 117.14 AU
+position              :26 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 72.25 AU
+  Rts tail direction      : 78.13 AU
+  Rhp nose direction      : 110.35 AU
+  Rhp tail direction      : 116.79 AU
+position              :27 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 72.43 AU
+  Rts tail direction      : 78.33 AU
+  Rhp nose direction      : 109.71 AU
+  Rhp tail direction      : 116.54 AU
+position              :28 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 72.62 AU
+  Rts tail direction      : 78.54 AU
+  Rhp nose direction      : 109.13 AU
+  Rhp tail direction      : 116.29 AU
+position              :29 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 72.80 AU
+  Rts tail direction      : 78.75 AU
+  Rhp nose direction      : 108.63 AU
+  Rhp tail direction      : 116.11 AU
+position              :30 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 72.99 AU
+  Rts tail direction      : 78.97 AU
+  Rhp nose direction      : 108.26 AU
+  Rhp tail direction      : 116.03 AU
+position              :31 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 73.18 AU
+  Rts tail direction      : 79.17 AU
+  Rhp nose direction      : 108.01 AU
+  Rhp tail direction      : 116.09 AU
+position              :32 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 73.35 AU
+  Rts tail direction      : 79.38 AU
+  Rhp nose direction      : 107.84 AU
+  Rhp tail direction      : 116.37 AU
+position              :33 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 73.52 AU
+  Rts tail direction      : 79.55 AU
+  Rhp nose direction      : 107.68 AU
+  Rhp tail direction      : 116.69 AU
+position              :34 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 73.68 AU
+  Rts tail direction      : 79.73 AU
+  Rhp nose direction      : 107.57 AU
+  Rhp tail direction      : 117.02 AU
+position              :35 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 73.83 AU
+  Rts tail direction      : 79.89 AU
+  Rhp nose direction      : 107.67 AU
+  Rhp tail direction      : 117.49 AU
+position              :36 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 73.97 AU
+  Rts tail direction      : 80.02 AU
+  Rhp nose direction      : 107.86 AU
+  Rhp tail direction      : 118.03 AU
+position              :37 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 74.08 AU
+  Rts tail direction      : 80.16 AU
+  Rhp nose direction      : 108.13 AU
+  Rhp tail direction      : 118.56 AU
+position              :38 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 74.19 AU
+  Rts tail direction      : 80.26 AU
+  Rhp nose direction      : 108.50 AU
+  Rhp tail direction      : 119.05 AU
+position              :39 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 74.29 AU
+  Rts tail direction      : 80.35 AU
+  Rhp nose direction      : 108.94 AU
+  Rhp tail direction      : 119.53 AU
+position              :40 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 74.37 AU
+  Rts tail direction      : 80.44 AU
+  Rhp nose direction      : 109.51 AU
+  Rhp tail direction      : 120.02 AU
+position              :41 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 74.45 AU
+  Rts tail direction      : 80.54 AU
+  Rhp nose direction      : 110.04 AU
+  Rhp tail direction      : 120.59 AU
+position              :42 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 74.57 AU
+  Rts tail direction      : 80.62 AU
+  Rhp nose direction      : 110.58 AU
+  Rhp tail direction      : 121.25 AU
+position              :43 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 74.67 AU
+  Rts tail direction      : 80.69 AU
+  Rhp nose direction      : 111.13 AU
+  Rhp tail direction      : 121.99 AU
+position              :44 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 74.75 AU
+  Rts tail direction      : 80.76 AU
+  Rhp nose direction      : 111.63 AU
+  Rhp tail direction      : 122.76 AU
+position              :45 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 74.82 AU
+  Rts tail direction      : 80.81 AU
+  Rhp nose direction      : 112.16 AU
+  Rhp tail direction      : 123.53 AU
+position              :46 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 74.86 AU
+  Rts tail direction      : 80.85 AU
+  Rhp nose direction      : 112.86 AU
+  Rhp tail direction      : 124.30 AU
+position              :47 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 74.91 AU
+  Rts tail direction      : 80.82 AU
+  Rhp nose direction      : 113.62 AU
+  Rhp tail direction      : 125.30 AU
+position              :48 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 74.90 AU
+  Rts tail direction      : 80.79 AU
+  Rhp nose direction      : 114.33 AU
+  Rhp tail direction      : 126.23 AU
+position              :49 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 74.88 AU
+  Rts tail direction      : 80.72 AU
+  Rhp nose direction      : 115.12 AU
+  Rhp tail direction      : 127.24 AU
+position              :50 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 74.83 AU
+  Rts tail direction      : 80.60 AU
+  Rhp nose direction      : 115.87 AU
+  Rhp tail direction      : 128.35 AU
+position              :51 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 74.77 AU
+  Rts tail direction      : 80.52 AU
+  Rhp nose direction      : 116.68 AU
+  Rhp tail direction      : 129.58 AU
+position              :52 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 74.65 AU
+  Rts tail direction      : 80.37 AU
+  Rhp nose direction      : 117.49 AU
+  Rhp tail direction      : 130.89 AU
+position              :53 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 74.48 AU
+  Rts tail direction      : 80.18 AU
+  Rhp nose direction      : 118.29 AU
+  Rhp tail direction      : 132.22 AU
+position              :54 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 74.29 AU
+  Rts tail direction      : 79.99 AU
+  Rhp nose direction      : 119.26 AU
+  Rhp tail direction      : 133.55 AU
+position              :55 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 74.07 AU
+  Rts tail direction      : 79.77 AU
+  Rhp nose direction      : 120.22 AU
+  Rhp tail direction      : 134.83 AU
+position              :56 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 73.82 AU
+  Rts tail direction      : 79.51 AU
+  Rhp nose direction      : 121.24 AU
+  Rhp tail direction      : 136.01 AU
+position              :57 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 73.54 AU
+  Rts tail direction      : 79.21 AU
+  Rhp nose direction      : 122.31 AU
+  Rhp tail direction      : 137.18 AU
+position              :58 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 73.27 AU
+  Rts tail direction      : 78.82 AU
+  Rhp nose direction      : 123.38 AU
+  Rhp tail direction      : 138.29 AU
+position              :59 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 72.93 AU
+  Rts tail direction      : 78.38 AU
+  Rhp nose direction      : 124.36 AU
+  Rhp tail direction      : 139.38 AU
+position              :60 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 72.55 AU
+  Rts tail direction      : 77.97 AU
+  Rhp nose direction      : 125.31 AU
+  Rhp tail direction      : 140.29 AU
+position              :61 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 72.19 AU
+  Rts tail direction      : 77.52 AU
+  Rhp nose direction      : 126.24 AU
+  Rhp tail direction      : 141.22 AU
+position              :62 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 71.80 AU
+  Rts tail direction      : 77.05 AU
+  Rhp nose direction      : 127.10 AU
+  Rhp tail direction      : 142.04 AU
+position              :63 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 71.40 AU
+  Rts tail direction      : 76.58 AU
+  Rhp nose direction      : 127.99 AU
+  Rhp tail direction      : 142.78 AU
+position              :64 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 70.95 AU
+  Rts tail direction      : 76.08 AU
+  Rhp nose direction      : 128.82 AU
+  Rhp tail direction      : 143.42 AU
+position              :65 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 70.57 AU
+  Rts tail direction      : 75.63 AU
+  Rhp nose direction      : 129.66 AU
+  Rhp tail direction      : 143.99 AU
+position              :66 
+  IsHighActivityPeriod    : true 
+  Rts nose direction      : 70.23 AU
+  Rts tail direction      : 75.23 AU
+  Rhp nose direction      : 130.48 AU
+  Rhp tail direction      : 144.52 AU
+position              :67 
+  IsHighActivityPeriod    : false 
+  Rts nose direction      : 69.84 AU
+  Rts tail direction      : 74.74 AU
+  Rhp nose direction      : 131.20 AU
+  Rhp tail direction      : 145.03 AU
+Heliopshere Parameters ( 15 regions ): 
+- Region 0 
+-- V0         2.978451e-06 AU/s
+-- k0_paral   [3.090131e-04,3.163969e-04] 
+-- k0_perp    [2.084730e-04,2.134544e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.3155 
+-- rconst     2.577 
+-- tilt angle 0.744 rad
+-- Asun       8.917745e+13 
+-- P0d        5.004495e-01 GV 
+-- P0dNS      5.012257e-01 GV 
+- Region 1 
+-- V0         2.907327e-06 AU/s
+-- k0_paral   [2.564484e-04,3.100607e-04] 
+-- k0_perp    [1.737567e-04,2.100818e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.2676 
+-- rconst     2.338 
+-- tilt angle 0.759 rad
+-- Asun       1.037670e+14 
+-- P0d        5.006442e-01 GV 
+-- P0dNS      5.019922e-01 GV 
+- Region 2 
+-- V0         2.823637e-06 AU/s
+-- k0_paral   [2.759457e-04,3.052802e-04] 
+-- k0_perp    [1.882755e-04,2.082901e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.2135 
+-- rconst     2.068 
+-- tilt angle 0.836 rad
+-- Asun       9.466091e+13 
+-- P0d        5.037413e-01 GV 
+-- P0dNS      5.120618e-01 GV 
+- Region 3 
+-- V0         2.775574e-06 AU/s
+-- k0_paral   [2.618689e-04,2.995056e-04] 
+-- k0_perp    [1.798804e-04,2.057334e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.1776 
+-- rconst     1.888 
+-- tilt angle 0.829 rad
+-- Asun       9.491337e+13 
+-- P0d        5.031887e-01 GV 
+-- P0dNS      5.112146e-01 GV 
+- Region 4 
+-- V0         2.660466e-06 AU/s
+-- k0_paral   [2.607612e-04,2.919415e-04] 
+-- k0_perp    [1.811217e-04,2.027791e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.1375 
+-- rconst     1.687 
+-- tilt angle 0.894 rad
+-- Asun       1.053780e+14 
+-- P0d        5.139645e-01 GV 
+-- P0dNS      5.501554e-01 GV 
+- Region 5 
+-- V0         3.012543e-06 AU/s
+-- k0_paral   [2.351992e-04,2.860898e-04] 
+-- k0_perp    [1.644204e-04,1.999964e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.1209 
+-- rconst     1.605 
+-- tilt angle 0.878 rad
+-- Asun       1.046830e+14 
+-- P0d        5.097545e-01 GV 
+-- P0dNS      5.389064e-01 GV 
+- Region 6 
+-- V0         3.126381e-06 AU/s
+-- k0_paral   [2.276558e-04,2.768869e-04] 
+-- k0_perp    [1.617105e-04,1.966807e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0916 
+-- rconst     1.458 
+-- tilt angle 0.883 rad
+-- Asun       1.161431e+14 
+-- P0d        5.109943e-01 GV 
+-- P0dNS      5.474891e-01 GV 
+- Region 7 
+-- V0         2.876512e-06 AU/s
+-- k0_paral   [2.322428e-04,2.696089e-04] 
+-- k0_perp    [1.675255e-04,1.944791e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0730 
+-- rconst     1.365 
+-- tilt angle 0.897 rad
+-- Asun       1.007830e+14 
+-- P0d        5.151226e-01 GV 
+-- P0dNS      5.672663e-01 GV 
+- Region 8 
+-- V0         2.996901e-06 AU/s
+-- k0_paral   [2.223266e-04,2.665523e-04] 
+-- k0_perp    [1.588912e-04,1.904981e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0834 
+-- rconst     1.417 
+-- tilt angle 0.880 rad
+-- Asun       9.464557e+13 
+-- P0d        5.101515e-01 GV 
+-- P0dNS      5.511324e-01 GV 
+- Region 9 
+-- V0         3.009535e-06 AU/s
+-- k0_paral   [2.143382e-04,2.621901e-04] 
+-- k0_perp    [1.523618e-04,1.863771e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0906 
+-- rconst     1.453 
+-- tilt angle 0.850 rad
+-- Asun       1.074286e+14 
+-- P0d        5.051502e-01 GV 
+-- P0dNS      5.293123e-01 GV 
+- Region 10 
+-- V0         2.870897e-06 AU/s
+-- k0_paral   [2.151109e-04,2.625685e-04] 
+-- k0_perp    [1.523737e-04,1.859903e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0959 
+-- rconst     1.479 
+-- tilt angle 0.869 rad
+-- Asun       1.121751e+14 
+-- P0d        5.079903e-01 GV 
+-- P0dNS      5.450180e-01 GV 
+- Region 11 
+-- V0         2.952181e-06 AU/s
+-- k0_paral   [2.247704e-04,2.625439e-04] 
+-- k0_perp    [1.592983e-04,1.860690e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0951 
+-- rconst     1.475 
+-- tilt angle 0.827 rad
+-- Asun       9.542979e+13 
+-- P0d        5.030637e-01 GV 
+-- P0dNS      5.177922e-01 GV 
+- Region 12 
+-- V0         3.022904e-06 AU/s
+-- k0_paral   [2.048119e-04,2.573681e-04] 
+-- k0_perp    [1.463738e-04,1.839344e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0834 
+-- rconst     1.417 
+-- tilt angle 0.920 rad
+-- Asun       1.007437e+14 
+-- P0d        5.253619e-01 GV 
+-- P0dNS      6.342207e-01 GV 
+- Region 13 
+-- V0         2.713474e-06 AU/s
+-- k0_paral   [1.995690e-04,2.506493e-04] 
+-- k0_perp    [1.433018e-04,1.799803e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0778 
+-- rconst     1.389 
+-- tilt angle 0.897 rad
+-- Asun       8.609696e+13 
+-- P0d        5.151226e-01 GV 
+-- P0dNS      5.919533e-01 GV 
+- Region 14 
+-- V0         2.702311e-06 AU/s
+-- k0_paral   [1.931694e-04,2.436697e-04] 
+-- k0_perp    [1.393087e-04,1.757281e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0732 
+-- rconst     1.366 
+-- tilt angle 0.756 rad
+-- Asun       9.956533e+13 
+-- P0d        5.005947e-01 GV 
+-- P0dNS      5.042964e-01 GV 
+- Region 15 
+-- V0         2.936205e-06 AU/s
+-- k0_paral   [1.716272e-04,2.257881e-04] 
+-- k0_perp    [1.316847e-04,1.732409e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0355 
+-- rconst     1.177 
+-- tilt angle 0.778 rad
+-- Asun       1.092149e+14 
+-- P0d        5.010002e-01 GV 
+-- P0dNS      5.075345e-01 GV 
+- Region 16 
+-- V0         3.261343e-06 AU/s
+-- k0_paral   [1.483854e-04,2.085529e-04] 
+-- k0_perp    [1.212451e-04,1.704078e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0192 
+-- rconst     1.096 
+-- tilt angle 0.859 rad
+-- Asun       1.151946e+14 
+-- P0d        5.062885e-01 GV 
+-- P0dNS      5.480573e-01 GV 
+- Region 17 
+-- V0         2.755320e-06 AU/s
+-- k0_paral   [1.525717e-04,1.945038e-04] 
+-- k0_perp    [1.299860e-04,1.657107e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0127 
+-- rconst     1.064 
+-- tilt angle 0.883 rad
+-- Asun       1.025818e+14 
+-- P0d        5.109943e-01 GV 
+-- P0dNS      5.881656e-01 GV 
+- Region 18 
+-- V0         2.733729e-06 AU/s
+-- k0_paral   [1.394281e-04,1.862002e-04] 
+-- k0_perp    [1.210855e-04,1.617044e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0104 
+-- rconst     1.052 
+-- tilt angle 0.963 rad
+-- Asun       1.123464e+14 
+-- P0d        5.680929e-01 GV 
+-- P0dNS      9.286819e-01 GV 
+- Region 19 
+-- V0         3.101180e-06 AU/s
+-- k0_paral   [1.365410e-04,1.848381e-04] 
+-- k0_perp    [1.173693e-04,1.588851e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0116 
+-- rconst     1.058 
+-- tilt angle 0.939 rad
+-- Asun       1.205662e+14 
+-- P0d        5.392224e-01 GV 
+-- P0dNS      7.974651e-01 GV 
+- Region 20 
+-- V0         2.995698e-06 AU/s
+-- k0_paral   [1.320743e-04,1.800083e-04] 
+-- k0_perp    [1.154670e-04,1.573736e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0097 
+-- rconst     1.049 
+-- tilt angle 0.916 rad
+-- Asun       1.200967e+14 
+-- P0d        5.234250e-01 GV 
+-- P0dNS      6.984240e-01 GV 
+- Region 21 
+-- V0         2.931592e-06 AU/s
+-- k0_paral   [1.256686e-04,1.723327e-04] 
+-- k0_perp    [1.135994e-04,1.557819e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0065 
+-- rconst     1.033 
+-- tilt angle 1.265 rad
+-- Asun       1.088460e+14 
+-- P0d        3.834009e+00 GV 
+-- P0dNS      1.929379e+00 GV 
+- Region 22 
+-- V0         2.612270e-06 AU/s
+-- k0_paral   [1.563399e-04,1.633905e-04] 
+-- k0_perp    [1.456499e-04,1.522184e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0042 
+-- rconst     1.021 
+-- tilt angle 1.206 rad
+-- Asun       9.377155e+13 
+-- P0d        3.431372e+00 GV 
+-- P0dNS      1.996547e+00 GV 
+- Region 23 
+-- V0         2.582991e-06 AU/s
+-- k0_paral   [1.437375e-04,1.559939e-04] 
+-- k0_perp    [1.362394e-04,1.478564e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0030 
+-- rconst     1.015 
+-- tilt angle 1.047 rad
+-- Asun       1.020030e+14 
+-- P0d        9.172102e-01 GV 
+-- P0dNS      1.732591e+00 GV 
+- Region 24 
+-- V0         2.463671e-06 AU/s
+-- k0_paral   [1.635247e-04,1.489317e-04] 
+-- k0_perp    [1.577585e-04,1.436801e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0019 
+-- rconst     1.010 
+-- tilt angle 1.026 rad
+-- Asun       8.500338e+13 
+-- P0d        7.704526e-01 GV 
+-- P0dNS      1.641898e+00 GV 
+- Region 25 
+-- V0         2.233120e-06 AU/s
+-- k0_paral   [1.627383e-04,1.453847e-04] 
+-- k0_perp    [1.585764e-04,1.416666e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0014 
+-- rconst     1.007 
+-- tilt angle 0.840 rad
+-- Asun       6.579988e+13 
+-- P0d        5.040526e-01 GV 
+-- P0dNS      5.482225e-01 GV 
+- Region 26 
+-- V0         2.559729e-06 AU/s
+-- k0_paral   [1.385898e-04,1.432392e-04] 
+-- k0_perp    [1.363020e-04,1.408747e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0008 
+-- rconst     1.004 
+-- tilt angle 0.852 rad
+-- Asun       7.882134e+13 
+-- P0d        5.053601e-01 GV 
+-- P0dNS      5.639039e-01 GV 
+- Region 27 
+-- V0         2.397762e-06 AU/s
+-- k0_paral   [1.462010e-04,1.426182e-04] 
+-- k0_perp    [1.433212e-04,1.398090e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0010 
+-- rconst     1.005 
+-- tilt angle 0.990 rad
+-- Asun       7.381276e+13 
+-- P0d        6.221200e-01 GV 
+-- P0dNS      1.339954e+00 GV 
+- Region 28 
+-- V0         2.615879e-06 AU/s
+-- k0_paral   [1.534299e-04,1.412789e-04] 
+-- k0_perp    [1.502229e-04,1.383258e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0011 
+-- rconst     1.005 
+-- tilt angle 1.094 rad
+-- Asun       8.135233e+13 
+-- P0d        1.497353e+00 GV 
+-- P0dNS      2.152750e+00 GV 
+- Region 29 
+-- V0         2.565946e-06 AU/s
+-- k0_paral   [1.387509e-04,1.399171e-04] 
+-- k0_perp    [1.366623e-04,1.378109e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0008 
+-- rconst     1.004 
+-- tilt angle 1.056 rad
+-- Asun       7.774331e+13 
+-- P0d        9.964787e-01 GV 
+-- P0dNS      1.971173e+00 GV 
+- Region 30 
+-- V0         2.774839e-06 AU/s
+-- k0_paral   [1.444185e-04,1.418580e-04] 
+-- k0_perp    [1.428146e-04,1.402825e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0006 
+-- rconst     1.003 
+-- tilt angle 1.199 rad
+-- Asun       8.946002e+13 
+-- P0d        3.351003e+00 GV 
+-- P0dNS      2.259632e+00 GV 
+- Region 31 
+-- V0         2.548098e-06 AU/s
+-- k0_paral   [1.483293e-04,1.432639e-04] 
+-- k0_perp    [1.474754e-04,1.424391e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0003 
+-- rconst     1.001 
+-- tilt angle 1.124 rad
+-- Asun       7.971021e+13 
+-- P0d        2.041003e+00 GV 
+-- P0dNS      2.141062e+00 GV 
+- Region 32 
+-- V0         2.689945e-06 AU/s
+-- k0_paral   [1.436190e-04,1.438912e-04] 
+-- k0_perp    [1.432463e-04,1.435178e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0001 
+-- rconst     1.001 
+-- tilt angle 1.161 rad
+-- Asun       7.680392e+13 
+-- P0d        2.759797e+00 GV 
+-- P0dNS      2.164191e+00 GV 
+- Region 33 
+-- V0         2.475904e-06 AU/s
+-- k0_paral   [1.385674e-04,1.452453e-04] 
+-- k0_perp    [1.383486e-04,1.450160e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0001 
+-- rconst     1.000 
+-- tilt angle 1.168 rad
+-- Asun       7.393852e+13 
+-- P0d        2.884738e+00 GV 
+-- P0dNS      2.136229e+00 GV 
+- Region 34 
+-- V0         2.519087e-06 AU/s
+-- k0_paral   [1.517871e-04,1.464586e-04] 
+-- k0_perp    [1.515921e-04,1.462704e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0001 
+-- rconst     1.000 
+-- tilt angle 1.173 rad
+-- Asun       7.322319e+13 
+-- P0d        2.973877e+00 GV 
+-- P0dNS      2.111946e+00 GV 
+- Region 35 
+-- V0         2.509929e-06 AU/s
+-- k0_paral   [1.555946e-04,1.473795e-04] 
+-- k0_perp    [1.554492e-04,1.472419e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0000 
+-- rconst     1.000 
+-- tilt angle 1.229 rad
+-- Asun       6.930107e+13 
+-- P0d        3.638098e+00 GV 
+-- P0dNS      2.109932e+00 GV 
+- Region 36 
+-- V0         2.725373e-06 AU/s
+-- k0_paral   [1.584918e-04,1.500444e-04] 
+-- k0_perp    [1.583660e-04,1.499253e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0000 
+-- rconst     1.000 
+-- tilt angle 1.192 rad
+-- Asun       6.618417e+13 
+-- P0d        3.262137e+00 GV 
+-- P0dNS      2.041455e+00 GV 
+- Region 37 
+-- V0         3.009067e-06 AU/s
+-- k0_paral   [1.440376e-04,1.536689e-04] 
+-- k0_perp    [1.439248e-04,1.535485e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0000 
+-- rconst     1.000 
+-- tilt angle 1.192 rad
+-- Asun       8.126062e+13 
+-- P0d        3.262137e+00 GV 
+-- P0dNS      1.963840e+00 GV 
+- Region 38 
+-- V0         2.674303e-06 AU/s
+-- k0_paral   [1.444593e-04,1.575249e-04] 
+-- k0_perp    [1.443635e-04,1.574204e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0000 
+-- rconst     1.000 
+-- tilt angle 1.274 rad
+-- Asun       8.491340e+13 
+-- P0d        3.862920e+00 GV 
+-- P0dNS      1.895521e+00 GV 
+- Region 39 
+-- V0         2.722833e-06 AU/s
+-- k0_paral   [1.390921e-04,1.602693e-04] 
+-- k0_perp    [1.390171e-04,1.601829e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0000 
+-- rconst     1.000 
+-- tilt angle 1.251 rad
+-- Asun       8.743043e+13 
+-- P0d        3.775426e+00 GV 
+-- P0dNS      1.836804e+00 GV 
+- Region 40 
+-- V0         3.221236e-06 AU/s
+-- k0_paral   [1.238786e-04,1.638380e-04] 
+-- k0_perp    [1.237989e-04,1.637326e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0000 
+-- rconst     1.000 
+-- tilt angle 1.203 rad
+-- Asun       9.609117e+13 
+-- P0d        3.392237e+00 GV 
+-- P0dNS      1.757509e+00 GV 
+- Region 41 
+-- V0         2.640412e-06 AU/s
+-- k0_paral   [1.460948e-04,1.675986e-04] 
+-- k0_perp    [1.460042e-04,1.674946e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0000 
+-- rconst     1.000 
+-- tilt angle 1.223 rad
+-- Asun       7.540211e+13 
+-- P0d        3.597266e+00 GV 
+-- P0dNS      1.687028e+00 GV 
+- Region 42 
+-- V0         2.639409e-06 AU/s
+-- k0_paral   [1.426299e-04,1.670532e-04] 
+-- k0_perp    [1.425552e-04,1.669657e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0000 
+-- rconst     1.000 
+-- tilt angle 1.285 rad
+-- Asun       7.625545e+13 
+-- P0d        3.891260e+00 GV 
+-- P0dNS      1.702189e+00 GV 
+- Region 43 
+-- V0         2.624837e-06 AU/s
+-- k0_paral   [1.300519e-04,1.667710e-04] 
+-- k0_perp    [1.299909e-04,1.666928e-04] 
+-- GaussVar   [0.1045,0.1324] 
+-- g_low      0.0000 
+-- rconst     1.000 
+-- tilt angle 1.131 rad
+-- Asun       7.629532e+13 
+-- P0d        2.180038e+00 GV 
+-- P0dNS      1.658025e+00 GV 
+- Region 44 
+-- V0         2.509126e-06 AU/s
+-- k0_paral   [1.664603e-04,1.676775e-04] 
+-- k0_perp    [1.664603e-04,1.676775e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.0448 
+-- rconst     1.269 
+-- tilt angle 1.248 rad
+-- Asun       -7.458369e+13 
+-- P0d        6.659905e-01 GV 
+-- P0dNS      1.703423e+00 GV 
+- Region 45 
+-- V0         2.403510e-06 AU/s
+-- k0_paral   [1.691322e-04,1.671968e-04] 
+-- k0_perp    [1.691322e-04,1.671968e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.0432 
+-- rconst     1.259 
+-- tilt angle 1.276 rad
+-- Asun       -6.633367e+13 
+-- P0d        2.424416e+00 GV 
+-- P0dNS      1.714735e+00 GV 
+- Region 46 
+-- V0         2.310127e-06 AU/s
+-- k0_paral   [1.655226e-04,1.671548e-04] 
+-- k0_perp    [1.655226e-04,1.671548e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.0392 
+-- rconst     1.235 
+-- tilt angle 1.080 rad
+-- Asun       -6.612298e+13 
+-- P0d        5.000000e-01 GV 
+-- P0dNS      5.000061e-01 GV 
+- Region 47 
+-- V0         2.506252e-06 AU/s
+-- k0_paral   [1.548281e-04,1.674222e-04] 
+-- k0_perp    [1.548281e-04,1.674222e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.0365 
+-- rconst     1.219 
+-- tilt angle 1.248 rad
+-- Asun       -7.922456e+13 
+-- P0d        6.659905e-01 GV 
+-- P0dNS      1.708858e+00 GV 
+- Region 48 
+-- V0         2.608259e-06 AU/s
+-- k0_paral   [1.637778e-04,1.671380e-04] 
+-- k0_perp    [1.637778e-04,1.671380e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.0401 
+-- rconst     1.241 
+-- tilt angle 1.281 rad
+-- Asun       -8.073374e+13 
+-- P0d        2.914913e+00 GV 
+-- P0dNS      1.716015e+00 GV 
+- Region 49 
+-- V0         2.454714e-06 AU/s
+-- k0_paral   [1.583785e-04,1.665975e-04] 
+-- k0_perp    [1.583785e-04,1.665975e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.0450 
+-- rconst     1.270 
+-- tilt angle 1.250 rad
+-- Asun       -7.425073e+13 
+-- P0d        7.006340e-01 GV 
+-- P0dNS      1.726744e+00 GV 
+- Region 50 
+-- V0         2.866953e-06 AU/s
+-- k0_paral   [1.570110e-04,1.653952e-04] 
+-- k0_perp    [1.570110e-04,1.653952e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.0542 
+-- rconst     1.325 
+-- tilt angle 1.276 rad
+-- Asun       -8.611360e+13 
+-- P0d        2.424416e+00 GV 
+-- P0dNS      1.753753e+00 GV 
+- Region 51 
+-- V0         2.689343e-06 AU/s
+-- k0_paral   [1.435295e-04,1.664049e-04] 
+-- k0_perp    [1.435295e-04,1.664049e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.0570 
+-- rconst     1.342 
+-- tilt angle 1.290 rad
+-- Asun       -8.272223e+13 
+-- P0d        3.503522e+00 GV 
+-- P0dNS      1.731811e+00 GV 
+- Region 52 
+-- V0         3.069496e-06 AU/s
+-- k0_paral   [1.340042e-04,1.675394e-04] 
+-- k0_perp    [1.340042e-04,1.675394e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.0523 
+-- rconst     1.314 
+-- tilt angle 1.302 rad
+-- Asun       -1.096186e+14 
+-- P0d        3.862920e+00 GV 
+-- P0dNS      1.707458e+00 GV 
+- Region 53 
+-- V0         2.897367e-06 AU/s
+-- k0_paral   [1.688262e-04,1.661474e-04] 
+-- k0_perp    [1.688262e-04,1.661474e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.0547 
+-- rconst     1.328 
+-- tilt angle 1.297 rad
+-- Asun       -9.663650e+13 
+-- P0d        3.758017e+00 GV 
+-- P0dNS      1.737396e+00 GV 
+- Region 54 
+-- V0         2.729050e-06 AU/s
+-- k0_paral   [1.741300e-04,1.638356e-04] 
+-- k0_perp    [1.741300e-04,1.638356e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.0609 
+-- rconst     1.365 
+-- tilt angle 1.187 rad
+-- Asun       -8.258513e+13 
+-- P0d        5.001588e-01 GV 
+-- P0dNS      1.144160e+00 GV 
+- Region 55 
+-- V0         2.661669e-06 AU/s
+-- k0_paral   [1.625893e-04,1.596609e-04] 
+-- k0_perp    [1.625893e-04,1.596609e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.0629 
+-- rconst     1.377 
+-- tilt angle 1.012 rad
+-- Asun       -8.642068e+13 
+-- P0d        5.000000e-01 GV 
+-- P0dNS      5.000000e-01 GV 
+- Region 56 
+-- V0         3.162812e-06 AU/s
+-- k0_paral   [1.629659e-04,1.564724e-04] 
+-- k0_perp    [1.629659e-04,1.564724e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.0650 
+-- rconst     1.390 
+-- tilt angle 1.054 rad
+-- Asun       -9.813182e+13 
+-- P0d        5.000000e-01 GV 
+-- P0dNS      5.000004e-01 GV 
+- Region 57 
+-- V0         2.786470e-06 AU/s
+-- k0_paral   [1.617105e-04,1.548859e-04] 
+-- k0_perp    [1.617105e-04,1.548859e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.0729 
+-- rconst     1.437 
+-- tilt angle 1.222 rad
+-- Asun       -8.914617e+13 
+-- P0d        5.086541e-01 GV 
+-- P0dNS      1.973865e+00 GV 
+- Region 58 
+-- V0         2.821163e-06 AU/s
+-- k0_paral   [1.749857e-04,1.552939e-04] 
+-- k0_perp    [1.749857e-04,1.552939e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.0819 
+-- rconst     1.492 
+-- tilt angle 1.171 rad
+-- Asun       -8.593318e+13 
+-- P0d        5.000263e-01 GV 
+-- P0dNS      7.114428e-01 GV 
+- Region 59 
+-- V0         2.389874e-06 AU/s
+-- k0_paral   [1.923486e-04,1.577693e-04] 
+-- k0_perp    [1.923486e-04,1.577693e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.0951 
+-- rconst     1.571 
+-- tilt angle 1.201 rad
+-- Asun       -6.800687e+13 
+-- P0d        5.007869e-01 GV 
+-- P0dNS      1.689421e+00 GV 
+- Region 60 
+-- V0         2.566881e-06 AU/s
+-- k0_paral   [1.928467e-04,1.612234e-04] 
+-- k0_perp    [1.928467e-04,1.612234e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.1017 
+-- rconst     1.610 
+-- tilt angle 1.168 rad
+-- Asun       -7.337933e+13 
+-- P0d        5.000176e-01 GV 
+-- P0dNS      6.344382e-01 GV 
+- Region 61 
+-- V0         2.428510e-06 AU/s
+-- k0_paral   [1.782534e-04,1.638374e-04] 
+-- k0_perp    [1.782534e-04,1.638374e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.0934 
+-- rconst     1.561 
+-- tilt angle 1.215 rad
+-- Asun       -8.057814e+13 
+-- P0d        5.038939e-01 GV 
+-- P0dNS      1.737823e+00 GV 
+- Region 62 
+-- V0         2.740948e-06 AU/s
+-- k0_paral   [1.832037e-04,1.650655e-04] 
+-- k0_perp    [1.832037e-04,1.650655e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.0808 
+-- rconst     1.485 
+-- tilt angle 1.241 rad
+-- Asun       -8.616909e+13 
+-- P0d        5.765842e-01 GV 
+-- P0dNS      1.758486e+00 GV 
+- Region 63 
+-- V0         2.849639e-06 AU/s
+-- k0_paral   [1.928986e-04,1.649374e-04] 
+-- k0_perp    [1.928986e-04,1.649374e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.0870 
+-- rconst     1.522 
+-- tilt angle 1.164 rad
+-- Asun       -7.832350e+13 
+-- P0d        5.000118e-01 GV 
+-- P0dNS      5.873808e-01 GV 
+- Region 64 
+-- V0         3.042222e-06 AU/s
+-- k0_paral   [1.920743e-04,1.645437e-04] 
+-- k0_perp    [1.920743e-04,1.645437e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.1026 
+-- rconst     1.616 
+-- tilt angle 1.171 rad
+-- Asun       -7.957601e+13 
+-- P0d        5.000263e-01 GV 
+-- P0dNS      6.805136e-01 GV 
+- Region 65 
+-- V0         3.107063e-06 AU/s
+-- k0_paral   [1.867669e-04,1.673127e-04] 
+-- k0_perp    [1.867669e-04,1.673127e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.1275 
+-- rconst     1.765 
+-- tilt angle 1.126 rad
+-- Asun       -8.480324e+13 
+-- P0d        5.000001e-01 GV 
+-- P0dNS      5.011044e-01 GV 
+- Region 66 
+-- V0         3.020698e-06 AU/s
+-- k0_paral   [1.858101e-04,1.740523e-04] 
+-- k0_perp    [1.858101e-04,1.740523e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.1630 
+-- rconst     1.978 
+-- tilt angle 1.108 rad
+-- Asun       -8.829081e+13 
+-- P0d        5.000000e-01 GV 
+-- P0dNS      5.001325e-01 GV 
+- Region 67 
+-- V0         2.910737e-06 AU/s
+-- k0_paral   [1.902380e-04,1.837359e-04] 
+-- k0_perp    [1.902380e-04,1.837359e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.2078 
+-- rconst     2.247 
+-- tilt angle 1.112 rad
+-- Asun       -8.323810e+13 
+-- P0d        5.000000e-01 GV 
+-- P0dNS      5.001645e-01 GV 
+- Region 68 
+-- V0         2.953117e-06 AU/s
+-- k0_paral   [2.007106e-04,1.935779e-04] 
+-- k0_perp    [2.007106e-04,1.935779e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.2783 
+-- rconst     2.670 
+-- tilt angle 1.220 rad
+-- Asun       -7.614012e+13 
+-- P0d        5.070887e-01 GV 
+-- P0dNS      1.212775e+00 GV 
+- Region 69 
+-- V0         2.781524e-06 AU/s
+-- k0_paral   [1.699306e-04,2.025698e-04] 
+-- k0_perp    [1.699306e-04,2.025698e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.3293 
+-- rconst     2.976 
+-- tilt angle 1.138 rad
+-- Asun       -9.082067e+13 
+-- P0d        5.000006e-01 GV 
+-- P0dNS      5.021780e-01 GV 
+- Region 70 
+-- V0         2.909533e-06 AU/s
+-- k0_paral   [1.868860e-04,2.090360e-04] 
+-- k0_perp    [1.868860e-04,2.090360e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.3637 
+-- rconst     3.182 
+-- tilt angle 0.979 rad
+-- Asun       -8.788162e+13 
+-- P0d        5.000000e-01 GV 
+-- P0dNS      5.000000e-01 GV 
+- Region 71 
+-- V0         2.553044e-06 AU/s
+-- k0_paral   [2.236876e-04,2.128411e-04] 
+-- k0_perp    [2.236876e-04,2.128411e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.4021 
+-- rconst     3.413 
+-- tilt angle 0.935 rad
+-- Asun       -6.565928e+13 
+-- P0d        5.000000e-01 GV 
+-- P0dNS      5.000000e-01 GV 
+- Region 72 
+-- V0         2.860535e-06 AU/s
+-- k0_paral   [2.168619e-04,2.158210e-04] 
+-- k0_perp    [2.168619e-04,2.158210e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.4256 
+-- rconst     3.554 
+-- tilt angle 0.841 rad
+-- Asun       -7.175125e+13 
+-- P0d        5.000000e-01 GV 
+-- P0dNS      5.000000e-01 GV 
+- Region 73 
+-- V0         2.551841e-06 AU/s
+-- k0_paral   [2.015504e-04,2.200265e-04] 
+-- k0_perp    [2.015504e-04,2.200265e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.4587 
+-- rconst     3.752 
+-- tilt angle 0.852 rad
+-- Asun       -6.137695e+13 
+-- P0d        5.000000e-01 GV 
+-- P0dNS      5.000000e-01 GV 
+- Region 74 
+-- V0         2.693621e-06 AU/s
+-- k0_paral   [2.170735e-04,2.271512e-04] 
+-- k0_perp    [2.170735e-04,2.271512e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.4766 
+-- rconst     3.859 
+-- tilt angle 0.705 rad
+-- Asun       -7.359761e+13 
+-- P0d        5.000000e-01 GV 
+-- P0dNS      5.000000e-01 GV 
+- Region 75 
+-- V0         2.689677e-06 AU/s
+-- k0_paral   [2.218309e-04,2.350583e-04] 
+-- k0_perp    [2.218309e-04,2.350583e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.4860 
+-- rconst     3.916 
+-- tilt angle 0.759 rad
+-- Asun       -7.055857e+13 
+-- P0d        5.000000e-01 GV 
+-- P0dNS      5.000000e-01 GV 
+- Region 76 
+-- V0         2.695560e-06 AU/s
+-- k0_paral   [2.323044e-04,2.435288e-04] 
+-- k0_perp    [2.323044e-04,2.435288e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.4893 
+-- rconst     3.936 
+-- tilt angle 0.866 rad
+-- Asun       -6.764682e+13 
+-- P0d        5.000000e-01 GV 
+-- P0dNS      5.000000e-01 GV 
+- Region 77 
+-- V0         2.818422e-06 AU/s
+-- k0_paral   [2.421483e-04,2.491348e-04] 
+-- k0_perp    [2.421483e-04,2.491348e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.4913 
+-- rconst     3.948 
+-- tilt angle 0.719 rad
+-- Asun       -6.270893e+13 
+-- P0d        5.000000e-01 GV 
+-- P0dNS      5.000000e-01 GV 
+- Region 78 
+-- V0         2.889012e-06 AU/s
+-- k0_paral   [2.376908e-04,2.501849e-04] 
+-- k0_perp    [2.376908e-04,2.501849e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.4920 
+-- rconst     3.952 
+-- tilt angle 0.796 rad
+-- Asun       -7.167570e+13 
+-- P0d        5.000000e-01 GV 
+-- P0dNS      5.000000e-01 GV 
+- Region 79 
+-- V0         2.926111e-06 AU/s
+-- k0_paral   [2.533394e-04,2.504494e-04] 
+-- k0_perp    [2.533394e-04,2.504494e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.4922 
+-- rconst     3.953 
+-- tilt angle 0.487 rad
+-- Asun       -6.591792e+13 
+-- P0d        5.000000e-01 GV 
+-- P0dNS      5.000000e-01 GV 
+- Region 80 
+-- V0         2.763141e-06 AU/s
+-- k0_paral   [2.426159e-04,2.521359e-04] 
+-- k0_perp    [2.426159e-04,2.521359e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.4931 
+-- rconst     3.959 
+-- tilt angle 0.649 rad
+-- Asun       -7.628416e+13 
+-- P0d        5.000000e-01 GV 
+-- P0dNS      5.000000e-01 GV 
+- Region 81 
+-- V0         2.816216e-06 AU/s
+-- k0_paral   [2.470175e-04,2.557106e-04] 
+-- k0_perp    [2.470175e-04,2.557106e-04] 
+-- GaussVar   [0.1045,0.1097] 
+-- g_low      0.4953 
+-- rconst     3.972 
+-- tilt angle 0.634 rad
+-- Asun       -6.782991e+13 
+-- P0d        5.000000e-01 GV 
+-- P0dNS      5.000000e-01 GV 
+Heliosheat parameters ( 68 periods ): 
+-period              :0 
+-- V0 2.702311e-06 AU/s
+-- k0 3.000000e-05 
+-period              :1 
+-- V0 2.936205e-06 AU/s
+-- k0 3.000000e-05 
+-period              :2 
+-- V0 3.261343e-06 AU/s
+-- k0 3.000000e-05 
+-period              :3 
+-- V0 2.755320e-06 AU/s
+-- k0 3.000000e-05 
+-period              :4 
+-- V0 2.733729e-06 AU/s
+-- k0 3.000000e-05 
+-period              :5 
+-- V0 3.101180e-06 AU/s
+-- k0 3.000000e-05 
+-period              :6 
+-- V0 2.995698e-06 AU/s
+-- k0 3.000000e-05 
+-period              :7 
+-- V0 2.931592e-06 AU/s
+-- k0 3.000000e-05 
+-period              :8 
+-- V0 2.612270e-06 AU/s
+-- k0 3.000000e-05 
+-period              :9 
+-- V0 2.582991e-06 AU/s
+-- k0 3.000000e-05 
+-period              :10 
+-- V0 2.463671e-06 AU/s
+-- k0 3.000000e-05 
+-period              :11 
+-- V0 2.233120e-06 AU/s
+-- k0 3.000000e-05 
+-period              :12 
+-- V0 2.559729e-06 AU/s
+-- k0 3.000000e-05 
+-period              :13 
+-- V0 2.397762e-06 AU/s
+-- k0 3.000000e-05 
+-period              :14 
+-- V0 2.615879e-06 AU/s
+-- k0 3.000000e-05 
+-period              :15 
+-- V0 2.565946e-06 AU/s
+-- k0 3.000000e-05 
+-period              :16 
+-- V0 2.774839e-06 AU/s
+-- k0 3.000000e-05 
+-period              :17 
+-- V0 2.548098e-06 AU/s
+-- k0 3.000000e-05 
+-period              :18 
+-- V0 2.689945e-06 AU/s
+-- k0 3.000000e-05 
+-period              :19 
+-- V0 2.475904e-06 AU/s
+-- k0 3.000000e-05 
+-period              :20 
+-- V0 2.519087e-06 AU/s
+-- k0 3.000000e-05 
+-period              :21 
+-- V0 2.509929e-06 AU/s
+-- k0 3.000000e-05 
+-period              :22 
+-- V0 2.725373e-06 AU/s
+-- k0 3.000000e-05 
+-period              :23 
+-- V0 3.009067e-06 AU/s
+-- k0 3.000000e-05 
+-period              :24 
+-- V0 2.674303e-06 AU/s
+-- k0 3.000000e-05 
+-period              :25 
+-- V0 2.722833e-06 AU/s
+-- k0 3.000000e-05 
+-period              :26 
+-- V0 3.221236e-06 AU/s
+-- k0 3.000000e-05 
+-period              :27 
+-- V0 2.640412e-06 AU/s
+-- k0 3.000000e-05 
+-period              :28 
+-- V0 2.639409e-06 AU/s
+-- k0 3.000000e-05 
+-period              :29 
+-- V0 2.624837e-06 AU/s
+-- k0 3.000000e-05 
+-period              :30 
+-- V0 2.509126e-06 AU/s
+-- k0 3.000000e-05 
+-period              :31 
+-- V0 2.403510e-06 AU/s
+-- k0 3.000000e-05 
+-period              :32 
+-- V0 2.310127e-06 AU/s
+-- k0 3.000000e-05 
+-period              :33 
+-- V0 2.506252e-06 AU/s
+-- k0 3.000000e-05 
+-period              :34 
+-- V0 2.608259e-06 AU/s
+-- k0 3.000000e-05 
+-period              :35 
+-- V0 2.454714e-06 AU/s
+-- k0 3.000000e-05 
+-period              :36 
+-- V0 2.866953e-06 AU/s
+-- k0 3.000000e-05 
+-period              :37 
+-- V0 2.689343e-06 AU/s
+-- k0 3.000000e-05 
+-period              :38 
+-- V0 3.069496e-06 AU/s
+-- k0 3.000000e-05 
+-period              :39 
+-- V0 2.897367e-06 AU/s
+-- k0 3.000000e-05 
+-period              :40 
+-- V0 2.729050e-06 AU/s
+-- k0 3.000000e-05 
+-period              :41 
+-- V0 2.661669e-06 AU/s
+-- k0 3.000000e-05 
+-period              :42 
+-- V0 3.162812e-06 AU/s
+-- k0 3.000000e-05 
+-period              :43 
+-- V0 2.786470e-06 AU/s
+-- k0 3.000000e-05 
+-period              :44 
+-- V0 2.821163e-06 AU/s
+-- k0 3.000000e-05 
+-period              :45 
+-- V0 2.389874e-06 AU/s
+-- k0 3.000000e-05 
+-period              :46 
+-- V0 2.566881e-06 AU/s
+-- k0 3.000000e-05 
+-period              :47 
+-- V0 2.428510e-06 AU/s
+-- k0 3.000000e-05 
+-period              :48 
+-- V0 2.740948e-06 AU/s
+-- k0 3.000000e-05 
+-period              :49 
+-- V0 2.849639e-06 AU/s
+-- k0 3.000000e-05 
+-period              :50 
+-- V0 3.042222e-06 AU/s
+-- k0 3.000000e-05 
+-period              :51 
+-- V0 3.107063e-06 AU/s
+-- k0 3.000000e-05 
+-period              :52 
+-- V0 3.020698e-06 AU/s
+-- k0 3.000000e-05 
+-period              :53 
+-- V0 2.910737e-06 AU/s
+-- k0 3.000000e-05 
+-period              :54 
+-- V0 2.953117e-06 AU/s
+-- k0 3.000000e-05 
+-period              :55 
+-- V0 2.781524e-06 AU/s
+-- k0 3.000000e-05 
+-period              :56 
+-- V0 2.909533e-06 AU/s
+-- k0 3.000000e-05 
+-period              :57 
+-- V0 2.553044e-06 AU/s
+-- k0 3.000000e-05 
+-period              :58 
+-- V0 2.860535e-06 AU/s
+-- k0 3.000000e-05 
+-period              :59 
+-- V0 2.551841e-06 AU/s
+-- k0 3.000000e-05 
+-period              :60 
+-- V0 2.693621e-06 AU/s
+-- k0 3.000000e-05 
+-period              :61 
+-- V0 2.689677e-06 AU/s
+-- k0 3.000000e-05 
+-period              :62 
+-- V0 2.695560e-06 AU/s
+-- k0 3.000000e-05 
+-period              :63 
+-- V0 2.818422e-06 AU/s
+-- k0 3.000000e-05 
+-period              :64 
+-- V0 2.889012e-06 AU/s
+-- k0 3.000000e-05 
+-period              :65 
+-- V0 2.926111e-06 AU/s
+-- k0 3.000000e-05 
+-period              :66 
+-- V0 2.763141e-06 AU/s
+-- k0 3.000000e-05 
+-period              :67 
+-- V0 2.816216e-06 AU/s
+-- k0 3.000000e-05 
+----------------------------------------
+04,	120.59
+### HeliosphericParameters--> 0.0,	85.188,	394.85,	73.60,	70.150,	5.174,	1,	1,	259.210,	74.57,	80.62,	110.58,	121.25
+### HeliosphericParameters--> 0.0,	85.458,	392.67,	64.80,	70.425,	5.193,	1,	1,	254.383,	74.67,	80.69,	111.13,	121.99
+### HeliosphericParameters--> 0.0,	85.226,	375.36,	71.50,	70.433,	5.211,	-1,	0,	267.084,	74.75,	80.76,	111.63,	122.76
+### HeliosphericParameters--> 0.0,	85.739,	359.56,	73.10,	70.617,	4.756,	-1,	0,	267.877,	74.82,	80.81,	112.16,	123.53
+### HeliosphericParameters--> 0.0,	85.784,	345.59,	61.90,	71.092,	4.859,	-1,	0,	266.802,	74.86,	80.85,	112.86,	124.30
+### HeliosphericParameters--> 0.0,	85.498,	374.93,	71.50,	71.442,	5.539,	-1,	0,	263.440,	74.91,	80.82,	113.62,	125.30
+### HeliosphericParameters--> 0.0,	85.802,	390.19,	73.40,	70.975,	5.515,	-1,	0,	266.272,	74.90,	80.79,	114.33,	126.23
+### HeliosphericParameters--> 0.0,	86.383,	367.22,	71.60,	70.408,	5.256,	-1,	0,	264.587,	74.88,	80.72,	115.12,	127.24
+### HeliosphericParameters--> 0.0,	87.690,	428.89,	73.10,	69.483,	5.585,	-1,	0,	264.149,	74.83,	80.60,	115.87,	128.35
+### HeliosphericParameters--> 0.0,	86.591,	402.32,	73.90,	69.225,	5.554,	-1,	0,	259.562,	74.77,	80.52,	116.68,	129.58
+### HeliosphericParameters--> 0.0,	85.373,	459.19,	74.60,	69.658,	6.867,	-1,	0,	255.986,	74.65,	80.37,	117.49,	130.89
+### HeliosphericParameters--> 0.0,	86.870,	433.44,	74.30,	69.433,	6.233,	-1,	0,	267.787,	74.48,	80.18,	118.29,	132.22
+### HeliosphericParameters--> 0.0,	89.416,	408.26,	68.00,	68.892,	5.500,	-1,	0,	269.320,	74.29,	79.99,	119.26,	133.55
+### HeliosphericParameters--> 0.0,	94.214,	398.18,	58.00,	68.725,	5.836,	-1,	0,	265.907,	74.07,	79.77,	120.22,	134.83
+### HeliosphericParameters--> 0.0,	98.064,	473.15,	60.40,	68.558,	6.059,	-1,	0,	266.023,	73.82,	79.51,	121.24,	136.01
+### HeliosphericParameters--> 0.0,	100.043,	416.85,	70.00,	67.958,	5.870,	-1,	0,	265.635,	73.54,	79.21,	122.31,	137.18
+### HeliosphericParameters--> 0.0,	99.530,	422.04,	67.10,	67.333,	5.621,	-1,	0,	269.562,	73.27,	78.82,	123.38,	138.29
+### HeliosphericParameters--> 0.0,	96.478,	357.52,	68.80,	66.517,	4.893,	-1,	0,	274.182,	72.93,	78.38,	124.36,	139.38
+### HeliosphericParameters--> 0.0,	92.387,	384.00,	66.90,	66.142,	5.059,	-1,	0,	274.307,	72.55,	77.97,	125.31,	140.29
+### HeliosphericParameters--> 0.0,	89.414,	363.30,	69.60,	66.617,	5.741,	-1,	0,	270.473,	72.19,	77.52,	126.24,	141.22
+### HeliosphericParameters--> 0.0,	88.052,	410.04,	71.10,	67.408,	5.725,	-1,	0,	271.815,	71.80,	77.05,	127.10,	142.04
+### HeliosphericParameters--> 0.0,	88.193,	426.30,	66.70,	67.008,	5.096,	-1,	0,	274.320,	71.40,	76.58,	127.99,	142.78
+### HeliosphericParameters--> 0.0,	88.628,	455.11,	67.10,	66.092,	5.007,	-1,	0,	274.113,	70.95,	76.08,	128.82,	143.42
+### HeliosphericParameters--> 0.0,	85.615,	464.81,	64.50,	64.825,	5.281,	-1,	0,	272.754,	70.57,	75.63,	129.66,	143.99
+### HeliosphericParameters--> 0.0,	78.704,	451.89,	63.50,	63.267,	5.575,	-1,	0,	272.504,	70.23,	75.23,	130.48,	144.52
+### HeliosphericParameters--> 0.0,	69.687,	435.44,	63.70,	61.533,	5.356,	-1,	0,	273.648,	69.84,	74.74,	131.20,	145.03
+### HeliosphericParameters--> 0.0,	61.436,	441.78,	69.90,	58.975,	4.863,	-1,	0,	276.230,	69.42,	74.27,	131.92,	145.53
+### HeliosphericParameters--> 0.0,	54.558,	416.11,	65.20,	57.042,	5.986,	-1,	0,	268.111,	69.05,	73.86,	132.57,	146.09
+### HeliosphericParameters--> 0.0,	49.942,	435.26,	56.10,	55.583,	5.656,	-1,	0,	272.785,	68.69,	73.48,	133.19,	146.62
+### HeliosphericParameters--> 0.0,	47.340,	381.93,	53.60,	53.642,	4.541,	-1,	0,	281.366,	68.37,	73.25,	133.83,	147.19
+### HeliosphericParameters--> 0.0,	45.357,	427.93,	48.20,	52.150,	4.659,	-1,	0,	279.909,	68.13,	73.06,	134.43,	147.78
+### HeliosphericParameters--> 0.0,	42.635,	381.75,	48.80,	49.167,	4.246,	-1,	0,	276.430,	67.91,	72.89,	135.04,	148.38
+### HeliosphericParameters--> 0.0,	38.213,	402.96,	40.40,	46.442,	4.937,	-1,	0,	279.955,	67.72,	72.78,	135.67,	148.96
+### HeliosphericParameters--> 0.0,	33.557,	402.37,	43.50,	44.033,	4.737,	-1,	0,	280.975,	67.59,	72.74,	136.31,	149.53
+### HeliosphericParameters--> 0.0,	28.830,	403.25,	49.60,	42.817,	4.536,	-1,	0,	283.131,	67.52,	72.77,	136.94,	150.09
+### HeliosphericParameters--> 0.0,	25.835,	421.63,	41.20,	41.858,	4.104,	-1,	0,	285.054,	67.54,	72.84,	137.58,	150.62
+### HeliosphericParameters--> 0.0,	25.285,	432.19,	45.60,	41.492,	4.630,	-1,	0,	284.195,	67.59,	73.01,	138.19,	151.11
+### HeliosphericParameters--> 0.0,	25.147,	437.74,	27.90,	41.342,	4.230,	-1,	0,	287.130,	67.73,	73.19,	138.77,	151.53
+### HeliosphericParameters--> 0.0,	24.272,	413.36,	37.20,	40.767,	5.046,	-1,	0,	285.143,	67.94,	73.46,	139.29,	151.85
+### HeliosphericParameters--> 0.0,	22.445,	421.30,	36.30,	39.067,	4.441,	-1,	0,	285.971,	68.22,	73.83,	139.79,	152.10
+### HeliosheatParameters--> 3.00000e-05,	404.26 
+### HeliosheatParameters--> 3.00000e-05,	439.25 
+### HeliosheatParameters--> 3.00000e-05,	487.89 
+### HeliosheatParameters--> 3.00000e-05,	412.19 
+### HeliosheatParameters--> 3.00000e-05,	408.96 
+### HeliosheatParameters--> 3.00000e-05,	463.93 
+### HeliosheatParameters--> 3.00000e-05,	448.15 
+### HeliosheatParameters--> 3.00000e-05,	438.56 
+### HeliosheatParameters--> 3.00000e-05,	390.79 
+### HeliosheatParameters--> 3.00000e-05,	386.41 
+### HeliosheatParameters--> 3.00000e-05,	368.56 
+### HeliosheatParameters--> 3.00000e-05,	334.07 
+### HeliosheatParameters--> 3.00000e-05,	382.93 
+### HeliosheatParameters--> 3.00000e-05,	358.70 
+### HeliosheatParameters--> 3.00000e-05,	391.33 
+### HeliosheatParameters--> 3.00000e-05,	383.86 
+### HeliosheatParameters--> 3.00000e-05,	415.11 
+### HeliosheatParameters--> 3.00000e-05,	381.19 
+### HeliosheatParameters--> 3.00000e-05,	402.41 
+### HeliosheatParameters--> 3.00000e-05,	370.39 
+### HeliosheatParameters--> 3.00000e-05,	376.85 
+### HeliosheatParameters--> 3.00000e-05,	375.48 
+### HeliosheatParameters--> 3.00000e-05,	407.71 
+### HeliosheatParameters--> 3.00000e-05,	450.15 
+### HeliosheatParameters--> 3.00000e-05,	400.07 
+### HeliosheatParameters--> 3.00000e-05,	407.33 
+### HeliosheatParameters--> 3.00000e-05,	481.89 
+### HeliosheatParameters--> 3.00000e-05,	395.00 
+### HeliosheatParameters--> 3.00000e-05,	394.85 
+### HeliosheatParameters--> 3.00000e-05,	392.67 
+### HeliosheatParameters--> 3.00000e-05,	375.36 
+### HeliosheatParameters--> 3.00000e-05,	359.56 
+### HeliosheatParameters--> 3.00000e-05,	345.59 
+### HeliosheatParameters--> 3.00000e-05,	374.93 
+### HeliosheatParameters--> 3.00000e-05,	390.19 
+### HeliosheatParameters--> 3.00000e-05,	367.22 
+### HeliosheatParameters--> 3.00000e-05,	428.89 
+### HeliosheatParameters--> 3.00000e-05,	402.32 
+### HeliosheatParameters--> 3.00000e-05,	459.19 
+### HeliosheatParameters--> 3.00000e-05,	433.44 
+### HeliosheatParameters--> 3.00000e-05,	408.26 
+### HeliosheatParameters--> 3.00000e-05,	398.18 
+### HeliosheatParameters--> 3.00000e-05,	473.15 
+### HeliosheatParameters--> 3.00000e-05,	416.85 
+### HeliosheatParameters--> 3.00000e-05,	422.04 
+### HeliosheatParameters--> 3.00000e-05,	357.52 
+### HeliosheatParameters--> 3.00000e-05,	384.00 
+### HeliosheatParameters--> 3.00000e-05,	363.30 
+### HeliosheatParameters--> 3.00000e-05,	410.04 
+### HeliosheatParameters--> 3.00000e-05,	426.30 
+### HeliosheatParameters--> 3.00000e-05,	455.11 
+### HeliosheatParameters--> 3.00000e-05,	464.81 
+### HeliosheatParameters--> 3.00000e-05,	451.89 
+### HeliosheatParameters--> 3.00000e-05,	435.44 
+### HeliosheatParameters--> 3.00000e-05,	441.78 
+### HeliosheatParameters--> 3.00000e-05,	416.11 
+### HeliosheatParameters--> 3.00000e-05,	435.26 
+### HeliosheatParameters--> 3.00000e-05,	381.93 
+### HeliosheatParameters--> 3.00000e-05,	427.93 
+### HeliosheatParameters--> 3.00000e-05,	381.75 
+### HeliosheatParameters--> 3.00000e-05,	402.96 
+### HeliosheatParameters--> 3.00000e-05,	402.37 
+### HeliosheatParameters--> 3.00000e-05,	403.25 
+### HeliosheatParameters--> 3.00000e-05,	421.63 
+### HeliosheatParameters--> 3.00000e-05,	432.19 
+### HeliosheatParameters--> 3.00000e-05,	437.74 
+### HeliosheatParameters--> 3.00000e-05,	413.36 
+### HeliosheatParameters--> 3.00000e-05,	421.30 
+Default initial quasi particles configuration loaded
+Default energies bins loaded
+Old propagation files deleted successfully
+Old histogram files deleted successfully
+-- 
+
+----- Individual CPU infos -----
+-- CPU thread 0 (of 1) uses CUDA device 0
+-- 
+
+------- propagation Kernel -----------------
+-- Number of particle which will be simulated: 5024
+-- Number of Warp in a Block       : 16 
+-- Number of blocks                : 10 
+-- Number of threadsPerBlock       : 512 
+-- 
+
+
+-- Cycle on rigidity[0]: 0.31 
+Quasi-particles propagation kernel launched
+Number of quasi-particles: 5024
+Number of blocks: 10
+Number of threads per block: 512
+Number of shared memory bytes per block: 14068
+-- Eventi computati : 5024 
+-- Eventi falliti   : 0 
+-- Eventi registrati: 5024 
+-- Init              :  0.06 ms 
+-- Save initial state:  50.67 ms 
+-- Propagation phase :  25236.53 ms 
+-- Find Max          :  0.12 ms 
+-- Save final state  :  74.10 ms 
+-- Binning           :  0.28 ms 
+
+-- Cycle on rigidity[1]: 3.05 
+Quasi-particles propagation kernel launched
+Number of quasi-particles: 5024
+Number of blocks: 10
+Number of threads per block: 512
+Number of shared memory bytes per block: 14068
+-- Eventi computati : 5024 
+-- Eventi falliti   : 0 
+-- Eventi registrati: 5024 
+-- Init              :  0.15 ms 
+-- Save initial state:  40.03 ms 
+-- Propagation phase :  5279.30 ms 
+-- Find Max          :  0.11 ms 
+-- Save final state  :  45.86 ms 
+-- Binning           :  0.17 ms 
+
+-- Cycle on rigidity[2]: 14.10 
+Quasi-particles propagation kernel launched
+Number of quasi-particles: 5024
+Number of blocks: 10
+Number of threads per block: 512
+Number of shared memory bytes per block: 14068
+-- Eventi computati : 5024 
+-- Eventi falliti   : 0 
+-- Eventi registrati: 5024 
+-- Init              :  0.13 ms 
+-- Save initial state:  36.25 ms 
+-- Propagation phase :  1439.23 ms 
+-- Find Max          :  0.05 ms 
+-- Save final state  :  34.82 ms 
+-- Binning           :  0.10 ms 
+
+-- Cycle on rigidity[3]: 47.28 
+Quasi-particles propagation kernel launched
+Number of quasi-particles: 5024
+Number of blocks: 10
+Number of threads per block: 512
+Number of shared memory bytes per block: 14068
+-- Eventi computati : 5024 
+-- Eventi falliti   : 0 
+-- Eventi registrati: 5024 
+-- Init              :  0.08 ms 
+-- Save initial state:  32.08 ms 
+-- Propagation phase :  752.75 ms 
+-- Find Max          :  0.03 ms 
+-- Save final state  :  108.24 ms 
+-- Binning           :  0.09 ms 
+
+-- Cycle on rigidity[4]: 919.10 
+Quasi-particles propagation kernel launched
+Number of quasi-particles: 5024
+Number of blocks: 10
+Number of threads per block: 512
+Number of shared memory bytes per block: 14068
+-- Eventi computati : 5024 
+-- Eventi falliti   : 0 
+-- Eventi registrati: 5024 
+-- Init              :  0.08 ms 
+-- Save initial state:  39.44 ms 
+-- Propagation phase :  225.50 ms 
+-- Find Max          :  0.02 ms 
+-- Save final state  :  39.71 ms 
+-- Binning           :  0.09 ms 
+Time to Set Memory:  17.4 ms 
+Time to create Rnd:  17.3 ms (delta = -0.1)
+Time to execute   :  33453.6 ms (delta = 33436.3)
+Writing Output File: Beryl10_20110509_20160509_r00100_lat00000_matrix_1742126.dat 
+
+Simulation end at: Tue Jun 18 21:43:32 2024
+  
