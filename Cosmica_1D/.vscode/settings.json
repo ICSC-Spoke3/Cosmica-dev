@@ -1,9 +1,0 @@
-{
-    "files.associations": {
-        "*.cu": "cuda-cpp",
-        "limits": "cpp",
-        "numbers": "cpp",
-        "cmath": "cpp",
-        "random": "cpp"
-    }
-}
