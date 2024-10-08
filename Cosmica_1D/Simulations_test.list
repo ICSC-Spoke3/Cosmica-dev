@@ -1,0 +1,3 @@
+#SimulationName	| Ion/Isotope	| Energy Bin/Exp data File Name	| Initial Simulation Date	| Final Simulation Date	| Radial Position	| Lat. Position	| Long. Position	| other custom fields
+AMS-02_PRL2015      	| Proton     	| KinEnergy_AMS-02_PRL2015_Proton.dat     	| 20110519	| 20131126	|1	| 0	| 0	| short_ref:PRL 114 (2015) 171103 | DOI: https://dx.doi.org/10.1103/PhysRevLett.114.171103
+# AMS-02_PRL2014      	| Positron   	| KinEnergy_AMS-02_PRL2014_Positron.dat   	| 20110519	| 20131126	|1	| 0	| 0	| short_ref:PRL 113 (2014) 121102 | DOI: https://dx.doi.org/10.1103/PhysRevLett.113.121102

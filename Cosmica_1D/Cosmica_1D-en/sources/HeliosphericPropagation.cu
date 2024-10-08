@@ -1,0 +1,199 @@
+#include <stdio.h>
+#include <math.h>
+#include <curand.h>         // CUDA random number host library
+#include <curand_kernel.h>  // CUDA random number device library
+#include <cuda_runtime.h>
+#include "HeliosphericPropagation.cuh"
+#include "VariableStructure.cuh"
+#include "HelModVariableStructure.cuh"
+#include "HeliosphereLocation.cuh"
+#include "HeliosphereModel.cuh"
+#include "SDECoeffs.cuh"
+#include "GenComputation.cuh"
+#include "Histogram.cuh"
+
+#define TRIVIAL_1D 1
+#ifndef FINALSAVE
+  #define FINALSAVE 0
+#endif
+
+// use template for the needs of unrolled max search in BlockMax
+__global__ void HeliosphericProp(int Npart_PerKernel, float Min_dt, float Max_dt, float TimeOut, struct QuasiParticle_t QuasiParts_out, int* PeriodIndexes, struct PartDescription_t pt, curandStatePhilox4_32_10_t* CudaState, float* RMaxs) {
+
+  int id = threadIdx.x + blockIdx.x * blockDim.x;
+
+  // Deine the external unique share memory array
+  extern __shared__ float smem[];
+
+  // __shared__ int Npart;
+  // __shared__ float dt;
+  // __shared__ float sqrtf(dt) = 0;
+  // float MinValueTimeStep = Min_dt;
+  // float MaxValueTimeStep = Max_dt;
+  // int Npart = Npart_PerKernel;
+  // struct PartDescription_t p_descr = pt;
+
+  //__shared__ curandStatePhilox4_32_10_t LocalState[Npart_PerKernel];
+
+  //__shared__ int ZoneNum[Npart_PerKernel];
+
+  // subdivide the shared memory in the various variable arrays
+  // CHECK TO NOT DOUBLE USE POINTERS WITH NOT NEEDED REGISTERS
+  /* float* r      = &smem[threadIdx.x];
+  float* th        = &smem[threadIdx.x + blockDim.x];
+  float* phi       = &smem[threadIdx.x + 2*blockDim.x];
+  float* R         = &smem[threadIdx.x + 3*blockDim.x];
+  float* t_fly     = &smem[threadIdx.x + 4*blockDim.x];
+  float* alphapath = &smem[threadIdx.x + 5*blockDim.x] ;
+  float* zone      = &smem[threadIdx.x + 6*blockDim.x]; */
+
+  // Execute only the thread filled with quasi-particle to propagate
+  if (id<Npart_PerKernel) {
+
+    // Copy the particle variables to shared memory for less latency
+    smem[threadIdx.x]                =  QuasiParts_out.r[id];
+    smem[threadIdx.x + blockDim.x]   =  QuasiParts_out.th[id];
+    smem[threadIdx.x + 2*blockDim.x] =  QuasiParts_out.phi[id];
+    smem[threadIdx.x + 3*blockDim.x] =  QuasiParts_out.R[id];
+    smem[threadIdx.x + 4*blockDim.x] =  QuasiParts_out.t_fly[id];
+    smem[threadIdx.x + 5*blockDim.x] =  QuasiParts_out.alphapath[id];
+
+    float K0 = 0.000222;
+    float V0 = 2.66667e-6;
+
+    // Initialize the quasi particle position
+    #if TRIVIAL_1D
+      smem[threadIdx.x + 6*blockDim.x] = Zone(PeriodIndexes[id], smem[threadIdx.x], smem[threadIdx.x + blockDim.x], smem[threadIdx.x + 2*blockDim.x]);
+    #else
+      smem[threadIdx.x + 6*blockDim.x] = RadialZone(PeriodIndexes[id], smem[threadIdx.x], smem[threadIdx.x + blockDim.x], smem[threadIdx.x + 2*blockDim.x]);
+    #endif
+
+    // Initialize the random state seed per thread
+    //LocalState[id] = CudaState[id];
+
+    // Stocasti propagation cycle until quasi-particle exit heliosphere or it reaches the fly timeout
+    while(smem[threadIdx.x + 6*blockDim.x]>=0 && smem[threadIdx.x + 4*blockDim.x]<=TimeOut){
+
+      float4 RandNum = curand_normal4(&CudaState[id]); // x,y,z used for SDE, w used for K0 random oscillation
+
+      // Initialization of the propagation terms
+      struct Tensor3D_t Ddif;
+      struct vect3D_t AdvTerm;
+      float en_loss;
+      float loss_term;
+      float dt = Max_dt;
+
+      #if TRIVIAL_1D
+        // if (threadIdx.x==0 && smem[threadIdx.x + 4*blockDim.x] <= 0) printf("TRIVIAL 1D propagation\n");
+        // Evaluate the convective-diffusive tensor and its decomposition
+        Ddif = trivial_SquareRoot_DiffusionTensor(K0, smem[threadIdx.x + 3*blockDim.x], pt);
+
+        // Evaluate advective-drift vector
+        AdvTerm = trivial_AdvectiveTerm(Ddif, V0, smem[threadIdx.x]);
+
+        // Evaluate the energy loss term
+        en_loss = trivial_EnergyLoss(smem[threadIdx.x + 3*blockDim.x], smem[threadIdx.x], V0, pt);
+
+        // Evaluate the loss term (Montecarlo statistical weight)
+        loss_term = trivial_LossTerm(smem[threadIdx.x + 3*blockDim.x], smem[threadIdx.x], V0, pt);
+
+        // evaluate time step
+        // dt = Max_dt;
+        // time step is modified to ensure the diffusion approximation (i.e. diffusion step>>advective step)
+        // if (dt>Min_dt * (Ddif.rr*Ddif.rr)/(AdvTerm.r*AdvTerm.r)) dt = max(Min_dt, Min_dt * (Ddif.rr*Ddif.rr)/(AdvTerm.r*AdvTerm.r));
+
+      #else
+        struct DiffusionTensor_t KSym;
+
+        // Evaluate the convective-diffusive tensor and its decomposition
+        KSym = DiffusionTensor_symmetric(PeriodIndexes[id], smem[threadIdx.x + 6*blockDim.x], smem[threadIdx.x], smem[threadIdx.x + blockDim.x], smem[threadIdx.x + 2*blockDim.x], smem[threadIdx.x + 3*blockDim.x], pt, RandNum.w);
+
+        int res = 0;
+        Ddif = SquareRoot_DiffusionTerm(smem[threadIdx.x + 6*blockDim.x], KSym, smem[threadIdx.x], smem[threadIdx.x + blockDim.x], &res);
+
+        if (res>0) {
+          // SDE diffusion matrix is not positive definite; in this case propagation should be stopped and a new event generated
+          // placing the energy below zero ensure that this event is ignored in the after-part of the analysis
+          smem[threadIdx.x + 3*blockDim.x] = -1;   
+          break; //exit the while cycle 
+        }
+
+
+        // Evaluate advective-drift vector
+        AdvTerm = AdvectiveTerm(PeriodIndexes[id], smem[threadIdx.x + 6*blockDim.x], KSym, smem[threadIdx.x], smem[threadIdx.x + blockDim.x], smem[threadIdx.x + 2*blockDim.x], smem[threadIdx.x + 3*blockDim.x], pt);
+
+        // Evaluate the energy loss term
+        en_loss = EnergyLoss(PeriodIndexes[id], smem[threadIdx.x + 6*blockDim.x], smem[threadIdx.x], smem[threadIdx.x + blockDim.x], smem[threadIdx.x + 2*blockDim.x], smem[threadIdx.x + 3*blockDim.x], pt.T0);
+
+        // Evaluate the loss term (Montecarlo statistical weight)
+        loss_term = LossTerm(PeriodIndexes[id], smem[threadIdx.x + 6*blockDim.x], smem[threadIdx.x], smem[threadIdx.x + blockDim.x], smem[threadIdx.x + 2*blockDim.x], smem[threadIdx.x + 3*blockDim.x], pt.T0);
+
+        // evaluate time step
+        dt = Max_dt;
+        // time step is modified to ensure the diffusion approximation (i.e. diffusion step>>advective step)
+        if (dt>Min_dt * (Ddif.rr*Ddif.rr)/(AdvTerm.r*AdvTerm.r))                     dt=max(Min_dt, Min_dt * (Ddif.rr*Ddif.rr)                  /(AdvTerm.r*AdvTerm.r));
+        if (dt>Min_dt * (Ddif.tr+Ddif.tt)*(Ddif.tr+Ddif.tt)/(AdvTerm.th*AdvTerm.th)) dt=max(Min_dt, Min_dt * (Ddif.tr+Ddif.tt)*(Ddif.tr+Ddif.tt)/(AdvTerm.th*AdvTerm.th));
+      #endif
+
+      float prev_r = smem[threadIdx.x];
+
+      // Stochastic integration using the coefficients computed above and energy loss term
+      #if TRIVIAL_1D 
+        smem[threadIdx.x]                += AdvTerm.r*dt + RandNum.x*sqrt(2*Ddif.rr*dt);
+      #else
+        smem[threadIdx.x]                += AdvTerm.r*dt + RandNum.x*Ddif.rr*sqrtf(dt);
+      #endif
+
+      // Reflect out the particle (use previous propagation step) if is closer to the sun than 0.3 AU
+      if (smem[threadIdx.x]<Heliosphere.Rmirror) {
+        smem[threadIdx.x] = prev_r;
+      }
+      
+      else {
+        #if TRIVIAL_1D==0
+          smem[threadIdx.x + blockDim.x]   += AdvTerm.th*dt + (RandNum.x*Ddif.tr+RandNum.y*Ddif.tt)*sqrtf(dt);
+          smem[threadIdx.x + 2*blockDim.x] += AdvTerm.phi*dt + (RandNum.x*Ddif.pr+RandNum.y*Ddif.pt+RandNum.z*Ddif.pp)*sqrtf(dt);
+        #endif
+          smem[threadIdx.x + 3*blockDim.x] += en_loss*dt;
+          smem[threadIdx.x + 4*blockDim.x] += dt;
+          smem[threadIdx.x + 5*blockDim.x] += loss_term*dt;
+      }
+      
+      #if TRIVIAL_1D==0
+        // Remap the polar coordinates inside their range (th in [0, Pi] & phi in [0, 2*Pi])
+        smem[threadIdx.x + blockDim.x] = fabsf(smem[threadIdx.x + blockDim.x]);
+        smem[threadIdx.x + blockDim.x] = fabsf(fmodf(2.*M_PI+sign(M_PI-smem[threadIdx.x + blockDim.x])*smem[threadIdx.x + blockDim.x], M_PI));
+        // --- reflecting latitudinal bounduary
+        if (smem[threadIdx.x + blockDim.x]>thetaSouthlimit) 
+          {smem[threadIdx.x + blockDim.x] = 2.*thetaSouthlimit-smem[threadIdx.x + blockDim.x];}
+        else if (smem[threadIdx.x + blockDim.x]<(thetaNorthlimit))    
+          {smem[threadIdx.x + blockDim.x] = 2.*thetaNorthlimit-smem[threadIdx.x + blockDim.x];}
+
+        smem[threadIdx.x + 2*blockDim.x] = fmodf(smem[threadIdx.x + 2*blockDim.x], 2.*M_PI);
+        smem[threadIdx.x + 2*blockDim.x] = fmodf(2.*M_PI+smem[threadIdx.x + 2*blockDim.x], 2.*M_PI);
+      #endif
+
+      // Check of the zone of heliosphere, heliosheat or interstellar medium where the quasi-particle is after a step
+      #if TRIVIAL_1D
+        smem[threadIdx.x + 6*blockDim.x] = Zone(PeriodIndexes[id], smem[threadIdx.x], smem[threadIdx.x + blockDim.x], smem[threadIdx.x + 2*blockDim.x]);
+      #else
+        smem[threadIdx.x + 6*blockDim.x] = RadialZone(PeriodIndexes[id], smem[threadIdx.x], smem[threadIdx.x + blockDim.x], smem[threadIdx.x + 2*blockDim.x]);
+      #endif
+      if (smem[threadIdx.x + 4*blockDim.x]>=TimeOut) printf("\nExceed Timeout with:\n r = %f\n theta = %f\n phi = %f\n R = %f\n Zone = %f\n t_fly = %f\n", smem[threadIdx.x], smem[threadIdx.x + blockDim.x], smem[threadIdx.x + 2*blockDim.x], smem[threadIdx.x + 3*blockDim.x], smem[threadIdx.x + 6*blockDim.x], smem[threadIdx.x + 4*blockDim.x]);
+    }
+
+    // Save peopagation exit values
+    #if FINALSAVE
+      QuasiParts_out.r[id]     = smem[threadIdx.x];                
+      QuasiParts_out.th[id]    = smem[threadIdx.x + blockDim.x];   
+      QuasiParts_out.phi[id]   = smem[threadIdx.x + 2*blockDim.x];
+      QuasiParts_out.t_fly[id] = smem[threadIdx.x + 4*blockDim.x];
+    #else
+      QuasiParts_out.R[id]     = smem[threadIdx.x + 3*blockDim.x]; 
+      QuasiParts_out.alphapath[id] = smem[threadIdx.x + 5*blockDim.x];
+    #endif
+  }
+
+  // Find the maximum rigidity inside the block
+  BlockMax(smem, RMaxs);
+}
