@@ -45,3 +45,12 @@ The execution of the Cosmica_1D follow the subsiquent pipeline:
 2. Launch the AllRuns.sh command for the desired code to be executed (all simulation list will be runned and added to the previous in the folder)
 3. Run EvaluateSimulationResult.py to generate the whole modulation output (inside Analisi folder)
 4. Run EvaluateFlux.py to compute the fluxe and plot the results of the desired code versions (inside Analisi folder)
+
+### 1D model test run
+- Ion: Proton
+- Initial Simulation Date: 19/05/2013
+- Final Simulation Date: 26/11/2013
+- Initial position (Earth):
+  - Radial Position: 1
+  - Lat. Position: 0
+  - Long. Position: 0
