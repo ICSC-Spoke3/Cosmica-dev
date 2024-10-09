@@ -24,23 +24,12 @@ Contains:
   - Reformulatino of SDE in momentum form (one of whcih becomes trivial)
 
 ## Test simulation set
-<center>
+
 | Element   | Ions                                                   | Initial Simulation Date | Final Simulation Date | Initial position |
-|-----------|--------------------------------------------------------|-------------------------|-----------------------|------------------|
+|:---------:|:------------------------------------------------------:|:-----------------------:|:---------------------:|:----------------:|
 | Proton    | Proton<br> Deuterium                                   | 19-05-2011              | 26-11-2013            | Earth            |
 | Beryllium | Beryllium<br> Beryl7<br> Beryl10                       | 19-05-2011              | 26-05-2016            | Earth            |
 | Iron      | Iron<br> Iro54<br> Iro55<br> Iro57<br> Iro58<br> Iro60 | 19-05-2011              | 01-11-2019            | Earth            |
-</center>
-
-Beryllium
-20110519
-20160526
-Iron
-20110519
-20191101
-Proton
-20110519
-20131126
 
 ## Performance
 
