@@ -20,7 +20,7 @@ All performance indicators are evalueted in 'SimTimePlot_speedup.ipynb'
 
 Performance benchmark on A30 GPUs board
 ![plot1](test_plots/SimExeTimes_compare_codes.jpg)
-![plot1](test_plots/SimExeTimes_compare_best.jpg)
+![plot2](test_plots/SimExeTimes_compare_best.jpg)
 
 ## Cosmica 1D model
 Here there are the codes and building scripts of the Cosmica 1D model of Cosmic Rays (CR) propagation in the heliosphere.
