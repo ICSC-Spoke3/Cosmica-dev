@@ -30,7 +30,7 @@ Contains:
 | Proton    | Proton<br> Deuterium                                   | 19-05-2011              | 26-11-2013            | Earth            |
 | Beryllium | Beryllium<br> Beryl7<br> Beryl10                       | 19-05-2011              | 26-05-2016            | Earth            |
 | Iron      | Iron<br> Iro54<br> Iro55<br> Iro57<br> Iro58<br> Iro60 | 19-05-2011              | 01-11-2019            | Earth            |
-<\center>
+</center>
 
 Beryllium
 20110519
