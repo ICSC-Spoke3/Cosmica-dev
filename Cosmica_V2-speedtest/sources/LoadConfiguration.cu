@@ -46,7 +46,7 @@ struct QuasiParticle_t InitQuasiPart_mem(int Npart, int hardware, bool verbose) 
     return empty_QuasiPart;
 }
 
-struct InitialPositions_t LoadInitPos(int Npos, bool verbose, bool trivial) {
+struct InitialPositions_t LoadInitPos(int Npos, bool verbose) {
     
     // Allocate the array memory
     struct InitialPositions_t InitialPositions;
@@ -56,13 +56,13 @@ struct InitialPositions_t LoadInitPos(int Npos, bool verbose, bool trivial) {
     InitialPositions.phi = (float*)malloc(Npos*sizeof(float));
 
     // Set the InitialPositions arrays with default values
-    if (trivial) {    
+    #if TRIVIAL   
         for (int i=0; i<Npos; i++) {
             InitialPositions.r[i] = i;
             InitialPositions.th[i] = M_PI_2;
             InitialPositions.phi[i] = 0;
         }
-    }
+    #endif
 
     if (verbose) {
         printf("Default initial quasi particles configuration loaded\n");

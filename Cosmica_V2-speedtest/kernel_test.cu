@@ -48,7 +48,7 @@
 // Simulation iperparameters definition
 #define WARPSIZE 32
 #ifndef SetWarpPerBlock
-  #define SetWarpPerBlock 16                                          // number of warp so be submitted -- modify this value to find the best performance
+  #define SetWarpPerBlock -1                                // number of warp so be submitted -- modify this value to find the best performance
 #endif
 #define NPARTS 5000
 #ifndef MAX_DT
@@ -64,11 +64,11 @@
 // Debugging variables
 #define VERBOSE 1
 #define VERBOSE_2 0
-#define VERBOSE_LOAD 3
+#define VERBOSE_LOAD 0
 #define SINGLE_CPU 0
 #define HELMOD_LOAD 1
-#define INITSAVE 1
-#define FINALSAVE 1
+#define INITSAVE 0
+#define FINALSAVE 0
 #define TRIVIAL 0
 #define NVIDIA_HIST 0
 
@@ -118,22 +118,22 @@ int main(int argc, char* argv[]) {
     // Retrive GPUs infos and set the CPU multi threads
     int NGPUs;
     HANDLE_ERROR(cudaGetDeviceCount(&NGPUs));   // Count the available GPUs
-    
+
     if (NGPUs<1) {
         fprintf(stderr,"No CUDA capable devices were detected\n");
         exit(EXIT_FAILURE);
     }
 
     // Retrive the infos of alla the available GPUs and eventually print them
-    cudaDeviceProp* GPUs_profile = DeviceInfo(NGPUs, VERBOSE);
+    cudaDeviceProp* GPUs_profile = DeviceInfo(NGPUs, VERBOSE_2);
 
     omp_set_num_threads(NGPUs);                 // create as many CPU threads as there are CUDA devices
-    unsigned int num_cpu_threads = omp_get_num_threads();  // numero totale di CPU-thread allocated
 
-    printf("\n");
-    printf("----- Global CPU infos -----\n" );
-    printf("Number of host CPUs:\t%d\n", omp_get_num_procs());
-    printf("Number of host CPUs allocated:\t%d\n", num_cpu_threads);
+    if (VERBOSE_2){
+        printf("\n");
+        printf("----- Global CPU infos -----\n" );
+        printf("Number of host CPUs:\t%d\n", omp_get_num_procs());
+    }
 
     #if SINGLE_CPU
         omp_set_num_threads(1);   // setting 1 CPU thread for easier debugging
@@ -159,7 +159,7 @@ int main(int argc, char* argv[]) {
     #if HELMOD_LOAD
 
         // NOTE: USING OLD STABLE 4_CoreCode_MultiGPU_MultiYear VERSION
-        if (Load_Configuration_File(argc, argv, SimParameters, VERBOSE) != EXIT_SUCCESS) {
+        if (Load_Configuration_File(argc, argv, SimParameters, VERBOSE_LOAD) != EXIT_SUCCESS) {
             printf("Error while loading simulation parameters\n");
             exit(EXIT_FAILURE);
         }
@@ -167,7 +167,7 @@ int main(int argc, char* argv[]) {
         // Initialize the needed parameters for the new cosmica code
         NInitPos = (int)SimParameters.NInitialPositions;
         NParts = (int)SimParameters.Npart;
-        InitialPositions = LoadInitPos(NParts, VERBOSE, TRIVIAL);
+        InitialPositions = LoadInitPos(NParts, VERBOSE_LOAD);
         pt = SimParameters.IonToBeSimulated;
 
         ////////////////////////////////////////////////////////////////
@@ -178,7 +178,7 @@ int main(int argc, char* argv[]) {
             SimParameters.HeliosphereToBeSimulated.RadBoundary_effe[ipos] = SimParameters.HeliosphereToBeSimulated.RadBoundary_real[ipos];
             RescaleToEffectiveHeliosphere(SimParameters.HeliosphereToBeSimulated.RadBoundary_effe[ipos], SimParameters.InitialPosition[ipos]);
             
-            if (VERBOSE_2){
+            if (VERBOSE_LOAD){
                 fprintf(stderr,"--- Zone %d \n", ipos);
                 fprintf(stderr,"--- !! Effective Heliosphere --> effective boundaries: TS_nose=%f TS_tail=%f Rhp_nose=%f  Rhp_tail=%f \n", SimParameters.HeliosphereToBeSimulated.RadBoundary_effe[ipos].Rts_nose,SimParameters.HeliosphereToBeSimulated.RadBoundary_effe[ipos].Rts_tail,SimParameters.HeliosphereToBeSimulated.RadBoundary_effe[ipos].Rhp_nose,SimParameters.HeliosphereToBeSimulated.RadBoundary_effe[ipos].Rhp_tail);
                 fprintf(stderr,"--- !! Effective Heliosphere --> new Source Position: r=%f th=%f phi=%f \n", SimParameters.InitialPosition[ipos].r, SimParameters.InitialPosition[ipos].th,SimParameters.InitialPosition[ipos].phi);
@@ -191,7 +191,7 @@ int main(int argc, char* argv[]) {
         }
 
         NInitRig = (int)SimParameters.NT;
-        InitialRigidities = LoadInitRigidities(NInitRig, VERBOSE);
+        InitialRigidities = LoadInitRigidities(NInitRig, VERBOSE_LOAD);
 
         for (int iR=0; iR<NInitRig; iR++) {
             InitialRigidities[iR] = SimParameters.Tcentr[iR];
@@ -203,7 +203,7 @@ int main(int argc, char* argv[]) {
     // Load the global simulation parameters with new cosmica-GC method
     #else
         // Load the initial positions and particle number to simulate
-        InitialPositions = LoadInitPos(NPOS, VERBOSE_2, TRIVIAL);
+        InitialPositions = LoadInitPos(NPOS, VERBOSE_2);
         NInitPos = NPOS;
         NParts = NPARTS;
 
@@ -240,8 +240,11 @@ int main(int argc, char* argv[]) {
 
     // Initial and final results files
     char file_trivial[8];
-    if (TRIVIAL) sprintf(file_trivial, "trivial_");
-    else         sprintf(file_trivial, "");
+    #if TRIVIAL
+        sprintf(file_trivial, "trivial_");
+    #else
+        sprintf(file_trivial, "");
+    #endif
 
     char init_filename[20];
     sprintf(init_filename, "%sprop_in.txt", file_trivial);
@@ -268,7 +271,6 @@ int main(int argc, char* argv[]) {
     //  Optimation of the number of particles, threads, blocks and 
     //  shared memory with respect the GPU hardware
 
-
     // start cpu threads
     #pragma omp parallel
     {
@@ -276,6 +278,7 @@ int main(int argc, char* argv[]) {
         unsigned int cpu_thread_id = omp_get_thread_num();     // identificativo del CPU-thread
         int gpu_id = cpu_thread_id % NGPUs;              // seleziona la id della GPU da usare. "% num_gpus" allows more CPU threads than GPU devices
         HANDLE_ERROR(cudaSetDevice(gpu_id));                   // seleziona la GPU
+        unsigned int num_cpu_threads = omp_get_num_threads();  // numero totale di CPU-thread allocated
 
         if (VERBOSE) {
             printf( "----- Individual CPU infos -----\n" );
@@ -288,7 +291,7 @@ int main(int argc, char* argv[]) {
         cudaDeviceProp device_prop = GPUs_profile[gpu_id];
 
         // Rounding the number of particle and calculating threads, blocks and share memory to acheive the maximum usage of the GPUs
-        LaunchParam_t prop_launch_param = RoundNpart(NParts, device_prop, VERBOSE, SetWarpPerBlock);
+        struct LaunchParam_t prop_launch_param = RoundNpart(NParts, device_prop, VERBOSE_2, SetWarpPerBlock);
 
         ////////////////////////////////////////////////////////////////
         //..... capture the start time of GPU part .....................
@@ -297,11 +300,11 @@ int main(int argc, char* argv[]) {
         cudaEvent_t     start,MemorySet,Randomstep, stop;
         cudaEvent_t     Cycle_start,Cycle_step00,Cycle_step0,Cycle_step1,Cycle_step2, InitialSave, FinalSave;
         if (VERBOSE){
-        HANDLE_ERROR( cudaEventCreate( &start ) );
-        HANDLE_ERROR( cudaEventCreate( &MemorySet ) );
-        HANDLE_ERROR( cudaEventCreate( &Randomstep ) );
-        HANDLE_ERROR( cudaEventCreate( &stop ) );
-        HANDLE_ERROR( cudaEventRecord( start, 0 ) );
+            HANDLE_ERROR( cudaEventCreate( &start ) );
+            HANDLE_ERROR( cudaEventCreate( &MemorySet ) );
+            HANDLE_ERROR( cudaEventCreate( &Randomstep ) );
+            HANDLE_ERROR( cudaEventCreate( &stop ) );
+            HANDLE_ERROR( cudaEventRecord( start, 0 ) );
         }
         ////////////////////////////////////////////////////////////////
 
@@ -325,15 +328,15 @@ int main(int argc, char* argv[]) {
             //.. capture the time from GPU
             HANDLE_ERROR( cudaEventRecord( Randomstep, 0 ) );
             HANDLE_ERROR( cudaEventSynchronize( Randomstep ) );
-            if (VERBOSE>=VERBOSE_med){
+            if (VERBOSE_2){
               fprintf(stdout,"--- Random Generator Seed: %lu \n",Rnd_seed);
             }
         }
 
         // .. copy heliosphere parameters to Device Constant Memory
-        cudaMemcpyToSymbol(Heliosphere, &SimParameters.HeliosphereToBeSimulated, sizeof(SimulatedHeliosphere_t));
-        cudaMemcpyToSymbol(LIM, &SimParameters.prop_medium   , NMaxRegions*sizeof(HeliosphereZoneProperties_t));
-        cudaMemcpyToSymbol(HS, &SimParameters.prop_Heliosheat, NMaxRegions*sizeof(HeliosheatProperties_t));
+        HANDLE_ERROR(cudaMemcpyToSymbol(Heliosphere, &SimParameters.HeliosphereToBeSimulated, sizeof(SimulatedHeliosphere_t)));
+        HANDLE_ERROR(cudaMemcpyToSymbol(LIM, &SimParameters.prop_medium   , NMaxRegions*sizeof(HeliosphereZoneProperties_t)));
+        HANDLE_ERROR(cudaMemcpyToSymbol(HS, &SimParameters.prop_Heliosheat, NMaxRegions*sizeof(HeliosheatProperties_t)));
         // cudaMemcpyToSymbol(dev_Npart, &prop_launch_param.Npart, sizeof(float));
         // cudaMemcpyToSymbol(min_dt, &MIN_DT, sizeof(float));
         // cudaMemcpyToSymbol(max_dt, &MAX_DT, sizeof(float));
@@ -383,7 +386,6 @@ int main(int argc, char* argv[]) {
         //  coefficients and solving stochastic differential equations)
         //  Build the exit energy histogram
 
-
         // Cycle on rigidity bins distributing their execution between the active CPU threads
         for (int iR=gpu_id; iR<NInitRig ; iR+=NGPUs) {
 
@@ -399,7 +401,7 @@ int main(int argc, char* argv[]) {
               }
             
             // GPU propagation kernel execution parameters debugging
-            if (VERBOSE) {
+            if (VERBOSE_2) {
                 printf("\n-- Cycle on rigidity[%d]: %.2f \n", iR , InitialRigidities[iR]);
                 printf("Quasi-particles propagation kernel launched\n");
                 printf("Number of quasi-particles: %d\n", prop_launch_param.Npart);
@@ -523,24 +525,26 @@ int main(int argc, char* argv[]) {
 
             #else
 
-                cudaMemcpy(host_Rmax, dev_maxs, prop_launch_param.blocks*sizeof(float), cudaMemcpyDeviceToHost);
+                HANDLE_ERROR(cudaMemcpy(host_Rmax, dev_maxs, prop_launch_param.blocks*sizeof(float), cudaMemcpyDeviceToHost));
+                cudaDeviceSynchronize();    
+
+                if (VERBOSE_2){
+                    fprintf(stdout,"--- Max values: ");
+                    for (int itemp=0; itemp<prop_launch_param.blocks; itemp++) {
+                        fprintf(stdout,"%.2f ", host_Rmax[itemp]);
+                    }
+                }
+
                 // ->then finalize on CPU
                 for (int itemp=1; itemp<prop_launch_param.blocks; itemp++) {
                     if (host_Rmax[0] < host_Rmax[itemp]) {
                         host_Rmax[0] = host_Rmax[itemp];
                     }
-                }    
-
-                if (VERBOSE_2){
-                    fprintf(stdout,"--- Max values: ");
-                    for (int itemp=0; itemp<prop_launch_param.blocks; itemp++) {
-                        fprintf(stdout,"%.2f ", dev_maxs[itemp]);
-                    }
-                    fprintf(stdout,"\n");
-                    fprintf(stdout,"--- EMin = %.3f Emax = %.3f \n",InitialRigidities[iR], host_Rmax[0]);
                 }
+                if (VERBOSE_2) fprintf(stdout,"--- EMin = %.3f Emax = %.3f \n",InitialRigidities[iR], host_Rmax[0]);
+
                 if (host_Rmax[0]<SimParameters.Tcentr[iR]){
-                    printf("PROBLEMA: the max exiting energy is bigger than initial one\n");
+                    printf("PROBLEMA: the max exiting energy is smaller than initial one\n");
                     continue;
                 }
             #endif
@@ -608,7 +612,7 @@ int main(int argc, char* argv[]) {
                 Rhistogram_atomic<<<prop_launch_param.blocks, prop_launch_param.threads, Results[iR].Nbins*sizeof(int)>>>(dev_QuasiParts.R, LogBin0_lowEdge, DeltaLogR , Results[iR].Nbins, prop_launch_param.Npart,  dev_partialHistos);
                 
                 /* int* host_partialHistos = (int*)malloc(Results[iR].Nbins*prop_launch_param.blocks*sizeof(int));
-                cudaMemcpy(host_partialHistos, dev_partialHistos, Results[iR].Nbins*prop_launch_param.blocks*sizeof(int), cudaMemcpyDeviceToHost);
+                HANDLE_ERROR(cudaMemcpy(host_partialHistos, dev_partialHistos, Results[iR].Nbins*prop_launch_param.blocks*sizeof(int), cudaMemcpyDeviceToHost));
                 printf("dev_partialHistos: \n");
                 for (int i=0; i<Results[iR].Nbins*prop_launch_param.blocks; i++) {
                     printf("%d ", host_partialHistos[i]);
@@ -618,23 +622,23 @@ int main(int argc, char* argv[]) {
                 
                 // Merge of the partial histograms and copy to the host
                 TotalHisto<<<Results[iR].Nbins, prop_launch_param.blocks/2, (prop_launch_param.blocks/2)*sizeof(int)>>>(dev_partialHistos, Results[iR].Nbins, prop_launch_param.blocks, dev_Histo);
-                cudaMemcpy(Results[iR].BoundaryDistribution, dev_Histo, Results[iR].Nbins*sizeof(float),cudaMemcpyDeviceToHost);
+                HANDLE_ERROR(cudaMemcpy(Results[iR].BoundaryDistribution, dev_Histo, Results[iR].Nbins*sizeof(float),cudaMemcpyDeviceToHost));
 
             #else
 
                 int *dev_Nfailed;
                 HANDLE_ERROR(cudaMalloc((void **) &dev_Nfailed, sizeof(int))) ;
-                cudaMemset(dev_Nfailed, 0, sizeof(int));
+                HANDLE_ERROR(cudaMemset(dev_Nfailed, 0, sizeof(int)));
                 
                 // Partial histogram atomoic sum on GPU
                 histogram_atomic<<<prop_launch_param.blocks, prop_launch_param.threads>>>(dev_QuasiParts.R, dev_QuasiParts.alphapath,  LogBin0_lowEdge, DeltaLogR, Results[iR].Nbins, prop_launch_param.Npart,  dev_partialHistos, dev_Nfailed);
                 
                 // Failed quasi-particle propagation count
                 int Nfailed=0;
-                cudaMemcpy(&Nfailed, dev_Nfailed, sizeof(int),cudaMemcpyDeviceToHost);
+                HANDLE_ERROR(cudaMemcpy(&Nfailed, dev_Nfailed, sizeof(int),cudaMemcpyDeviceToHost));
                 Results[iR].Nregistered = prop_launch_param.Npart-Nfailed;
                 
-                if (VERBOSE){
+                if (VERBOSE_2){
                     fprintf(stdout,"-- Eventi computati : %lu \n", prop_launch_param.Npart);
                     fprintf(stdout,"-- Eventi falliti   : %d \n", Nfailed);
                     fprintf(stdout,"-- Eventi registrati: %lu \n", Results[iR].Nregistered);
@@ -642,10 +646,10 @@ int main(int argc, char* argv[]) {
                 cudaDeviceSynchronize();
 
                 int histo_Nblocchi = ceil_int(Results[iR].Nbins, prop_launch_param.threads);
-                
+
                 // Merge of the partial histograms and copy to the host
                 histogram_accum<<<histo_Nblocchi, prop_launch_param.threads>>>(dev_partialHistos, Results[iR].Nbins, prop_launch_param.blocks, dev_Histo);
-                cudaMemcpy(Results[iR].BoundaryDistribution, dev_Histo, Results[iR].Nbins*sizeof(float),cudaMemcpyDeviceToHost);
+                HANDLE_ERROR(cudaMemcpy(Results[iR].BoundaryDistribution, dev_Histo, Results[iR].Nbins*sizeof(float),cudaMemcpyDeviceToHost));
 
                 cudaFree(dev_Nfailed);
             #endif
@@ -657,7 +661,7 @@ int main(int argc, char* argv[]) {
             // ANNOTATION THE ONLY MEMCOPY NEEDED FROM DEVICE TO HOST ARE THE FINAL RESULTS (ALIAS THE ENERGY FINAL HISTOGRAM AND PARTICLE EXIT RESULTS)
 
             // .. ............................................................
-            if (VERBOSE){
+            if (VERBOSE_2){
                 HANDLE_ERROR( cudaEventRecord( Cycle_step2, 0 ) );
                 HANDLE_ERROR( cudaEventSynchronize( Cycle_step2 ) );
                 float   Enl00,Enl0,Enl1,Enl2, EnlIn, EnlFin;
@@ -708,64 +712,6 @@ int main(int argc, char* argv[]) {
             printf( "Time to execute   :  %3.1f ms (delta = %3.1f)\n", elapsedTime, elapsedTime-firstStep);
     
         }
-      
-
-        ////////////////////////////////////////////////////////////////
-        //..... Exit results saving   ..................................
-        ////////////////////////////////////////////////////////////////
-
-        //  Save the summary histogram
-        //  Free the dynamic memory
-
-        // Save the rigidity histograms to txt file
-        for (int iR=0; iR<NInitRig; iR++) {
-            SaveTxt_histo(histo_filename, Results[iR].Nbins, Results[iR], VERBOSE_2);
-        }
-
-        /* save results to file .dat */
-        #if HELMOD_LOAD
-            FILE * pFile_Matrix=NULL;
-            char RAWMatrix_name[MaxCharinFileName];
-            sprintf(RAWMatrix_name,"%s_matrix_%lu.dat", SimParameters.output_file_name, (unsigned long int)getpid());
-
-            if (VERBOSE) fprintf(stdout,"Writing Output File: %s \n", RAWMatrix_name);
-            pFile_Matrix = fopen (RAWMatrix_name, "w");
-            
-            if (pFile_Matrix==NULL) {
-                fprintf(stderr, ERR_NoOutputFile);
-                fprintf(stderr, "Writing to StandardOutput instead\n");
-                pFile_Matrix = stdout;
-            }
-
-            fprintf(pFile_Matrix, "# COSMICA \n");
-            if (VERBOSE) fprintf(pFile_Matrix, "# Number of Input energies;\n");
-            fprintf(pFile_Matrix, "%d \n", SimParameters.NT);
-
-            for (int itemp=0; itemp<SimParameters.NT; itemp++) {
-                if (VERBOSE) {
-                    fprintf(pFile_Matrix,"######  Bin %d \n", itemp);
-                    fprintf(pFile_Matrix,"# Egen, Npart Gen., Npart Registered, Nbin output, log10(lower edge bin 0), Bin amplitude (in log scale)\n");
-                }
-                
-                fprintf(pFile_Matrix,"%f %lu %lu %d %f %f \n",SimParameters.Tcentr[itemp],
-                                                            SimParameters.Npart,
-                                                                          Results[itemp].Nregistered,
-                                                                          Results[itemp].Nbins,
-                                                                          Results[itemp].LogBin0_lowEdge,
-                                                                          Results[itemp].DeltaLogR);                   
-                if (VERBOSE) fprintf(pFile_Matrix, "# output distribution \n");
-        
-                for (int itNB=0; itNB<Results[itemp].Nbins; itNB++) {
-                    fprintf(pFile_Matrix, "%e ", Results[itemp].BoundaryDistribution[itNB]);
-                }
-
-                fprintf(pFile_Matrix,"\n");
-                fprintf(pFile_Matrix,"#\n"); // <--- dummy line to separate results
-            }
-
-            fflush(pFile_Matrix);
-            fclose(pFile_Matrix);
-        #endif
 
         // Free the host and device memory
         cudaFree(dev_PeriodIndexes);
@@ -789,11 +735,72 @@ int main(int argc, char* argv[]) {
 
         if (VERBOSE) {
             HANDLE_ERROR( cudaEventDestroy( start ) );
+            HANDLE_ERROR( cudaEventDestroy( MemorySet ) );
             HANDLE_ERROR( cudaEventDestroy( Randomstep ) );
             HANDLE_ERROR( cudaEventDestroy( stop ) );
         }      
     }
     // end of the multiple CPU thread pragma
+
+
+    ////////////////////////////////////////////////////////////////
+    //..... Exit results saving   ..................................
+    ////////////////////////////////////////////////////////////////
+
+    //  Save the summary histogram
+    //  Free the dynamic memory
+
+    // Save the rigidity histograms to txt file
+    for (int iR=0; iR<NInitRig; iR++) {
+        SaveTxt_histo(histo_filename, Results[iR].Nbins, Results[iR], VERBOSE_2);
+    }
+
+    /* save results to file .dat */
+    #if HELMOD_LOAD
+        FILE * pFile_Matrix=NULL;
+        char RAWMatrix_name[MaxCharinFileName];
+        sprintf(RAWMatrix_name,"%s_matrix_%lu.dat", SimParameters.output_file_name, (unsigned long int)getpid());
+
+        if (VERBOSE_2) fprintf(stdout,"Writing Output File: %s \n", RAWMatrix_name);
+        pFile_Matrix = fopen (RAWMatrix_name, "w");
+        
+        if (pFile_Matrix==NULL && VERBOSE_2) {
+            fprintf(stderr, ERR_NoOutputFile);
+            fprintf(stderr, "Writing to StandardOutput instead\n");
+            pFile_Matrix = stdout;
+        }
+
+        fprintf(pFile_Matrix, "# COSMICA \n");
+        if (VERBOSE) fprintf(pFile_Matrix, "# Number of Input energies;\n");
+        fprintf(pFile_Matrix, "%d \n", SimParameters.NT);
+
+        for (int itemp=0; itemp<SimParameters.NT; itemp++) {
+            if (VERBOSE) {
+                fprintf(pFile_Matrix,"######  Bin %d \n", itemp);
+                fprintf(pFile_Matrix,"# Egen, Npart Gen., Npart Registered, Nbin output, log10(lower edge bin 0), Bin amplitude (in log scale)\n");
+            }
+            
+            fprintf(pFile_Matrix,"%f %lu %lu %d %f %f \n",SimParameters.Tcentr[itemp],
+                                                        SimParameters.Npart,
+                                                                        Results[itemp].Nregistered,
+                                                                        Results[itemp].Nbins,
+                                                                        Results[itemp].LogBin0_lowEdge,
+                                                                        Results[itemp].DeltaLogR);                   
+            if (VERBOSE) fprintf(pFile_Matrix, "# output distribution \n");
+    
+            for (int itNB=0; itNB<Results[itemp].Nbins; itNB++) {
+                fprintf(pFile_Matrix, "%e ", Results[itemp].BoundaryDistribution[itNB]);
+            }
+
+            cudaFree(Results[itemp].BoundaryDistribution);
+
+            fprintf(pFile_Matrix,"\n");
+            fprintf(pFile_Matrix,"#\n"); // <--- dummy line to separate results
+        }
+
+        fflush(pFile_Matrix);
+        fclose(pFile_Matrix);
+    #endif
 
     // Free of the initial simulation variables
     free(InitialPositions.r);
@@ -801,8 +808,11 @@ int main(int argc, char* argv[]) {
     free(InitialPositions.phi);
     free(InitialRigidities);
 
+    free(SimParameters.Tcentr);
 
     free(GPUs_profile);
+
+    free(Results);
 
     if (VERBOSE) {
         // -- Save end time of simulation into log file

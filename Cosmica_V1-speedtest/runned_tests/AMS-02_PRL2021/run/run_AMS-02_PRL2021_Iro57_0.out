@@ -1,0 +1,38 @@
+
+Simulation started at: Tue Oct  8 20:32:41 2024
+  
+Error deleting the old propagation files or it does not exist
+Old histogram files deleted successfully
+-- 
+
+----- Individual CPU infos -----
+-- CPU thread 0 (of 4) uses CUDA device 0
+-- 
+
+----- Individual CPU infos -----
+-- CPU thread 1 (of 4) uses CUDA device 1
+-- 
+
+----- Individual CPU infos -----
+-- CPU thread 2 (of 4) uses CUDA device 2
+-- 
+
+----- Individual CPU infos -----
+-- CPU thread 3 (of 4) uses CUDA device 3
+-- 
+
+Time to Set Memory:  3.7 ms 
+Time to create Rnd:  3.6 ms (delta = -0.2)
+Time to execute   :  18093.0 ms (delta = 18089.5)
+Time to Set Memory:  9.2 ms 
+Time to create Rnd:  9.0 ms (delta = -0.2)
+Time to execute   :  18631.4 ms (delta = 18622.4)
+Time to Set Memory:  12.6 ms 
+Time to create Rnd:  12.4 ms (delta = -0.2)
+Time to execute   :  20593.0 ms (delta = 20580.6)
+Time to Set Memory:  33.7 ms 
+Time to create Rnd:  20.5 ms (delta = -13.2)
+Time to execute   :  31832.0 ms (delta = 31811.5)
+
+Simulation end at: Tue Oct  8 20:33:14 2024
+  

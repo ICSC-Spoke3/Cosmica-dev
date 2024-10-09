@@ -38,7 +38,7 @@ int BestWarpPerBlock (char name[], int verbose) {
 }
   
 struct LaunchParam_t RoundNpart (int NPart, cudaDeviceProp GPUprop, bool verbose, int WpB=-1) {
-    LaunchParam_t launch_param;
+    struct LaunchParam_t launch_param;
 
     // Computation of the number of blocks, warp per blocks, threads per block and shared memory bits
     launch_param.Npart = ceil_int(NPart, (GPUprop.warpSize))*(GPUprop.warpSize);

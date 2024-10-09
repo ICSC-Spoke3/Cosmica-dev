@@ -471,6 +471,11 @@ int Load_Configuration_File(int argc, char* argv[], struct SimParameters_t &SimP
     SimParameters.InitialPosition[iPos].phi=ph[iPos];
   }
 
+  // Free temporary variable initialized with SplitCSVString
+  free(r);
+  free(th);
+  free(ph);
+
   //check if the number of loaded region is sufficiend
   if (NumberParameterLoaded<N_r+Nregions-1)
   {
