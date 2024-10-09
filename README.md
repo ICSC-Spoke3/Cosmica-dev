@@ -9,10 +9,19 @@ Contains:
 
 ## Version history
 
-- V1 Milestone 7 version of the code (with usage of shared memory)
-- V2 Improving internal structure using customized compilation flags
-- V3 Optimization of the partial computation of stochastic differential equations coefficients
-- V5 (under development) Use of the rigidity as main variable instead of kinetic energy
+- V1 Milestone 7 version of the code
+  - Use of struct of arrays instead of array of structs (synchronous broadcasting of memory access)
+  - Number of simulated variables is rounded to fufill the warps
+  - propagation variables allocated in shared memory
+  - Search of the partial block histograms maximum inside propagation kernel
+- V2 Improving internal structure
+  - USage of customized compilation flags to reduce register compilation allocation
+  - Implementation of the best Warp number per block derived from performance tests executed on A30 and A40 NVIDIA boards
+- V3 Optimization of stochastic computations
+  - Optimization of partial computations of the stochastic differential equations coefficients
+  - Reduction of the allocated variables lightening overstructures
+- V6 Use of the rigidity as main variable instead of kinetic energy
+  - Reformulatino of SDE in momentum form (one of whcih becomes trivial)
 
 ## Performance
 
