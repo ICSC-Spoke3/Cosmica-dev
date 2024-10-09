@@ -5,7 +5,7 @@ Contains:
 - the folders of code versions with following optimizations
 - The performance plot with a test sample of ions and 5 even distributed input energies
 
-(The test are run on a single NVIDIA A30 board for benchmark consistency)
+(The test are run on NVIDIA A30 board for benchmark consistency)
 
 ## Version history
 
@@ -23,13 +23,33 @@ Contains:
 - V6 Use of the rigidity as main variable instead of kinetic energy
   - Reformulatino of SDE in momentum form (one of whcih becomes trivial)
 
+## etst simulation set
+| Element   | Ions                                    | Initial Simulation Date | Final Simulation Date | Initial position |
+|-----------|-----------------------------------------|-------------------------|-----------------------|------------------|
+| Proton    | Proton\ Deuterium                       | 19-05-2011              | 26-11-2013            | Earth            |
+| Beryllium | Beryllium\ Beryl7\ Beryl10              | 19-05-2011              | 26-05-2016            | Earth            |
+| Iron      | Iron\ Iro54\ Iro55\ Iro57\ Iro58\ Iro60 | 19-05-2011              | 01-11-2019            | Earth            |
+
+Beryllium
+20110519
+20160526
+Iron
+20110519
+20191101
+Proton
+20110519
+20131126
+
 ## Performance
 
 All performance indicators are evalueted in 'SimTimePlot_speedup.ipynb'
 
-Performance benchmark on A30 GPUs board
+- Performance benchmark on A30 GPUs board
 ![plot1](test_plots/SimExeTimes_compare_codes.jpg)
 ![plot2](test_plots/SimExeTimes_compare_best.jpg)
+
+- Precision convergence test (Proton simulation)
+![plot3](test_plots/Figure_AMS-02_PRL2015_Proton.png))
 
 ## Cosmica 1D model
 Here there are the codes and building scripts of the Cosmica 1D model of Cosmic Rays (CR) propagation in the heliosphere.
