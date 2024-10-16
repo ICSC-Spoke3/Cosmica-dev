@@ -37,7 +37,7 @@ All performance indicators are evalueted in 'SimTimePlot_speedup.ipynb'
 
 - Performance benchmark on A30 GPUs board
 ![plot1](test_plots/SimExeTimes_compare_codes.jpg)
-![plot2](test_plots/SimExeTimes_compare_best.jpg)
+![plot2](test_plots/SimExeTimes_compare_improve.jpg)
 
 - Precision convergence test (Proton simulation)
 ![plot3](test_plots/Figure_AMS-02_PRL2015_Proton.png))
