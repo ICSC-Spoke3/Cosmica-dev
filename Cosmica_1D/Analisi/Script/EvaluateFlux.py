@@ -559,7 +559,8 @@ def Spectra(RawMatrixFile,LIS,T0,A,Z, rig_unit):
             # OuterEnRig             = Energy(RawMatrixFile['OuterEnRig'], A, Z)
             # print(InputEnRig.shape, "\n", OuterEnRig.shape, "\n", RawMatrixFile['OuterEnRig'].shape)'''
             if rig_unit:
-                UnNormFlux[indexTDet]+=BounduaryDistribution[indexTDet][indexTLIS]*OLIS[indexTLIS]/beta_(Energy(EnRigLIS,A,Z),T0)*dT_dR(R=EnRigLIS, MassNumber=A,Z=Z)/EnRigLIS**2
+                UnNormFlux[indexTDet]+=BounduaryDistribution[indexTDet][indexTLIS]*OLIS[indexTLIS]/EnRigLIS**2
+                                                                                # /beta_(Energy(EnRigLIS,A,Z),T0)*dT_dR(R=EnRigLIS, MassNumber=A,Z=Z)
             else:
                 UnNormFlux[indexTDet]+=BounduaryDistribution[indexTDet][indexTLIS]*OLIS[indexTLIS] /beta_(EnRigLIS,T0)
             # UnNormFlux[indexTDet]+=BounduaryDistribution[indexTDet][indexTLIS]*OLIS[indexTLIS] /(Rigidity(EnRigLIS, A, Z)*Rigidity(EnRigLIS, A, Z)) *Z*Z
