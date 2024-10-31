@@ -26,6 +26,8 @@ COde for a Speedy Montecarlo Involving Cuda Architecture (COSMICA) is a speedy a
   - Reduction of the allocated variables lightening overstructures
 - V6 Use of the rigidity as main variable instead of kinetic energy
   - Reformulatino of SDE in momentum form (one of whcih becomes trivial)
+- V7 (under development) Separation of SDE coefficients computation for each coordinate
+  - Instead of using matrices of coefficients they are computed separately to relieve the register pressure
 
 ## Test simulation set
 
