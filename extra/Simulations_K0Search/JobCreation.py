@@ -16,7 +16,8 @@ from SimFunctions import Isotopes_dict,findKey,Energy
 #### Directory del codice sorgente
 FARM='LACITY'
 # SIMROOTDIR="/home/nfsdisk/devSDT/Simulations_K0Search/"
-SIMROOTDIR="/Users/matteograzioso/Desktop/Research/SDEGnO/Cosmica-dev/extra/Simulations_K0Search/"
+# SIMROOTDIR="/Users/matteograzioso/Desktop/Research/SDEGnO/Cosmica-dev/extra/Simulations_K0Search/"
+SIMROOTDIR=os.path.dirname(__file__)
 CodeVersionName="HelMod-4-CUDA_v3_1"
 EXECOMMENT=f"Default settings (fast math)"
 ADDITIONALMAKEFLAGS=f"""
