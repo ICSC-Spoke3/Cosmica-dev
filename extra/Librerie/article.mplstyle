@@ -1,0 +1,28 @@
+# Font per gli assi
+font.family: DejaVu Sans
+font.size: 15.5
+
+# Etichette dei tick
+xtick.labelsize: 16
+ytick.labelsize: 16
+
+# Dimensioni dei tick
+xtick.major.size: 8
+xtick.minor.size: 4
+ytick.major.size: 8
+ytick.minor.size: 4
+
+# Larghezza degli assi e dei tick
+axes.linewidth: 1.5
+xtick.major.width: 1.5
+xtick.minor.width: 1.5
+ytick.major.width: 1.5
+ytick.minor.width: 1.5
+
+# Tick su entrambi i lati
+xtick.top: True
+ytick.right: True
+
+# Direzione dei tick
+xtick.direction: in
+ytick.direction: in

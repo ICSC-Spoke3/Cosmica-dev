@@ -1,0 +1,2 @@
+#SimulationName	| Ion/Isotope	| Energy Bin/Exp data File Name	| Initial Simulation Date	| Final Simulation Date	| Radial Position	| Lat. Position	| Long. Position	| other custom fields
+AMS-02_PhysRep2021  	| Proton     	| Rigidity_AMS-02_PhysRep2021_Proton.dat  	| 20110519	| 20180528	|1	| 0	| 0	| short_ref:Physics Reports 894 (2021) 1 | DOI: https://dx.doi.org/10.1016/j.physrep.2020.09.003 
