@@ -28,3 +28,5 @@ CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 $EXE -vv -i /home/nfsdisk/DevGC/Cosmica_1D/
 # CUDA_VISIBLE_DEVICES=0,1,2,3 only A40 board
 # CUDA_VISIBLE_DEVICES=4,5,6,7 only A30 board
 echo Done....
+
+./Cosmica_1D-rigi/exefiles/Cosmica -vv -i ./Input_Heli3_1_117872e-04_20110730_20110730_r00100_lat00000.txt
