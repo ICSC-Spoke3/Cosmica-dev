@@ -213,6 +213,14 @@ def submit_sims(sim_el, results_path, k0_array, h_par, exp_data, debug=False):
     input_file_list, output_file_list = create_input_file(k0_array, h_par, exp_data, input_path, sim_el,
                                                           force_execute=True, debug=debug)
 
+
+    # FAXSIMILE COMMANDS
+    #
+    # nvcc   --ptxas-options=-v   --resource-usage   -rdc=true   -Xcompiler -fopenmp  --use_fast_math   -I ./Cosmica_1D-rigi/headers/ -o ./Cosmica_1D-rigi/exefiles/Cosmica  ./Cosmica_1D-rigi/kernel_test.cu ./Cosmica_1D-rigi/sources/DiffusionModel.cu ./Cosmica_1D-rigi/sources/GenComputation.cu ./Cosmica_1D-rigi/sources/GPUManage.cu ./Cosmica_1D-rigi/sources/HeliosphereLocation.cu ./Cosmica_1D-rigi/sources/HeliosphereModel.cu ./Cosmica_1D-rigi/sources/HeliosphericPropagation.cu ./Cosmica_1D-rigi/sources/HelModLoadConfiguration.cu ./Cosmica_1D-rigi/sources/HistoComputation.cu ./Cosmica_1D-rigi/sources/Histogram.cu ./Cosmica_1D-rigi/sources/LoadConfiguration.cu ./Cosmica_1D-rigi/sources/MagneticDrift.cu ./Cosmica_1D-rigi/sources/SDECoeffs.cu ./Cosmica_1D-rigi/sources/SolarWind.cu
+    #
+    # ./Cosmica_1D-en/exefiles/Cosmica -vv -i ./Cosmica_1D-en/runned_tests/AMS-02_PRL2015/Input_Proton_TKO_20110509_20131121_r00100_lat00000.txt >./Cosmica_1D-en/runned_tests/AMS-02_PRL2015/run/run_AMS-02_PRL2015_Proton_Proton_0.out 2>&1
+
+
     # if input_file_list:
     #     # If there are input files, prepare and run the simulation
     #     CreateRun(
