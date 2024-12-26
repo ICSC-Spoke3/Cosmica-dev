@@ -2,7 +2,6 @@ import os
 import subprocess
 import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from functools import partial
 from os.path import join as pjoin, dirname
 
 import numpy as np
@@ -195,6 +194,7 @@ def submit_sims(sim_el, cosmica_path, results_path, k0_array, h_par, exp_data, m
 
     output_dir = pjoin(input_path, "run")
     os.makedirs(output_dir, exist_ok=True)
+    output_file_list = list(map(lambda x: pjoin(output_dir, x), output_file_list))
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         job = lambda f: run_cosmica(cosmica_path, *f, verbosity=2)
