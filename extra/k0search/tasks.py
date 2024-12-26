@@ -29,6 +29,13 @@ def create_input_file(k0vals, h_par, exp_data, input_path, sim_el, tot_npart_per
     # Unpack simulation metadata
     sim_name, ions, file_name, init_date, end_date, rad, lat, lon = sim_el
 
+    # Ensure dates are ints
+    init_date, end_date = int(init_date), int(end_date)
+
+    # Make coordinates lists if not already and convert to float
+    rad, lat, lon = map(lambda x: list(map(float, x)),
+                        map(lambda x: x if isinstance(x, list) else [x], (rad, lat, lon)))
+
     # Parse ion names into a list
     ions = [ion.strip() for ion in ions.split(',')]
 
@@ -43,28 +50,33 @@ def create_input_file(k0vals, h_par, exp_data, input_path, sim_el, tot_npart_per
         print(f"WARNING: End date {end_date} exceeds the range of available parameters {int(cr_end[0])}.")
         return []
     if int(init_date) < int(cr_ini[-n_heliosphere_regions]):
-        print(f"WARNING: Start date {init_date} is earlier than the first available parameter {int(cr_ini[-n_heliosphere_regions])}.")
+        print(
+            f"WARNING: Start date {init_date} is earlier than the first available parameter {int(cr_ini[-n_heliosphere_regions])}.")
         return []
 
     # Generate the list of CRs (Cosmic Rays) and parameters to simulate
-    cr_list = cr_ini[(cr_ini <= int(end_date)) & (cr_end > int(init_date))]
-    cr_list_param = cr_ini[(cr_ini <= int(end_date)) & (cr_end > int(init_date) - n_heliosphere_regions)]
+    cr_list = cr_ini[(cr_ini <= end_date) & (cr_end > init_date)]
+    rolled_cr_end = np.roll(cr_end, n_heliosphere_regions - 1)
+    cr_list_param = cr_ini[(cr_ini <= end_date) & (rolled_cr_end > init_date)]
 
     if not len(cr_list):
         print("WARNING: No valid CRs found for simulation.")
         return []
 
     # Expand position vectors if they are scalar values
-    np_rad = np.full(len(cr_list), float(rad)) if len(rad) == 1 else np.array(rad, dtype=float)
-    np_lat = np.full(len(cr_list), np.radians(90. - float(lat))) if len(lat) == 1 else np.radians(90. - np.array(lat, dtype=float))
-    np_lon = np.full(len(cr_list), np.radians(float(lon))) if len(lon) == 1 else np.radians(np.array(lon, dtype=float))
+    np_rad = np.full(len(cr_list), rad[0]) if len(rad) == 1 else np.array(rad)
+    np_lat = np.full(len(cr_list), np.radians(90. - lat[0])) if len(lat) == 1 else np.radians(90. - np.array(lat))
+    np_lon = np.full(len(cr_list), np.radians(lon[0])) if len(lon) == 1 else np.radians(np.array(lon))
 
     # Initialize lists to store input and output file names
     input_file_names, output_file_names = [], []
 
     # Loop over K0 values to generate input files
     for k0val in k0vals:
+        ions_str = '' if len(ions) == 1 else '-'.join(ions) + '_'
         k0val_str = f"{k0val:.6e}".replace('.', "_")  # Convert K0 value to a formatted string
+        tk0_str = '_TKO' if tko else ''
+        sim_meta_str = ions_str + k0val_str + tk0_str
 
         # Loop over ions to generate input files for each isotope
         for ion in ions:
@@ -76,7 +88,7 @@ def create_input_file(k0vals, h_par, exp_data, input_path, sim_el, tot_npart_per
             # Loop through each isotope to construct simulation files
             for isotope in isotopes:
                 # Create a unique simulation name
-                simulation_name = f"{isotope[3]}_{ion}_{k0val_str}{'_TKO' if tko else ''}_{int(cr_list[-1])}_{int(cr_list[0])}_r{rad[0]*100:05.0f}_lat{lat[0]*100:05.0f}"
+                simulation_name = f"{isotope[3]}_{sim_meta_str}_{cr_list[-1]:.0f}_{cr_list[0]:.0f}_r{rad[0] * 100:05.0f}_lat{lat[0] * 100:05.0f}"
                 input_file_name = f"Input_{simulation_name}.txt"
                 input_file_path = os.path.join(input_path, input_file_name)
 
@@ -110,17 +122,25 @@ def create_input_file(k0vals, h_par, exp_data, input_path, sim_el, tot_npart_per
                         # Add heliospheric parameters for each CR period
                         for hp in h_par:
                             if hp[0] in cr_list_param:
-                                f.write("HeliosphericParameters: {:.6e}, {:.3f}, {:.2f}, {:.2f}, {:.3f}, {:.3f}, {:.0f}, {:.0f}, {:.3f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}\n".format(
-                                    k0val if cr_list_param.index(hp[0]) == 0 else 0.,
-                                    *hp[[2, 3, 4, 12, 6, 7, 8, 11, 13, 14, 15, 16]]
+                                f.write(
+                                    "HeliosphericParameters: {:.6e}, {:.3f}, {:.2f}, {:.2f}, {:.3f}, {:.3f}, {:.0f}, {:.0f}, {:.3f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}\n".format(
+                                        k0val if np.where(cr_list_param == hp[0])[0].item() == 0 else 0.,
+                                        *hp[[2, 3, 4, 12, 6, 7, 8, 11, 13, 14, 15, 16]]
+                                    ))
+
+                        # Add heliosheat parameters for each CR period
+                        for i, hp in enumerate(h_par):
+                            if hp[0] in cr_list:
+                                f.write("HeliosheatParameters: {:.5e}, {:.2f}\n".format(
+                                    3.e-05, h_par[i + n_heliosphere_regions - 1, 3]
                                 ))
+                        f.close()
 
                     # Append file paths and names to the respective lists
                     input_file_names.append(input_file_path)
                     output_file_names.append(simulation_name)
 
     return input_file_names, output_file_names
-
 
 
 # def create_input_file(k0vals, h_par, exp_data, input_path, sim_el, tot_npart_per_bin=1200,
@@ -301,8 +321,6 @@ def create_input_file(k0vals, h_par, exp_data, input_path, sim_el, tot_npart_per
 #     return input_file_names, output_file_names
 
 
-
-
 def submit_sims(sim_el, results_path, k0_array, h_par, exp_data, debug=False):
     """
     Creates simulations and executes them locally, generating input and output files.
@@ -327,6 +345,7 @@ def submit_sims(sim_el, results_path, k0_array, h_par, exp_data, debug=False):
     input_file_list, output_file_list = create_input_file(
         k0_array, h_par, exp_data, input_path, sim_el, force_execute=True, debug=debug
     )
+    return input_file_list, output_file_list
 
     exe_path = "./Cosmica_1D-en/exefiles/Cosmica"
     output_dir = os.path.join(input_path, "run")
@@ -368,8 +387,6 @@ def submit_sims(sim_el, results_path, k0_array, h_par, exp_data, debug=False):
                 print(e.output)
 
     return input_path, output_file_list
-
-
 
 # def submit_sims(sim_el, results_path, k0_array, h_par, exp_data, debug=False):
 #     """
