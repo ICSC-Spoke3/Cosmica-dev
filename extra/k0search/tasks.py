@@ -1,6 +1,7 @@
 import os
 import subprocess
 import datetime
+from os.path import join as pjoin
 
 import numpy as np
 
@@ -95,7 +96,7 @@ def create_input_file(k0vals, h_par, exp_data, input_path, sim_el, tot_npart_per
                 # Create a unique simulation name
                 simulation_name = f"{isotope[3]}_{sim_meta_str}_{cr_list[-1]:.0f}_{cr_list[0]:.0f}_r{rad[0] * 100:05.0f}_lat{lat[0] * 100:05.0f}"
                 input_file_name = f"Input_{simulation_name}.txt"
-                input_file_path = os.path.join(input_path, input_file_name)
+                input_file_path = pjoin(input_path, input_file_name)
 
                 # Check if the file already exists or needs to be recreated
                 if not os.path.exists(input_file_path) or force_execute:
@@ -148,11 +149,12 @@ def create_input_file(k0vals, h_par, exp_data, input_path, sim_el, tot_npart_per
     return input_file_names, output_file_names
 
 
-def submit_sims(sim_el, results_path, k0_array, h_par, exp_data, debug=False):
+def submit_sims(sim_el, cosmica_path, results_path, k0_array, h_par, exp_data, debug=False):
     """
     Creates simulations and executes them locally, generating input and output files.
     
     param: sim_el (list): Simulation parameters including simulation name, ions, etc.
+    param: cosmica_path (str): Path to cosmica executable.
     param: results_path (str): Path to store results.
     param: k0_array (list): Array of K0 values to simulate.
     param: h_par (list): Parameters for the simulation.
@@ -165,7 +167,7 @@ def submit_sims(sim_el, results_path, k0_array, h_par, exp_data, debug=False):
     ions_str = '-'.join(i.strip() for i in ions.split(','))
     is_tko = "Rigidity" not in file_name
 
-    input_path = os.path.join(results_path, f"{sim_name}_{ions_str}")
+    input_path = pjoin(results_path, f"{sim_name}_{ions_str}")
     os.makedirs(input_path, exist_ok=True)
 
     # Generate input and output file names for the simulation
@@ -173,17 +175,16 @@ def submit_sims(sim_el, results_path, k0_array, h_par, exp_data, debug=False):
         k0_array, h_par, exp_data, input_path, sim_el, force_execute=True, debug=debug
     )
 
-    exe_path = "./Cosmica_1D-en/exefiles/Cosmica"
-    output_dir = os.path.join(input_path, "run")
+    output_dir = pjoin(input_path, "run")
     os.makedirs(output_dir, exist_ok=True)
 
-    for input_file in input_file_list:
-        input_file_path = os.path.join(input_path, input_file)
-        output_file_name = f"run_{sim_name}_{ions_str}_0.out"
-        output_file_path = os.path.join(output_dir, output_file_name)
+    for input_file, output_file in zip(input_file_list, output_file_list):
+        input_file_path = pjoin(input_path, input_file)
+        # output_file_name = f"run_{sim_name}_{ions_str}_0.out"
+        output_file_path = pjoin(output_dir, output_file)
 
         # Construct the command
-        command = f"{exe_path} -vv -i {input_file_path} > {output_file_path} 2>&1"
+        command = f"cd {output_dir} && {cosmica_path} -vv -i {input_file_path} > {output_file_path} 2>&1"
 
         try:
             # Execute the command
@@ -233,7 +234,7 @@ def submit_sims(sim_el, results_path, k0_array, h_par, exp_data, debug=False):
 #     ions_str = '-'.join(i.strip() for i in ions.split(','))
 #     is_tko = "Rigidity" not in file_name
 
-#     input_path = os.path.join(results_path, f"{sim_name}_{ions_str}")
+#     input_path = pjoin(results_path, f"{sim_name}_{ions_str}")
 #     os.makedirs(input_path, exist_ok=True)
 
 #     # Generate input and output file names for the simulation

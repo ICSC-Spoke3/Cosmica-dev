@@ -32,6 +32,7 @@ if __name__ == "__main__":
     pfrcpar = pjoin(ROOTDIR, 'heliospheric_parameters', 'Frcst_param.txt')
     pexp = pjoin(ROOTDIR, 'experimental_data')
     presults = pjoin(ROOTDIR, 'results')
+    pcosmica = pjoin(dirname(dirname(ROOTDIR)), 'Cosmica_1D', 'Cosmica_1D-rigi', 'exefiles', 'Cosmica')
 
     output_dict = {}
     sim_list = load_simulation_list(psims, output_dict, DEBUG)
@@ -43,5 +44,5 @@ if __name__ == "__main__":
     exp_data = load_experimental_data(pexp, sim_el[2], (3, 11), DEBUG)
     initialize_output_dict(sim_el, exp_data, output_dict, k0_ref, k0_ref_err, DEBUG)
 
-    output_dir_path, output_file_list = submit_sims(sim_el, presults, k0_arr, h_par, exp_data, DEBUG)
+    output_dir_path, output_file_list = submit_sims(sim_el, pcosmica, presults, k0_arr, h_par, exp_data, DEBUG)
     print(len(output_file_list))
