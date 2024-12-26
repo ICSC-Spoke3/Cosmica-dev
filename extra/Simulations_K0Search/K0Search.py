@@ -120,9 +120,6 @@ for elSimList in SimList:
   #.. crea le simulazioni per ogni K0 e sottomettile tutte in blocco
   #   tieni però traccia dei file di output da attendere
   OutputDirPATH,OutputFileList = SubmitSims(elSimList,K0arr,R_range=[3,11],DEBUG=DEBUG)
-
-  #TODO: riscrivere fin qui FINO A CreateInputFile dentro a SubmitSims
-
   #.. Attenti che tutti gli output siano finiti
   #   conta il numero di file generati, quando il numero è pari a quello atteso, passa alla nuova fase
   NFileAttesi = len(OutputFileList) 

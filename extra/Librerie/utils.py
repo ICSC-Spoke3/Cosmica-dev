@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.interpolate import interp1d 
 """
 Utility functions for various scientific computations and file operations.
 

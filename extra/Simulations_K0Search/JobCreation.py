@@ -15,9 +15,7 @@ import datetime as dt
 from SimFunctions import Isotopes_dict,findKey,Energy
 #### Directory del codice sorgente
 FARM='LACITY'
-# SIMROOTDIR="/home/nfsdisk/devSDT/Simulations_K0Search/"
-# SIMROOTDIR="/Users/matteograzioso/Desktop/Research/SDEGnO/Cosmica-dev/extra/Simulations_K0Search/"
-SIMROOTDIR=os.path.dirname(__file__)
+SIMROOTDIR="/home/nfsdisk/devSDT/Simulations_K0Search/"
 CodeVersionName="HelMod-4-CUDA_v3_1"
 EXECOMMENT=f"Default settings (fast math)"
 ADDITIONALMAKEFLAGS=f"""
@@ -48,10 +46,10 @@ def mkdir_p(path):
 def Load_HeliosphericParameters(DEBUG): 
     #-------------------------------------------------------------------
     ###### carica il file dei parametri heliosferici
-    Hpar=np.loadtxt(f"{SOURCECODEDIR}{PASTPARAMETERLIST}",unpack=True) # ex HeliosphericParameters
+    Hpar=np.loadtxt(f"{SOURCECODEDIR}/{PASTPARAMETERLIST}",unpack=True) # ex HeliosphericParameters
                 # la lista delle carrington rotation è decrescente dal più recente fino al passato
 
-    FRCHeliosphericParameters=np.loadtxt(f"{SOURCECODEDIR}{FRCSTPARAMETERLIST}",unpack=True)
+    FRCHeliosphericParameters=np.loadtxt(f"{SOURCECODEDIR}/{FRCSTPARAMETERLIST}",unpack=True)
     Hpar=np.append(FRCHeliosphericParameters,Hpar,axis=1)
     if DEBUG:
       print(" ----- HeliosphericParameters loaded ----")
@@ -308,147 +306,50 @@ queue filename matching files run/*.run
 
 ## CREA LE SIMULAZIONI E SOTTOMETTILE AL CLUSTER
 ## in uscita restituisce la lista dei file di output che vengono generati a fine simulazione
-# import subprocess
-# def SubmitSims(elSimList,K0arr,R_range=[],DEBUG=False):
-#     Hpar=Load_HeliosphericParameters(DEBUG)
-#     STARTDIR= os.getcwd()
-#     SimName,Ions,FileName,InitDate,FinalDate,rad,lat,lon=elSimList
-#     if "," in Ions:
-#         Ions=[s.strip() for s in Ions.split(',')]
-#         Ionstr='-'.join(Ions)
-#     else:
-#         Ions=[Ions.strip()]
-#         Ionstr=Ions[0]
-#     TKO= False if ("Rigidity" in FileName) else True
-#     InputDirPATH=f"{STARTDIR}/{SimName}_{Ionstr}"
-#     # crea la cartella della simulazione
-#     # se non esiste già crea la cartella della simulazione
-#     if not os.path.exists(InputDirPATH): 
-#         mkdir_p(InputDirPATH)
-#     # crea l'input file per la simulazione
-#     #      nota che la posizione è passata come un vettore affinchè sia già pronto 
-#     #      per gestire anche i casi in cui la posizione è data da un altro file
-#     InputFileNameList,OutputrootFileNameList=CreateInputFile(K0arr,Hpar,R_range,InputDirPATH,SimName,Ions,f"{STARTDIR}/DataTXT/{FileName.strip()}",InitDate,FinalDate,[rad],[lat],[lon],DEBUG=DEBUG) 
-#     if len(InputFileNameList)>0 : 
-#         # inputfile nuovo significa che la simulazione va eseguita, inseriscila quindi nella lsita dei run
-#         CreateRun(InputDirPATH,f"{SimName}_{Ionstr}{'_TKO' if TKO  else ''}",EXE_full_path,InputFileNameList,DEBUG=DEBUG)
-#         # for InputFileName in InputFileNameList:
-#         #     VersionLog.write(f"{InputFileName} simulated with {CodeVersionName}: {EXECOMMENT}\n")
-#         #SubmitAll_arr[InputDirPATH]=1
-#         # Sequenza di comandi Bash
-#         bash_commands = f"cd {InputDirPATH}; condor_submit HTCondorSubFile.sub; cd {STARTDIR}"
-
-#         # Esegui la sequenza di comandi Bash
-#         result = subprocess.run(['bash', '-c', bash_commands], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
-#         # Stampa l'output del comando
-#         if DEBUG:
-#             print("Output del comando:")
-#             print(result.stdout)
-
-#         # Stampa l'eventuale errore
-#         if result.stderr:
-#             print("Errore:")
-#             print(result.stderr)
-
-#     return InputDirPATH,OutputrootFileNameList
-
-import os
 import subprocess
-
-def SubmitSims(simulation_list, k0_array, R_range=[], debug=False):
-    """
-    Creates simulations and executes them locally or on a cluster.
-    Returns the list of output files generated after the simulation.
-
-    param:simulation_list (list): Simulation parameters including simulation name, ions, etc.
-    param:k0_array (list): Array of K0 values to simulate.
-    param:range_values (list, optional): Range of values for simulation. Defaults to None.
-    param:debug (bool): If True, print debug information. Defaults to False.
-    return:tuple: Path to the input directory and list of output file names.
-    """
-    if R_range is None:
-        R_range = []
-    
-    # Load heliospheric parameters
-    heliospheric_parameters = Load_HeliosphericParameters(debug)
-    start_dir = os.getcwd()
-    
-    # Unpack simulation list
-    sim_name, ions, file_name, init_date, final_date, radius, latitude, longitude = simulation_list
-    
-    # Process ions information
-    if "," in ions:
-        ions = [ion.strip() for ion in ions.split(',')]
-        ions_str = '-'.join(ions)
+def SubmitSims(elSimList,K0arr,R_range=[],DEBUG=False):
+    Hpar=Load_HeliosphericParameters(DEBUG)
+    STARTDIR= os.getcwd()
+    SimName,Ions,FileName,InitDate,FinalDate,rad,lat,lon=elSimList
+    if "," in Ions:
+        Ions=[s.strip() for s in Ions.split(',')]
+        Ionstr='-'.join(Ions)
     else:
-        ions = [ions.strip()]
-        ions_str = ions[0]
-    
-    # Determine the type of simulation (based on file name content)
-    is_tko = "Rigidity" not in file_name
-    input_dir_path = os.path.join(start_dir, f"{sim_name}_{ions_str}")
-    
-    # Create the simulation directory if it does not exist
-    os.makedirs(input_dir_path, exist_ok=True)
-    
-    # Generate input and output file names for the simulation
-    input_file_list, output_file_list = CreateInputFile(
-        k0_array,
-        heliospheric_parameters,
-        R_range,
-        input_dir_path,
-        sim_name,
-        ions,
-        os.path.join(start_dir, "DataTXT", file_name.strip()),
-        init_date,
-        final_date,
-        [radius],
-        [latitude],
-        [longitude]
-    )
-    
-    if input_file_list:
-        # If there are input files, prepare and run the simulation
-        CreateRun(
-            input_dir_path,
-            f"{sim_name}_{ions_str}{'_TKO' if is_tko else ''}",
-            EXE_full_path,
-            input_file_list,
-        )
-        
-        # Execute the simulation using Bash commands
-        bash_commands = [
-            f"cd {input_dir_path}",
-            f"./run_simulations.sh",
-            f"cd {start_dir}"
-        ]
-        try:
-            # Execute the commands in a shell
-            result = subprocess.run(
-                "; ".join(bash_commands),
-                shell=True,
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            
-            if debug:
-                print("Command output:")
-                print(result.stdout)
-            
-            if result.stderr:
-                print("Command error:")
-                print(result.stderr)
-        
-        except subprocess.CalledProcessError as e:
-            print(f"Error during simulation execution: {e}")
-            if debug:
-                print(e.output)
-    
-    return input_dir_path, output_file_list
+        Ions=[Ions.strip()]
+        Ionstr=Ions[0]
+    TKO= False if ("Rigidity" in FileName) else True
+    InputDirPATH=f"{STARTDIR}/{SimName}_{Ionstr}"
+    # crea la cartella della simulazione
+    # se non esiste già crea la cartella della simulazione
+    if not os.path.exists(InputDirPATH): 
+        mkdir_p(InputDirPATH)
+    # crea l'input file per la simulazione
+    #      nota che la posizione è passata come un vettore affinchè sia già pronto 
+    #      per gestire anche i casi in cui la posizione è data da un altro file
+    InputFileNameList,OutputrootFileNameList=CreateInputFile(K0arr,Hpar,R_range,InputDirPATH,SimName,Ions,f"{STARTDIR}/DataTXT/{FileName.strip()}",InitDate,FinalDate,[rad],[lat],[lon],DEBUG=DEBUG) 
+    if len(InputFileNameList)>0 : 
+        # inputfile nuovo significa che la simulazione va eseguita, inseriscila quindi nella lsita dei run
+        CreateRun(InputDirPATH,f"{SimName}_{Ionstr}{'_TKO' if TKO  else ''}",EXE_full_path,InputFileNameList,DEBUG=DEBUG)
+        # for InputFileName in InputFileNameList:
+        #     VersionLog.write(f"{InputFileName} simulated with {CodeVersionName}: {EXECOMMENT}\n")
+        #SubmitAll_arr[InputDirPATH]=1
+        # Sequenza di comandi Bash
+        bash_commands = f"cd {InputDirPATH}; condor_submit HTCondorSubFile.sub; cd {STARTDIR}"
 
+        # Esegui la sequenza di comandi Bash
+        result = subprocess.run(['bash', '-c', bash_commands], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+        # Stampa l'output del comando
+        if DEBUG:
+            print("Output del comando:")
+            print(result.stdout)
+
+        # Stampa l'eventuale errore
+        if result.stderr:
+            print("Errore:")
+            print(result.stderr)
+
+    return InputDirPATH,OutputrootFileNameList
 
 
 # #### CreateSubmitAllFile
