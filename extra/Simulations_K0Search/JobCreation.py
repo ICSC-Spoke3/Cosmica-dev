@@ -361,14 +361,11 @@ def SubmitSims(simulation_list, k0_array, R_range=[], debug=False):
     Creates simulations and executes them locally or on a cluster.
     Returns the list of output files generated after the simulation.
 
-    Args:
-        simulation_list (list): Simulation parameters including simulation name, ions, etc.
-        k0_array (list): Array of K0 values to simulate.
-        range_values (list, optional): Range of values for simulation. Defaults to None.
-        debug (bool): If True, print debug information. Defaults to False.
-
-    Returns:
-        tuple: Path to the input directory and list of output file names.
+    param:simulation_list (list): Simulation parameters including simulation name, ions, etc.
+    param:k0_array (list): Array of K0 values to simulate.
+    param:range_values (list, optional): Range of values for simulation. Defaults to None.
+    param:debug (bool): If True, print debug information. Defaults to False.
+    return:tuple: Path to the input directory and list of output file names.
     """
     if R_range is None:
         R_range = []
