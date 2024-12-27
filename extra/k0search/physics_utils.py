@@ -303,60 +303,48 @@ def spectra_backward_energy(modulation_matrix_dict_isotope, lis_isotope, t0):
         return input_energy, j_mod, lis_isotope_interp
 
 
-#TODO: refactor below
-
-# ========= Flux Conveyyrsion from Tkin --> Rigi ===================
-def Tkin2Rigi_FluxConversione(Xval, Spectra, MassNumber=1., Z=1.):
-    Rigi = np.array([en_to_rig(T, MassNumber=MassNumber, Z=Z) for T in Xval])
-    Flux = np.array([Flux * dT_dR(T=T, R=R, MassNumber=MassNumber, Z=Z) for T, R, Flux in zip(Xval, Rigi, Spectra)])
-    return (Rigi, Flux)
-
-
-# ========= Flux conversion factor from Rigidity to Tkin ==========
-def dT_dR(T=1, R=1, MassNumber=1., Z=1.):
-    MassNumber = float(MassNumber)
-    Z = float(Z)
-    T0 = 0.931494061
-    if np.fabs(Z) == 1.:
-        T0 = 0.938272046
-    if MassNumber == 0.:
-        T0 = 5.11e-4
-        MassNumber = 1.
-    return Z * Z / (MassNumber * MassNumber) * R / (T + T0)
+def rig_to_en_flux_factor(t=1, r=1, mass_number=1., z=1.):
+    mass_number, z = map(float, (mass_number, z))
+    t0 = 0.931494061
+    if np.fabs(z) == 1.:
+        t0 = 0.938272046
+    if mass_number == 0.:
+        t0 = 5.11e-4
+        mass_number = 1.
+    return z * z / (mass_number * mass_number) * r / (t + t0)
 
 
-def EvaluateModulation(Ion, IonLIS, Modulation_Matrix_dict, output_in_energy=True):
+def en_to_rig_flux(x_val, spectra, mass_number=1., z=1.):
+    rigi = np.array([en_to_rig(T, mass_number, z) for T in x_val])
+    flux = np.array([flux * rig_to_en_flux_factor(t, r, mass_number, z) for t, r, flux in zip(x_val, rigi, spectra)])
+    return rigi, flux
+
+
+def evaluate_modulation(ion, ion_lis, modulation_matrix_dict, output_in_energy=True):
     """
-        Evaluate the modulation of cosmic rays for a given ion species.
-        Parameters:
-        Ion (str): The ion species to evaluate.
-        IonLIS (array-like): The local interstellar spectrum (LIS) for the ion species.
-        Modulation_Matrix_dict (dict): A dictionary containing modulation matrices for different isotopes.
-        output_in_energy (bool, optional): If True, the output is evaluated in kinetic energy. If False, convert to rigidity. Default is True.
-        Returns:
-        tuple: A tuple containing:
-            - SimEnRig (array-like): The energy or rigidity binning.
-            - SimFlux (array-like): The modulated flux.
-            - SimLIS (array-like): The local interstellar spectrum (LIS) after modulation.
+     Evaluate the modulation of cosmic rays for a given ion species. 
+    :param ion: 
+    :param ion_lis: 
+    :param modulation_matrix_dict: 
+    :param output_in_energy: 
+    :return: 
     """
-    IsotopesList = ISOTOPES.get(Ion, [])
-    for iIsot in range(len(IsotopesList)):
-        Z, A, T0, Isotope = IsotopesList[iIsot]
-        print(Isotope)
 
-        # print(LIS)
-        lis_spectrum = get_lis(IonLIS, Z, A)
-        EnergyBinning, J_Mod, J_LIS = spectra_backward_energy(Modulation_Matrix_dict[Isotope], lis_spectrum, T0)
-        if iIsot == 0:
-            SimEnRig = np.copy(EnergyBinning)
-            SimFlux = np.zeros_like(EnergyBinning)
-            SimLIS = np.zeros_like(EnergyBinning)
-        # print(J_LIS,J_Mod)
+    isotopes_list = ISOTOPES.get(ion, [])
+    sim_en_rig, sim_flux, sim_lis = None, None, None
+    for z, a, t0, isotope in isotopes_list:
+        lis_spectrum = get_lis(ion_lis, z, a)
+        energy_binning, j_mod, j_lis = spectra_backward_energy(modulation_matrix_dict[isotope], lis_spectrum, t0)
+        if sim_en_rig is None:
+            sim_en_rig = np.copy(energy_binning)
+            sim_flux = np.zeros_like(energy_binning)
+            sim_lis = np.zeros_like(energy_binning)
+
         if not output_in_energy:
-            SimEnRig, J_Mod = Tkin2Rigi_FluxConversione(EnergyBinning, J_Mod, MassNumber=A, Z=Z)
-            SimEnRig, J_LIS = Tkin2Rigi_FluxConversione(EnergyBinning, J_LIS, MassNumber=A, Z=Z)
+            sim_en_rig, j_mod = en_to_rig_flux(energy_binning, j_mod, a, z)
+            sim_en_rig, j_lis = en_to_rig_flux(energy_binning, j_lis, a, z)
 
-        SimFlux += J_Mod
-        SimLIS += J_LIS
+        sim_flux += j_mod
+        sim_lis += j_lis
 
-    return (SimEnRig, SimFlux, SimLIS)
+    return sim_en_rig, sim_flux, sim_lis
