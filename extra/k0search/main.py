@@ -22,6 +22,7 @@ if __name__ == "__main__":
     presults = pjoin(ROOTDIR, 'results')
     pcosmica = pjoin(dirname(dirname(ROOTDIR)), 'Cosmica_1D', 'Cosmica_1D-rigi', 'exefiles', 'Cosmica')
     plis = pjoin(ROOTDIR, 'GALPROP_LIS_Esempio')
+    pfit = pjoin(ROOTDIR, 'figures', 'output.txt')
 
     output_dict = {}
     sim_list = load_simulation_list(psims, output_dict, DEBUG)
@@ -36,8 +37,12 @@ if __name__ == "__main__":
     initialize_output_dict(sim_el, exp_data, output_dict, k0_ref, k0_ref_err, DEBUG)
 
     input_file_list, output_file_list = submit_sims(sim_el, pcosmica, presults, k0_arr, h_par, exp_data, max_workers=2, debug=DEBUG)
-    print(len(k0_arr))
+    rmses = []
     for output_file in output_file_list:
         fname = glob(output_file + '*.dat')[0]
         rmse = evaluate_output(fname, exp_data, lis, plot_path=pjoin(ROOTDIR, 'figures', 'modulation.png'))
+        rmses.append(f'{basename(fname)},{rmse:.3f}')
         print(f'{basename(fname)} RMSE: {rmse}')
+    with open(pfit, 'w') as f:
+        f.write('fname,rmse\n')
+        f.write('\n'.join(rmses))
