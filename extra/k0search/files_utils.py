@@ -100,93 +100,68 @@ def load_experimental_data(exp_path: str, file: str, rig_range=(3, 11), debug=Fa
     return exp_data
 
 
-# TODO: refactor/rewrite
-def load_lis(input_lis='../LIS/ProtonLIS_ApJ28nuclei.gz'):
-    """Load LIS from a fits file
-    InputLISFile: string, path to the fits file
-    Returns: dictionary, containing the LIS for all species
-        ParticleFlux[Z][A][K] contains the particle flux for all considered species
-        galprop convention wants that for same combination of Z,A,K
-        firsts are secondaries, latter Primary
+def load_lis(lis_path):
     """
-    # --------- Load LIS
-    ERsun = 8.33
-    """Open Fits File and Store particle flux in a dictionary 'ParticleFlux'
-    We store it as a dictionary containing a dictionary, containing an array, where the first key is Z, the second key is A and then we have primaries, secondaries in an array
-    - The option GALPROPInput select if LIS is a galprop fits file or a generic txt file
+    Load the LIS from a fits file
+    :param lis_path:
+    :return:
     """
 
-    galdefid = input_lis
-    hdulist = pyfits.open(galdefid)  # open fits file
-    # hdulist.info()
-    data = hdulist[0].data  # assign data structure di data
-    # Find out which indices to interpolate over for Rsun
-    Rsun = ERsun  # Earth position in the Galaxy
-    R = (np.arange(int(hdulist[0].header["NAXIS1"]))) * hdulist[0].header["CDELT1"] + hdulist[0].header["CRVAL1"]
-    inds = []
-    weights = []
-    if (R[0] > Rsun):
-        inds.append(0)
-        weights.append(1)
-    elif (R[-1] <= Rsun):
-        inds.append(-1)
-        weights.append(1)
+    hdulist = pyfits.open(lis_path)
+    data = hdulist[0].data
+    # Find out which indices to interpolate over for r_sun
+    r_sun = 8.33  # Earth position in the Galaxy
+    r = np.arange(int(hdulist[0].header["NAXIS1"])) * hdulist[0].header["CDELT1"] + hdulist[0].header["CRVAL1"]
+    if r[0] > r_sun:
+        indexes = [0]
+        weights = [1]
+    elif r[-1] <= r_sun:
+        indexes = [-1]
+        weights = [1]
     else:
-        for i in range(len(R) - 1):
-            if (R[i] <= Rsun and Rsun < R[i + 1]):
-                inds.append(i)
-                inds.append(i + 1)
-                weights.append((R[i + 1] - Rsun) / (R[i + 1] - R[i]))
-                weights.append((Rsun - R[i]) / (R[i + 1] - R[i]))
-                break
+        i = np.where((r[:-1] <= r_sun) & (r_sun < r[1:]))[0][0]  # Find first index in range
+        indexes = [i, i+1]
+        weights = [(r[i + 1] - r_sun) / (r[i + 1] - r[i]), (r_sun - r[i]) / (r[i + 1] - r[i])]
 
-    # print("DEBUGLINE:: R=",R)
-    # print("DEBUGLINE:: weights=",weights)
-    # print("DEBUGLINE:: inds=",inds)
-
-    # Calculate the energy for the spectral points.. note that Energy is in MeV
-    energy = 10 ** (float(hdulist[0].header["CRVAL3"]) + np.arange(int(hdulist[0].header["NAXIS3"])) * float(
-        hdulist[0].header["CDELT3"]))
+    # Calculate the energy for the spectral points (note that Energy is in MeV)
+    energy = 10 ** (
+            float(hdulist[0].header["CRVAL3"]) +
+            np.arange(int(hdulist[0].header["NAXIS3"])) *
+            float(hdulist[0].header["CDELT3"])
+    )
 
     # Parse the header, looking for Nuclei definitions
-    ParticleFlux = {}
+    particle_flux = {}
 
-    Nnuclei = hdulist[0].header["NAXIS4"]
-    for i in range(1, Nnuclei + 1):
-        id = "%03d" % i
-        Z = int(hdulist[0].header["NUCZ" + id])
-        A = int(hdulist[0].header["NUCA" + id])
-        K = int(hdulist[0].header["NUCK" + id])
+    n_nuclei = hdulist[0].header["NAXIS4"]
+    for i in range(1, n_nuclei + 1):
+        id_ = "%03d" % i
+        z = int(hdulist[0].header["NUCZ" + id_])
+        a = int(hdulist[0].header["NUCA" + id_])
+        k = int(hdulist[0].header["NUCK" + id_])
 
-        # print("id=%s Z=%d A=%d K=%d"%(id,Z,A,K))
-        # Add the data to the ParticleFlux dictionary
-        if Z not in ParticleFlux:
-            ParticleFlux[Z] = {}
-        if A not in ParticleFlux[Z]:
-            ParticleFlux[Z][A] = {}
-        if K not in ParticleFlux[Z][A]:
-            ParticleFlux[Z][A][K] = []
-            # data structure
-            #    - Particle type, identified by "id", the header allows to identify which particle is
-            #    |  - Energy Axis, ":" takes all elements
-            #    |  | - not used
-            #    |  | |  - distance from Galaxy center: inds is a list of position nearest to Earth position (Rsun)
-            #    |  | |  |
-        d = ((data[i - 1, :, 0, inds].swapaxes(0, 1)) * np.array(weights)).sum(
-            axis=1)  # real solution is interpolation between the nearest solution to Earh position in the Galaxy (inds)
-        ParticleFlux[Z][A][K].append(1e7 * d / energy ** 2)  # 1e7 is conversion from [cm^2 MeV]^-1 --> [m^2 GeV]^-1
-        # print (Z,A,K)
-        # print ParticleFlux[Z][A][K]
+        # Add the data to the particle_flux dictionary
+        if z not in particle_flux:
+            particle_flux[z] = {}
+        if a not in particle_flux[z]:
+            particle_flux[z][a] = {}
+        if k not in particle_flux[z][a]:
+            particle_flux[z][a][k] = []
+        # data structure
+        #    - Particle type, identified by "id_", the header allows to identify which particle is
+        #    | - Energy Axis, ":" takes all elements
+        #    | | - not used
+        #    | | | - distance from Galaxy center: indexes is a list of position nearest to Earth position (r_sun)
+        #    | | | |
 
-    ## ParticleFlux[Z][A][K] contains the particle flux for all considered species  galprop convention wants that for same combiantion of Z,A,K firsts are secondaries, latter Primary
+        # Real solution is interpolation between the nearest solution to Earth position in the Galaxy (indexes)
+        d = ((data[i - 1, :, 0, indexes].swapaxes(0, 1)) * np.array(weights)).sum(axis=1)
+        particle_flux[z][a][k].append(1e7 * d / energy ** 2)  # 1e7 is conversion from [cm^2 MeV]^-1 --> [m^2 GeV]^-1
+
+    # particle_flux[z][a][k] contains the particle flux for all considered species galprop convention wants that for same combination of z,a,k firsts are secondaries, latter Primary
     energy = energy / 1e3  # convert energy scale from MeV/n to GeV/n
-    # if A>1:
-    #  energy = energy/float(A)
     hdulist.close()
-    # LISSpectra = [ 0 for T in energy]
-    LIS_Tkin = energy
-    LIS_Flux = ParticleFlux
-    return (LIS_Tkin, LIS_Flux)
+    return energy, particle_flux
 
 
 def load_simulation_output(file_name, debug=False):
