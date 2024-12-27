@@ -190,116 +190,48 @@ def load_lis(input_lis='../LIS/ProtonLIS_ApJ28nuclei.gz'):
 
 
 def load_simulation_output(file_name, debug=False):
-    """Load a simulation output file
-    FileName: string, path to the file
-    Returns: dictionary, containing the simulation output
-        - input_energy: numpy array, containing the input energies
-        - NGeneratedPartcle: numpy array, containing the number of generated particles
-        - outer_energy: numpy array, containing the outer energies
-        - BounduaryDistribution: numpy array, containing the boundary distribution
-        and a list of warnings
+    """
+    Load a simulation output file histograms
+    :param file_name: path to file
+    :param debug:
+    :return:
     """
     input_energy = []  # Energy Simulated
     n_registered_particle = []  # number of simulated energy per input bin
     n_bins_outer_energy = []  # number of bins used for the output distribution
     outer_energy = []  # Bin center of output distribution
-    # OuterEnergy_low    = [] # Lower Bin of output distribution <-- verifica se serve tenerlo
     energy_distribution_at_boundary = []  # Energy distribution at heliosphere boundary
-    # --------------------------
     warning_list = []
+
     with open(file_name) as f:
-        line_counter = 0  # contatore delle linee
         lines = list(filter(lambda l: not l.startswith("#"), f.readlines()))
-        n_bins = int(lines[0])
-        specs = lines[1::2]
-        dists = lines[2::2]
-        print(specs)
-        for spec in map(str.split, specs):
-            e_gen, n_part_gen, n_part_reg, n_bin_out, bin_low, bin_amp = spec[:6]
-            input_energy.append(float(e_gen))
-            if debug and n_part_gen != n_part_reg:
-                warning_list.append(
-                    f'WARNING: registered particle for Energy {e_gen} ({n_part_reg}) is different from injected ({n_part_gen})')
-            n_registered_particle.append(int(n_part_reg))
-            n_bins_outer_energy.append(int(n_bin_out))
-            bin_low, bin_amp = map(float, (bin_low, bin_amp))
-            outer_energy.append([(pow(10., bin_low + i * bin_amp) + pow(10., bin_low + (i + 1) * bin_amp)) / 2.
-                                 for i in range(int(n_bin_out))]) #TODO: redo with numpy
-        for dist, ie, nboe in zip(map(str.split, dists), input_energy, n_bins_outer_energy):
-            if len(dist) != nboe:
-                warning_list.append(f"WARNING: The number of saved bins for energy {ie} ({len(dist)}) is different from expected ({nboe})")
-            energy_distribution_at_boundary.append(list(map(float, dist)))
-        exit(0) #TODO: to be continued...
-        # assert n_bins == len(lines)//2-1
-        # for line in lines[1:]:
+    n_bins = int(lines[0])
 
-        for line in f:
-            # if DEBUG: print(f"reading new line: {line.strip()}")
-            if line.startswith("#"):
-                # if DEBUG: print("skip line")
-                continue
-            line_counter += 1  # this is a good line, increase the counter
-            if line_counter == 1:  # the first line is the number of simulated energies
-                n_bins = int(line)
-            else:  # the other lines follow a scheme even lines are distribution parameters, odd lines are content of distribution
-                if (line_counter % 2) == 0:  # even
-                    values = line.split()  # le linee pari sono composte da 6 elementi
-                    input_energy.append(float(values[0]))  # energia di input simulata
-                    if int(values[2]) != int(values[1]):
-                        warning_list.append(
-                            f"WARNING: registered particle for Energy {values[0]} ({values[2]}) is different from injected ({values[1]})")
-                    n_registered_particle.append(int(values[2]))
-                    n_bins_outer_energy.append(int(values[3]))
-                    log_min_e = float(values[4])
-                    log_delta_e = float(values[5])
-                    # OuterEnergy_low.append([pow(10.,log_min_e+itemp*log_delta_e) for itemp in range(int(values[3]))])
-                    outer_energy.append(
-                        [(pow(10., log_min_e + itemp * log_delta_e) + pow(10.,
-                                                                          log_min_e + (itemp + 1) * log_delta_e)) / 2.
-                         for
-                         itemp in range(int(values[3]))])
-                    pass
-                else:  # odd
-                    values = line.split()  # le linee dispari sono composte da un numero di elementi determinato nella riga precedente
-                    if len(values) != n_bins_outer_energy[-1]:
-                        warning_list.append(
-                            f"WARNING: The number of saved bins for energy {input_energy[-1]} ({len(values)}) is different from expected ({n_bins_outer_energy[-1]})")
-                    energy_distribution_at_boundary.append([float(VV) for VV in values])
-                    pass
-    # print("--- %s seconds ---" % (time.time() - s1))
-    # --------------- Final Checks
-    if n_bins != len(input_energy):
-        warning_list.append(
-            f"WARNING: the number of readed outputs ({len(input_energy)}) is different from expected ({n_bins})")
+    # Read bins specifications
+    for spec in map(str.split, lines[1::2]):
+        e_gen, n_part_gen, n_part_reg, n_bin_out, bin_low, bin_amp = spec[:6]
+        input_energy.append(float(e_gen))
+        if debug and n_part_gen != n_part_reg:
+            warning_list.append(
+                f'WARNING: registered particle for Energy {e_gen} ({n_part_reg}) is different from injected ({n_part_gen})')
+        n_registered_particle.append(int(n_part_reg))
+        n_bins_outer_energy.append(int(n_bin_out))
+        bin_low, bin_amp = map(float, (bin_low, bin_amp))
+        bins = bin_low + np.arange(int(n_bin_out)) * bin_amp
+        outer_energy.append((10 ** bins + 10 ** (bins + bin_amp)) / 2)
 
-    # --------------- save to pythonfile
-    # nota: si è scelto di mantenere i nomi e la struttura dei codici precedenti per avere la backcompatibility
-    # nota2: per una gestione migliore della memoria di numpy occorre creare un "object" in modo che si crei un array di oggetti
-    arr_input_energy = np.empty(n_bins, object)
-    arr_n_registered_particle = np.empty(n_bins, object)
-    arr_outer_energy = np.empty(n_bins, object)
-    # arr_OuterEnergy_low              = np.empty(n_bins, object)
-    arr_energy_distribution_at_boundary = np.empty(n_bins, object)
-    arr_input_energy[:] = input_energy
-    arr_n_registered_particle[:] = n_registered_particle
-    arr_outer_energy[:] = outer_energy
-    # arr_OuterEnergy_low[:] =OuterEnergy_low
-    arr_energy_distribution_at_boundary[:] = energy_distribution_at_boundary
+    # Read bins distributions
+    for dist, ie, nboe in zip(map(str.split, lines[2::2]), input_energy, n_bins_outer_energy):
+        if len(dist) != nboe:
+            warning_list.append(
+                f'WARNING: The number of saved bins for energy {ie} ({len(dist)}) is different from expected ({nboe})')
+        energy_distribution_at_boundary.append(list(map(float, dist)))
+
+    assert 2 * n_bins == len(lines) - 1 and n_bins == len(input_energy)
 
     return {
-        'input_energy': np.asarray(arr_input_energy),
-        'NGeneratedPartcle': np.asarray(arr_n_registered_particle),
-        # 'OuterEnergy_low':np.asarray(arr_OuterEnergy_low),
-        'outer_energy': np.asarray(arr_outer_energy),
-        'BounduaryDistribution': np.asarray(arr_energy_distribution_at_boundary)
+        'InputEnergy': np.asarray(outer_energy, object),
+        'NGeneratedPartcle': np.asarray(n_registered_particle, object),
+        'OuterEnergy': np.asarray(outer_energy, object),
+        'BounduaryDistribution': np.asarray(energy_distribution_at_boundary, object)
     }, warning_list
-
-
-if __name__ == "__main__":
-    with open('tmp.pkl', 'rb') as f:
-        old = pickle.load(f)
-    new = load_simulation_output(
-        '/Users/stark/Development/Research/Cosmica-dev/extra/simfiles/results/AMS-02Daily_20110801_Helium/run/Heli3_1_117872e-04_20110730_20110730_r00100_lat00000_matrix_1577098.dat')[
-        0]
-    for k, v in old.items():
-        assert np.array_equal(v, new[k])
