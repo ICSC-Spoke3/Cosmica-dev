@@ -17,6 +17,7 @@ def en_to_rig(t, mass_number=1., z=1.):
     :param z: charge
     :return: rigidity
     """
+
     t0 = 0.931494061
     if np.fabs(z) == 1:
         t0 = 0.938272046
@@ -34,6 +35,7 @@ def rig_to_en(r, mass_number=1., z=1.):
     :param z: charge
     :return: energy
     """
+
     t0 = 0.931494061
     if np.fabs(z) == 1:
         t0 = 0.938272046
@@ -51,9 +53,10 @@ def smooth_transition(initial_val, final_val, center_of_transition, smoothness, 
     :param final_val: final value
     :param center_of_transition: center of transition
     :param smoothness: smoothness
-    :param x: x
-    :return: the value
+    :param x: x value
+    :return: the transition value
     """
+
     if smoothness == 0:
         return final_val if x >= center_of_transition else initial_val
     else:
@@ -69,6 +72,7 @@ def k0_fit_ssn(p, solar_phase, ssn):
     :param ssn: sunspot number
     :return: k0, gauss_var
     """
+
     # If solar polarity is positive
     if p > 0.:
         # If solar phase is rising
@@ -98,6 +102,7 @@ def k0_fit_nmc(nmc):
     :param nmc: neutral sheet magnetic crossing
     :return: k0, gauss_var
     """
+
     return np.exp(-10.83 - 0.0041 * nmc + 4.52e-5 * nmc * nmc), 0.1045
 
 
@@ -112,6 +117,7 @@ def k0_corr_factor(p, q, solar_phase, tilt):
 
     @authors: 2017 Stefano
     """
+
     k0_corr_maxv = 1.5  # Maximum value of the correction factor
     k0_corr_minv = 1.  # Minimum value of the correction factor
     k0_corr_p0_asc = 18.  # Tilt angle at which the correction factor is maximum during the ascending phase
@@ -172,6 +178,7 @@ def eval_k0(is_high_activity_period, p, q, solar_phase, tilt, nmc, ssn):
 
     @authors: 2022 Stefano
     """
+
     #   float3 output;
     # k0_paral is corrected by a correction factor
     k0cor = k0_corr_factor(p, q, solar_phase, tilt)
@@ -236,6 +243,14 @@ def initialize_output_dict(sim_el: list, exp_data: np.ndarray, output_dict: dict
 
 
 def lin_log_interpolation(vx, vy, vx_new):
+    """
+    Linear-log interpolation
+    :param vx: x values
+    :param vy: y values
+    :param vx_new: new x values
+    :return: interpolated y values
+    """
+
     vx = np.asarray(vx)
     vy = np.asarray(vy)
     vx_new = np.asarray(vx_new)
@@ -246,6 +261,13 @@ def lin_log_interpolation(vx, vy, vx_new):
 
 
 def beta_eval(t, t0):
+    """
+    Evaluate beta factor
+    :param t: energy
+    :param t0: energy offset
+    :return: beta factor
+    """
+
     tt = t + t0
     t2 = tt + t0
     return np.sqrt(t * t2) / tt
@@ -254,11 +276,12 @@ def beta_eval(t, t0):
 def spectra_backward_energy(modulation_matrix_dict_isotope, lis_isotope, t0):
     """
     Evaluate the modulated specra for a single isotope in case of SDE Monte Carlo in Rigidity
-    :param modulation_matrix_dict_isotope:
-    :param lis_isotope:
-    :param t0:
-    :return:
+    :param modulation_matrix_dict_isotope: modulation matrix dictionary for the isotope
+    :param lis_isotope: lis isotope
+    :param t0: energy offset
+    :return: energy, modulated flux, lis isotope
     """
+
     lis_isotope_tkin, lis_isotope_flux = lis_isotope
     boundary_distribution = modulation_matrix_dict_isotope['BoundaryDistribution']
     input_energy = np.asarray([a for a in modulation_matrix_dict_isotope['InputEnergy']])
@@ -304,6 +327,15 @@ def spectra_backward_energy(modulation_matrix_dict_isotope, lis_isotope, t0):
 
 
 def rig_to_en_flux_factor(t=1, r=1, mass_number=1., z=1.):
+    """
+    Convert rigidity to energy flux factor
+    :param t: energy
+    :param r: rigidity
+    :param mass_number: mass number
+    :param z: charge
+    :return: energy flux factor
+    """
+
     mass_number, z = map(float, (mass_number, z))
     t0 = 0.931494061
     if np.fabs(z) == 1.:
@@ -315,6 +347,15 @@ def rig_to_en_flux_factor(t=1, r=1, mass_number=1., z=1.):
 
 
 def en_to_rig_flux(x_val, spectra, mass_number=1., z=1.):
+    """
+    Convert energy to rigidity flux
+    :param x_val: energy values
+    :param spectra: spectra values
+    :param mass_number: mass number
+    :param z: charge
+    :return: rigidity, flux
+    """
+    
     rigi = np.array([en_to_rig(T, mass_number, z) for T in x_val])
     flux = np.array([flux * rig_to_en_flux_factor(t, r, mass_number, z) for t, r, flux in zip(x_val, rigi, spectra)])
     return rigi, flux
@@ -322,7 +363,7 @@ def en_to_rig_flux(x_val, spectra, mass_number=1., z=1.):
 
 def evaluate_modulation(ion, ion_lis, modulation_matrix_dict, output_in_energy=True):
     """
-     Evaluate the modulation of cosmic rays for a given ion species. 
+    Evaluate the modulation of cosmic rays for a given ion species. 
     :param ion: 
     :param ion_lis: 
     :param modulation_matrix_dict: 
@@ -332,9 +373,12 @@ def evaluate_modulation(ion, ion_lis, modulation_matrix_dict, output_in_energy=T
 
     isotopes_list = ISOTOPES.get(ion, [])
     sim_en_rig, sim_flux, sim_lis = None, None, None
+
     for z, a, t0, isotope in isotopes_list:
         lis_spectrum = get_lis(ion_lis, z, a)
         energy_binning, j_mod, j_lis = spectra_backward_energy(modulation_matrix_dict[isotope], lis_spectrum, t0)
+
+        # If the first isotope, initialize the output
         if sim_en_rig is None:
             sim_en_rig = np.copy(energy_binning)
             sim_flux = np.zeros_like(energy_binning)
@@ -343,7 +387,8 @@ def evaluate_modulation(ion, ion_lis, modulation_matrix_dict, output_in_energy=T
         if not output_in_energy:
             sim_en_rig, j_mod = en_to_rig_flux(energy_binning, j_mod, a, z)
             sim_en_rig, j_lis = en_to_rig_flux(energy_binning, j_lis, a, z)
-
+        
+        # Sum the fluxes and LIS
         sim_flux += j_mod
         sim_lis += j_lis
 

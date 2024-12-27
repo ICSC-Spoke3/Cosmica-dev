@@ -1,3 +1,7 @@
+"""
+Isotopes module.
+"""
+
 ISOTOPES = {  # Z    A   T0[GeV/n]      Name
     "Electron": [(-1., 1., 5.109989e-04, "Electron")],
     "Antiproton": [(-1., 1., 0.938272, "Antiproton")],

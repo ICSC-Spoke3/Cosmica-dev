@@ -154,7 +154,14 @@ def create_input_file(k0vals, h_par, exp_data, input_path, sim_el, tot_npart_per
 def run_cosmica(cosmica_path: str, input_file_path: str, output_file_path: str, verbosity=0, debug=False):
     """
     Executes cosmica simulation.
+    :param cosmica_path: Path to cosmica executable.
+    :param input_file_path: Path to input file.
+    :param output_file_path: Path to output file.
+    :param verbosity: Verbosity level for the simulation.
+    :param debug: Enable debug output if True.
+    :return: Return code and output of the simulation.
     """
+    
     verbosity_str = ('-' + 'v' * verbosity) if verbosity else ''
     command = f"cd {dirname(output_file_path)} && {cosmica_path} {verbosity_str} -i {input_file_path} > {output_file_path}.log 2>&1"
     try:

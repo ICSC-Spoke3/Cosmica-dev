@@ -71,7 +71,8 @@ def load_heliospheric_parameters(pastpar_path: str, frcpar_path: str, debug=Fals
     :return: matrix of parameters
     """
 
-    h_par = np.loadtxt(pastpar_path)  # carrington rotations in decreasing order of time (most recent to least)
+    # Carrington rotations in decreasing order of time (most recent to least)
+    h_par = np.loadtxt(pastpar_path)  
 
     frc_heliospheric_parameters = np.loadtxt(frcpar_path)
     h_par = np.append(frc_heliospheric_parameters, h_par, axis=0)
@@ -195,8 +196,8 @@ def load_simulation_output(file_name, debug=False):
     """
     Load a simulation output file histograms
     :param file_name: path to file
-    :param debug:
-    :return:
+    :param debug: if True, more verbose output will be printed
+    :return: dictionary with the histograms
     """
     input_energy = []  # Energy Simulated
     n_registered_particle = []  # number of simulated energy per input bin
