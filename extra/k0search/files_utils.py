@@ -233,7 +233,7 @@ def load_simulation_output(file_name, debug=False):
     assert 2 * n_bins == len(lines) - 1 and n_bins == len(input_energy)
 
     return {
-        'InputEnergy': np.asarray(outer_energy, object),
+        'InputEnergy': np.asarray(input_energy, object),
         'NGeneratedParticle': np.asarray(n_registered_particle, object),
         'OuterEnergy': np.asarray(outer_energy, object),
         'BoundaryDistribution': np.asarray(energy_distribution_at_boundary, object)

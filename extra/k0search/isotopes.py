@@ -224,3 +224,28 @@ ISOTOPES = {  # Z    A   T0[GeV/n]      Name
     "Ni64": [(28., 64., 0.931494061, "Ni64")],
 
 }
+
+
+def find_isotope(isotope):
+    """
+
+    :param isotope:
+    :return:
+    """
+    for isos in ISOTOPES.values():
+        for iso in isos:
+            if iso[3] == isotope:
+                return iso
+    return None
+
+
+def find_ion_or_isotope(ioi):
+    """
+
+    :param ioi:
+    :return:
+    """
+    ion = ISOTOPES.get(ioi, None)
+    if ion is None:
+        return [find_isotope(ioi)]
+    return ion

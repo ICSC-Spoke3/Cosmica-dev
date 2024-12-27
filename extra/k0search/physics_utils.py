@@ -4,7 +4,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 from extra.k0search.files_utils import get_lis
-from extra.k0search.isotopes import ISOTOPES
+from extra.k0search.isotopes import ISOTOPES, find_ion_or_isotope
 
 
 ## Magic physics functions!
@@ -361,22 +361,22 @@ def en_to_rig_flux(x_val, spectra, mass_number=1., z=1.):
     return rigi, flux
 
 
-def evaluate_modulation(ion, ion_lis, modulation_matrix_dict, output_in_energy=True):
+def evaluate_modulation(ion, ion_lis, modulation_matrix, output_in_energy=True):
     """
     Evaluate the modulation of cosmic rays for a given ion species. 
     :param ion: 
     :param ion_lis: 
-    :param modulation_matrix_dict: 
+    :param modulation_matrix: 
     :param output_in_energy: 
     :return: 
     """
 
-    isotopes_list = ISOTOPES.get(ion, [])
+    isotopes_list = find_ion_or_isotope(ion) #TODO: check if legit (maybe [find_isotope(ion)]?)
     sim_en_rig, sim_flux, sim_lis = None, None, None
 
     for z, a, t0, isotope in isotopes_list:
         lis_spectrum = get_lis(ion_lis, z, a)
-        energy_binning, j_mod, j_lis = spectra_backward_energy(modulation_matrix_dict[isotope], lis_spectrum, t0)
+        energy_binning, j_mod, j_lis = spectra_backward_energy(modulation_matrix, lis_spectrum, t0)
 
         # If the first isotope, initialize the output
         if sim_en_rig is None:
