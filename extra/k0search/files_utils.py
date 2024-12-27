@@ -164,6 +164,33 @@ def load_lis(lis_path):
     return energy, particle_flux
 
 
+def get_lis(lis, z: int, a: int, k=0, include_secondaries=True, debug=False):
+    """
+    Get the LIS for the selected Isotope,
+    :param lis: the LIS loaded with load_lis
+    :param z: atomic number
+    :param a: atomic mass
+    :param k: K-shell
+    :param include_secondaries: if True, accumulate secondary spectra
+    :param debug:
+    :return: (energy, flux), energy is -1 if Z missing and -2 if A missing
+    """
+    tk_bin, particle_flux = lis
+    if z not in particle_flux:
+        if debug:
+            print(f'Error: Z={z} does not exist in LIS dictionary')
+        return np.full(1, -1.), []
+    if a not in particle_flux[z]:
+        if debug:
+            print(f'Error: A={a} does not exist in LIS dictionary for Z={z}')
+        return np.full(1, -2.), []
+    tk_lis_spectra = particle_flux[z][a][k][-1]  # the primary spectrum is always the last one (if exist)
+    if include_secondaries:  # Include (sum) secondary spectra
+        for sec_ind in range(len(particle_flux[z][a][k]) - 1):
+            tk_lis_spectra = tk_lis_spectra + particle_flux[z][a][k][sec_ind]
+    return tk_bin, tk_lis_spectra
+
+
 def load_simulation_output(file_name, debug=False):
     """
     Load a simulation output file histograms
@@ -206,7 +233,7 @@ def load_simulation_output(file_name, debug=False):
 
     return {
         'InputEnergy': np.asarray(outer_energy, object),
-        'NGeneratedPartcle': np.asarray(n_registered_particle, object),
+        'NGeneratedParticle': np.asarray(n_registered_particle, object),
         'OuterEnergy': np.asarray(outer_energy, object),
-        'BounduaryDistribution': np.asarray(energy_distribution_at_boundary, object)
+        'BoundaryDistribution': np.asarray(energy_distribution_at_boundary, object)
     }, warning_list
