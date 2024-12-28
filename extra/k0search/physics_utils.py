@@ -4,7 +4,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 from extra.k0search.files_utils import get_lis
-from extra.k0search.isotopes import ISOTOPES, find_ion_or_isotope
+from extra.k0search.isotopes import find_isotope
 
 
 ## Magic physics functions!
@@ -273,12 +273,15 @@ def beta_eval(t, t0):
     return np.sqrt(t * t2) / tt
 
 
-def spectra_backward_energy(modulation_matrix_dict_isotope, lis_isotope, t0):
+def spectra_backward_energy(modulation_matrix_dict_isotope, lis_isotope, z, a, t0, rig_in=False):
     """
     Evaluate the modulated specra for a single isotope in case of SDE Monte Carlo in Rigidity
     :param modulation_matrix_dict_isotope: modulation matrix dictionary for the isotope
     :param lis_isotope: lis isotope
+    :param z: z
+    :param a: a
     :param t0: energy offset
+    :param rig_in:
     :return: energy, modulated flux, lis isotope
     """
 
@@ -294,18 +297,19 @@ def spectra_backward_energy(modulation_matrix_dict_isotope, lis_isotope, t0):
     # n_generated_particle = np.asarray([a for a in modulation_matrix_dict_isotope['NGeneratedPartcle']])
     # outer_energy = modulation_matrix_dict_isotope['OuterEnergy']
 
-    lis_isotope_interp = lin_log_interpolation(lis_isotope_tkin, lis_isotope_flux, input_energy)
-
     is_object_array = outer_energy.dtype == 'object'
+
+    if rig_in:
+        input_energy = rig_to_en(input_energy, t0, z)
+        outer_energy = np.array([rig_to_en(x, t0, z) for x in outer_energy], dtype=object) \
+            if is_object_array else rig_to_en(outer_energy, t0, z)
+
+    lis_isotope_interp = lin_log_interpolation(lis_isotope_tkin, lis_isotope_flux, input_energy)
 
     un_norm_flux = np.zeros(len(input_energy))
     for indexTDet in range(len(input_energy)):
-        if is_object_array:
-            lis_isotope_flux_outer = lin_log_interpolation(lis_isotope_tkin, lis_isotope_flux, outer_energy[indexTDet])
-            oenk = outer_energy[indexTDet]
-        else:
-            lis_isotope_flux_outer = lin_log_interpolation(lis_isotope_tkin, lis_isotope_flux, outer_energy)
-            oenk = outer_energy
+        oenk = outer_energy[indexTDet] if is_object_array else outer_energy
+        lis_isotope_flux_outer = lin_log_interpolation(lis_isotope_tkin, lis_isotope_flux, oenk)
 
         for indexTLIS_isotope in range(len(lis_isotope_flux_outer)):
             lis_isotope_energy = oenk[indexTLIS_isotope]
@@ -355,13 +359,13 @@ def en_to_rig_flux(x_val, spectra, mass_number=1., z=1.):
     :param z: charge
     :return: rigidity, flux
     """
-    
+
     rigi = np.array([en_to_rig(T, mass_number, z) for T in x_val])
     flux = np.array([flux * rig_to_en_flux_factor(t, r, mass_number, z) for t, r, flux in zip(x_val, rigi, spectra)])
     return rigi, flux
 
 
-def evaluate_modulation(ion, ion_lis, modulation_matrix, output_in_energy=True):
+def evaluate_modulation(ion, ion_lis, modulation_matrix, rig_in=False, rig_out=False):
     """
     Evaluate the modulation of cosmic rays for a given ion species. 
     :param ion: 
@@ -371,12 +375,14 @@ def evaluate_modulation(ion, ion_lis, modulation_matrix, output_in_energy=True):
     :return: 
     """
 
-    isotopes_list = find_ion_or_isotope(ion) #TODO: check if legit (maybe [find_isotope(ion)]?)
+    # TODO: check if legit (maybe find_ion_or_isotope(ion)? but then energies dont match)
+    isotopes_list = [find_isotope(ion)]
+    # isotopes_list = find_ion_or_isotope(ion)
     sim_en_rig, sim_flux, sim_lis = None, None, None
 
     for z, a, t0, isotope in isotopes_list:
         lis_spectrum = get_lis(ion_lis, z, a)
-        energy_binning, j_mod, j_lis = spectra_backward_energy(modulation_matrix, lis_spectrum, t0)
+        energy_binning, j_mod, j_lis = spectra_backward_energy(modulation_matrix, lis_spectrum, z, a, t0, rig_in=rig_in)
 
         # If the first isotope, initialize the output
         if sim_en_rig is None:
@@ -384,10 +390,10 @@ def evaluate_modulation(ion, ion_lis, modulation_matrix, output_in_energy=True):
             sim_flux = np.zeros_like(energy_binning)
             sim_lis = np.zeros_like(energy_binning)
 
-        if not output_in_energy:
+        if rig_out:
             sim_en_rig, j_mod = en_to_rig_flux(energy_binning, j_mod, a, z)
             sim_en_rig, j_lis = en_to_rig_flux(energy_binning, j_lis, a, z)
-        
+
         # Sum the fluxes and LIS
         sim_flux += j_mod
         sim_lis += j_lis

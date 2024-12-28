@@ -1,13 +1,13 @@
+import datetime
 import os
 import subprocess
-import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from os.path import join as pjoin, dirname
 
 import numpy as np
 from tqdm import tqdm
 
-from extra.k0search.isotopes import ISOTOPES
+from extra.k0search.isotopes import find_isotope
 from extra.k0search.physics_utils import rig_to_en
 
 
@@ -88,7 +88,7 @@ def create_input_file(k0vals, h_par, exp_data, input_path, sim_el, tot_npart_per
 
         # Loop over ions to generate input files for each isotope
         for ion in ions:
-            isotopes = ISOTOPES.get(ion, [])  # Fetch isotope data for the current ion
+            isotopes = [find_isotope(ion)]  # TODO: check if legit (maybe find_ion_or_isotope(ion)?)
             if not isotopes:
                 print(f"WARNING: {ion} not found in isotopes dictionary.")
                 continue
@@ -202,6 +202,7 @@ def submit_sims(sim_el, cosmica_path, results_path, k0_array, h_par, exp_data, m
     output_dir = pjoin(input_path, "run")
     os.makedirs(output_dir, exist_ok=True)
     output_file_list = list(map(lambda x: pjoin(output_dir, x), output_file_list))
+    # return input_file_list, output_file_list #TODO: REMOVE
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         job = lambda f: run_cosmica(cosmica_path, *f, verbosity=2)

@@ -3,7 +3,6 @@ from os.path import basename
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import colors as mcolors
-from scipy.interpolate import interp1d
 
 from extra.k0search.files_utils import load_simulation_output
 from extra.k0search.physics_utils import evaluate_modulation
@@ -28,32 +27,30 @@ plt.rcParams.update(rc_params)
 colors = ['silver', 'skyblue', 'royalblue', 'blue', 'navy']
 color_positions = [0.0, 0.25, 0.5, 0.75, 1]  # range of each color
 cmap = mcolors.LinearSegmentedColormap.from_list('custom_colormap', list(zip(color_positions, colors)), N=1000)
+
+
 # cmap = 'inferno'
 
 
-def evaluate_output(output_path, experimental_data, lis, output_in_energy=False, plot_path=None):
+def evaluate_output(output_path, experimental_data, lis, rig_in=False, plot_path=None):
     """
     Evaluate the output of a simulation and compare it with experimental data.
     :param output_path: path to the output file
     :param experimental_data: experimental data
     :param lis: LIS data
-    :param output_in_energy: if the output is in energy
+    :param rig_in: if the output is in energy
     :param plot_path: path to save the plot, if None the plot is not saved
     :return: RMSE between the simulation and the experimental data
     """
     output, _ = load_simulation_output(output_path)
     ion = basename(output_path).split('_')[0]
 
-    sim_en_rig, sim_j_mod, j_lis = evaluate_modulation(ion, lis, output, output_in_energy)
+    sim_en_rig, sim_j_mod, j_lis = evaluate_modulation(ion, lis, output, rig_in=rig_in, rig_out=True)
     exp_en_rig, exp_j_mod, exp_inf, exp_sup = experimental_data.T
 
-    lower_bound = max(exp_en_rig.min(), sim_en_rig.min())
-    upper_bound = min(exp_en_rig.max(), sim_en_rig.max())
+    assert np.allclose(sim_en_rig, exp_en_rig, rtol=0.02 * sim_en_rig)
 
-    space = np.linspace(lower_bound, upper_bound, 100)
-    sim_interp = interp1d(sim_en_rig, sim_j_mod)(space)
-    exp_interp = interp1d(exp_en_rig, exp_j_mod)(space)
-    rmse = np.sqrt(np.square(np.subtract(sim_interp, exp_interp)).mean())
+    rmse = np.sqrt(np.square(np.subtract(sim_j_mod, exp_j_mod)).mean())
 
     if plot_path is not None:
         fig, ax = plt.subplots(figsize=(12, 8))

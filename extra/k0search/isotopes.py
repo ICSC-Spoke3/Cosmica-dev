@@ -245,7 +245,8 @@ def find_ion_or_isotope(ioi):
     :param ioi:
     :return:
     """
-    ion = ISOTOPES.get(ioi, None)
-    if ion is None:
-        return [find_isotope(ioi)]
-    return ion
+    if ion := ISOTOPES.get(ioi):
+        return ion
+    if iso := find_isotope(ioi):
+        return [iso]
+    return []
