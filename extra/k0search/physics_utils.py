@@ -1,5 +1,3 @@
-from datetime import datetime
-
 import numpy as np
 from scipy.interpolate import interp1d
 
@@ -190,58 +188,6 @@ def eval_k0(is_high_activity_period, p, q, solar_phase, tilt, nmc, ssn):
     return k0 * k0cor, kerr
 
 
-def initialize_output_dict(sim_el: list, exp_data: np.ndarray, output_dict: dict, k0_ref: float, k0_ref_err: float,
-                           debug=False):
-    """
-    Initialize the output dictionary with experimental data
-    :param sim_el: the simulation element
-    :param exp_data: the experimental data
-    :param output_dict: the output dictionary
-    :param k0_ref: the reference k0
-    :param k0_ref_err: the reference k0 error
-    :param debug: if True, more verbose output will be printed
-    :return: None
-    """
-
-    ions = sim_el[1].strip()
-    init_time = datetime.strptime(sim_el[3], '%Y%m%d').date()
-    if debug:
-        print(f"Processing simulation for ion: {ions}, date: {init_time}")
-
-    for t, f, er_inf, er_sup in exp_data:
-        if debug:
-            print(f"Processing rigidity value: {t}")
-
-        # Initialize the output dictionary
-        if t not in output_dict[ions]:
-            output_dict[ions][t] = {}
-            if debug:
-                print(f"Initialized OUTPUT_DICT for ion: {ions}, rigidity: {t}")
-
-        # Initialize the output dictionary for the current ion and rigidity value
-        output_dict[ions][t][init_time] = {
-            "diffBest": 9e99,
-            "K0best": 0,
-            "K0Min": 9e99,
-            "K0Max": 0,
-            "Fluxbest": 0,
-            "FluxMin": 9e99,
-            "FluxMax": 0,
-            "fExp": f,
-            "ErExp_inf": er_inf,
-            "ErExp_sup": er_sup,
-            "K0ref": k0_ref,
-            "K0Err_ref": k0_ref_err * k0_ref,
-        }
-        if debug:
-            print(f"Initialized data for ion: {ions}, rigidity: {t}, date: {init_time}")
-
-    if debug:
-        print("Final OUTPUT_DICT:")
-        for ion, data in output_dict.items():
-            print(f"Ion: {ion}, Data: {data}")
-
-
 def lin_log_interpolation(vx, vy, vx_new):
     """
     Linear-log interpolation
@@ -365,7 +311,7 @@ def en_to_rig_flux(x_val, spectra, mass_number=1., z=1.):
     return rigi, flux
 
 
-def evaluate_modulation(ion, ion_lis, modulation_matrix, rig_in=False, rig_out=False):
+def evaluate_modulation(outputs, ion_lis, rig_in=False, rig_out=False):
     """
     Evaluate the modulation of cosmic rays for a given ion species. 
     :param ion: 
@@ -375,14 +321,12 @@ def evaluate_modulation(ion, ion_lis, modulation_matrix, rig_in=False, rig_out=F
     :return: 
     """
 
-    # TODO: check if legit (maybe find_ion_or_isotope(ion)? but then energies dont match)
-    isotopes_list = [find_isotope(ion)]
-    # isotopes_list = find_ion_or_isotope(ion)
+    isotopes_list = [find_isotope(iso) for iso in outputs.keys()]
     sim_en_rig, sim_flux, sim_lis = None, None, None
 
     for z, a, t0, isotope in isotopes_list:
         lis_spectrum = get_lis(ion_lis, z, a)
-        energy_binning, j_mod, j_lis = spectra_backward_energy(modulation_matrix, lis_spectrum, z, a, t0, rig_in=rig_in)
+        energy_binning, j_mod, j_lis = spectra_backward_energy(outputs[isotope], lis_spectrum, z, a, t0, rig_in=rig_in)
 
         # If the first isotope, initialize the output
         if sim_en_rig is None:

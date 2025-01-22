@@ -1,16 +1,13 @@
-import pickle
-
 import numpy as np
-from os.path import join as pjoin
+from os.path import basename, join as pjoin
 
 import astropy.io.fits as pyfits
 
 
-def load_simulation_list(list_path: str, output_dict: dict, debug=False):
+def load_simulation_list(list_path: str, debug=False):
     """
     Load the list of simulations
     :param list_path: path to list file
-    :param output_dict: dictionary to store the simulation results
     :param debug: if True, more verbose output will be printed
     :return: list of simulations
     """
@@ -45,12 +42,6 @@ def load_simulation_list(list_path: str, output_dict: dict, debug=False):
 
         print(f"Adding simulation: {single_sim}")
         sim_list.append(single_sim)
-
-        ions = single_sim[1].strip()
-        if ions not in output_dict:
-            output_dict[ions] = {}
-            if debug:
-                print(f"Added new ion type to OUTPUT_DICT: {ions}")
 
     if debug:
         print(f"Loaded simulation list:")
@@ -238,3 +229,6 @@ def load_simulation_output(file_name, debug=False):
         'OuterEnergy': np.asarray(outer_energy, object),
         'BoundaryDistribution': np.asarray(energy_distribution_at_boundary, object)
     }, warning_list
+
+def load_simulation_outputs(file_names, debug=False):
+    return {basename(fn).split('_')[0]: load_simulation_output(fn, debug)[0] for fn in file_names}

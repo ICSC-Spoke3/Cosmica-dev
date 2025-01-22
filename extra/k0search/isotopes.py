@@ -2,7 +2,7 @@
 Isotopes module.
 """
 
-ISOTOPES = {  # Z    A   T0[GeV/n]      Name
+IONS = {  # Z    A   T0[GeV/n]      Name
     "Electron": [(-1., 1., 5.109989e-04, "Electron")],
     "Antiproton": [(-1., 1., 0.938272, "Antiproton")],
     "Positron": [(1., 1., 5.109989e-04, "Positron")],
@@ -225,6 +225,8 @@ ISOTOPES = {  # Z    A   T0[GeV/n]      Name
 
 }
 
+ISOTOPES = {iso[-1]: iso for isos in IONS.values() for iso in isos}
+
 
 def find_isotope(isotope):
     """
@@ -232,11 +234,7 @@ def find_isotope(isotope):
     :param isotope:
     :return:
     """
-    for isos in ISOTOPES.values():
-        for iso in isos:
-            if iso[3] == isotope:
-                return iso
-    return None
+    return ISOTOPES.get(isotope)
 
 
 def find_ion_or_isotope(ioi):
@@ -245,7 +243,7 @@ def find_ion_or_isotope(ioi):
     :param ioi:
     :return:
     """
-    if ion := ISOTOPES.get(ioi):
+    if ion := IONS.get(ioi):
         return ion
     if iso := find_isotope(ioi):
         return [iso]

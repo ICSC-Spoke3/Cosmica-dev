@@ -1,10 +1,8 @@
-from os.path import basename
-
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import colors as mcolors
 
-from extra.k0search.files_utils import load_simulation_output
+from extra.k0search.files_utils import load_simulation_outputs
 from extra.k0search.physics_utils import evaluate_modulation
 
 # Setting rc params for all plots
@@ -32,7 +30,7 @@ cmap = mcolors.LinearSegmentedColormap.from_list('custom_colormap', list(zip(col
 # cmap = 'inferno'
 
 
-def evaluate_output(output_path, experimental_data, lis, rig_in=False, plot_path=None):
+def evaluate_output(output_paths, experimental_data, lis, rig_in=False, plot_path=None):
     """
     Evaluate the output of a simulation and compare it with experimental data.
     :param output_path: path to the output file
@@ -42,10 +40,9 @@ def evaluate_output(output_path, experimental_data, lis, rig_in=False, plot_path
     :param plot_path: path to save the plot, if None the plot is not saved
     :return: RMSE between the simulation and the experimental data
     """
-    output, _ = load_simulation_output(output_path)
-    ion = basename(output_path).split('_')[0]
+    outputs = load_simulation_outputs(output_paths)
 
-    sim_en_rig, sim_j_mod, j_lis = evaluate_modulation(ion, lis, output, rig_in=rig_in, rig_out=True)
+    sim_en_rig, sim_j_mod, j_lis = evaluate_modulation(outputs, lis, rig_in=rig_in, rig_out=True)
     exp_en_rig, exp_j_mod, exp_inf, exp_sup = experimental_data.T
 
     assert np.allclose(sim_en_rig, exp_en_rig, rtol=0.02 * sim_en_rig)
@@ -70,7 +67,8 @@ def evaluate_output(output_path, experimental_data, lis, rig_in=False, plot_path
         ax.set_ylabel(
             r'$\text{Flux } \left(\frac{1}{\mathrm{GeV}/n \, \mathrm{m}^2 \, \mathrm{sr} \, \mathrm{s}}\right)$',
             fontsize=16)
-        ax.set_title(rf'$\text{{Comparison of }} {ion} \text{{ Simulation with Experimental Data}}$', fontsize=20,
+        ax.set_title(rf'$\text{{Comparison of }} {list(outputs.keys())} \text{{ Simulation with Experimental Data}}$',
+                     fontsize=20,
                      pad=20)
 
         ax.tick_params(axis='both', which='major', labelsize=12)

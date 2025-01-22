@@ -1,6 +1,6 @@
 import numpy as np
 
-from physics_utils import eval_k0
+from extra.k0search.physics_utils import eval_k0
 
 
 def k0_grid_from_estimate(t: int, nk0: int, h_par: np.ndarray, q=+1, debug=False):
@@ -30,4 +30,4 @@ def k0_grid_from_estimate(t: int, nk0: int, h_par: np.ndarray, q=+1, debug=False
 
     # Generate a grid around the error with 4 x standard deviations range
     k0grid = np.linspace(k0 - 4 * k0err * k0, k0 + 4 * k0err * k0, num=nk0, endpoint=True)
-    return k0grid, k0, k0err
+    return k0grid.tolist(), k0, k0err

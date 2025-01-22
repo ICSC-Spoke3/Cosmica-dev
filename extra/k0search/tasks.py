@@ -1,17 +1,18 @@
 import datetime
 import os
 import subprocess
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from os.path import join as pjoin, dirname
+from os.path import join as pjoin
 
 import numpy as np
 from tqdm import tqdm
 
-from extra.k0search.isotopes import find_isotope
+from extra.k0search.isotopes import find_ion_or_isotope
 from extra.k0search.physics_utils import rig_to_en
 
 
-def create_input_file(k0vals, h_par, exp_data, input_path, sim_el, tot_npart_per_bin=1200,
+def create_input_file(k0vals, h_par, exp_data, input_dir, sim_el, tot_npart_per_bin=1200,
                       n_heliosphere_regions=15, force_execute=False, debug=False):
     """
     Generates input files for the Cosmica simulation, validating parameters and handling file creation.
@@ -76,8 +77,8 @@ def create_input_file(k0vals, h_par, exp_data, input_path, sim_el, tot_npart_per
     np_lat = np.full(len(cr_list), np.radians(90. - lat[0])) if len(lat) == 1 else np.radians(90. - np.array(lat))
     np_lon = np.full(len(cr_list), np.radians(lon[0])) if len(lon) == 1 else np.radians(np.array(lon))
 
-    # Initialize lists to store input and output file names
-    input_file_names, output_file_names = [], []
+    # Initialize dict to store file names
+    sims_dict = defaultdict(list)
 
     # Loop over K0 values to generate input files
     for k0val in k0vals:
@@ -88,7 +89,7 @@ def create_input_file(k0vals, h_par, exp_data, input_path, sim_el, tot_npart_per
 
         # Loop over ions to generate input files for each isotope
         for ion in ions:
-            isotopes = [find_isotope(ion)]  # TODO: check if legit (maybe find_ion_or_isotope(ion)?)
+            isotopes = find_ion_or_isotope(ion)
             if not isotopes:
                 print(f"WARNING: {ion} not found in isotopes dictionary.")
                 continue
@@ -96,9 +97,8 @@ def create_input_file(k0vals, h_par, exp_data, input_path, sim_el, tot_npart_per
             # Loop through each isotope to construct simulation files
             for isotope in isotopes:
                 # Create a unique simulation name
-                simulation_name = f"{isotope[3]}_{sim_meta_str}_{cr_list[-1]:.0f}_{cr_list[0]:.0f}_r{rad[0] * 100:05.0f}_lat{lat[0] * 100:05.0f}"
-                input_file_name = f"Input_{simulation_name}.txt"
-                input_file_path = pjoin(input_path, input_file_name)
+                sim_name = f"{isotope[3]}_{sim_meta_str}_{cr_list[-1]:.0f}_{cr_list[0]:.0f}_r{rad[0] * 100:05.0f}_lat{lat[0] * 100:05.0f}"
+                input_file_path = pjoin(input_dir, f"{sim_name}.txt")
 
                 # Check if the file already exists or needs to be recreated
                 if not os.path.exists(input_file_path) or force_execute:
@@ -106,7 +106,7 @@ def create_input_file(k0vals, h_par, exp_data, input_path, sim_el, tot_npart_per
                     with open(input_file_path, 'w') as f:
                         # Write metadata and simulation details
                         f.write(f"# File generated on {datetime.date.today()}\n")
-                        f.write(f"OutputFilename: {simulation_name}\n")
+                        f.write(f"OutputFilename: {sim_name}\n")
                         f.write(f"Particle_NucleonRestMass: {isotope[2]}\n")
                         f.write(f"Particle_MassNumber: {isotope[1]}\n")
                         f.write(f"Particle_Charge: {isotope[0]}\n")
@@ -144,31 +144,31 @@ def create_input_file(k0vals, h_par, exp_data, input_path, sim_el, tot_npart_per
                                 ))
                         f.close()
 
-                    # Append file paths and names to the respective lists
-                    input_file_names.append(input_file_path)
-                    output_file_names.append(simulation_name)
+                    # Append file paths and names to the list
+                    sims_dict[(ion, k0val)].append(sim_name)
 
-    return input_file_names, output_file_names
+    return dict(sims_dict)
 
 
-def run_cosmica(cosmica_path: str, input_file_path: str, output_file_path: str, verbosity=0, debug=False):
+def run_cosmica(cosmica_path: str, sim_name: str, input_dir: str, output_dir: str, verbosity=0, debug=False):
     """
     Executes cosmica simulation.
     :param cosmica_path: Path to cosmica executable.
-    :param input_file_path: Path to input file.
-    :param output_file_path: Path to output file.
+    :param sim_name: Path to input file.
+    :param input_dir: Directory where the output will be saved.
+    :param output_dir: Directory where the output will be saved.
     :param verbosity: Verbosity level for the simulation.
     :param debug: Enable debug output if True.
     :return: Return code and output of the simulation.
     """
-    
+
     verbosity_str = ('-' + 'v' * verbosity) if verbosity else ''
-    command = f"cd {dirname(output_file_path)} && {cosmica_path} {verbosity_str} -i {input_file_path} > {output_file_path}.log 2>&1"
+    command = f"cd {output_dir} && {cosmica_path} {verbosity_str} -i {pjoin(input_dir, sim_name)}.txt > {sim_name}.log 2>&1"
     try:
         result = subprocess.run(command, shell=True, text=True, capture_output=True, check=True)
         return result.returncode, result.stdout
     except subprocess.CalledProcessError as e:
-        print(f"Error during simulation execution for {input_file_path}: {e}")
+        print(f"Error during simulation execution for {sim_name}: {e}")
         if debug:
             print(e.output)
         return e.returncode, e.output
@@ -191,23 +191,23 @@ def submit_sims(sim_el, cosmica_path, results_path, k0_array, h_par, exp_data, m
     sim_name, ions, file_name, init_date, final_date, radius, latitude, longitude = sim_el
     ions_str = '-'.join(i.strip() for i in ions.split(','))
 
-    input_path = pjoin(results_path, f"{sim_name}_{ions_str}")
-    os.makedirs(input_path, exist_ok=True)
+    sim_dir = pjoin(results_path, f'{sim_name}_{ions_str}')
+    input_dir = pjoin(sim_dir, 'inputs')
+    output_dir = pjoin(sim_dir, 'outputs')
+    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(input_dir, exist_ok=True)
 
     # Generate input and output file names for the simulation
-    input_file_list, output_file_list = create_input_file(
-        k0_array, h_par, exp_data, input_path, sim_el, force_execute=True, debug=debug
+    sims_dict = create_input_file(
+        k0_array, h_par, exp_data, input_dir, sim_el, force_execute=True, debug=debug
     )
 
-    output_dir = pjoin(input_path, "run")
-    os.makedirs(output_dir, exist_ok=True)
-    output_file_list = list(map(lambda x: pjoin(output_dir, x), output_file_list))
-    # return input_file_list, output_file_list #TODO: REMOVE
+    # return sims_dict, output_dir  # TODO: REMOVE
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        job = lambda f: run_cosmica(cosmica_path, *f, verbosity=2)
-        futures = [executor.submit(job, f) for f in zip(input_file_list, output_file_list)]
+        job = lambda f: run_cosmica(cosmica_path, f, input_dir, output_dir, verbosity=2)
+        futures = [executor.submit(job, f) for ff in sims_dict.values() for f in ff]
         for _ in tqdm(as_completed(futures), total=len(futures)):
-            pass # Wait for all to finish
+            pass  # Wait for all to finish
 
-    return input_path, output_file_list
+    return sims_dict, output_dir
