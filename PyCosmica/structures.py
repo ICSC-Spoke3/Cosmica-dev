@@ -39,7 +39,7 @@ class Options(NamedTuple):
     input_file: str  # Placeholder for FILE*, as JAX does not support file objects
 
 
-class PartDescription(NamedTuple):
+class ParticleDescription(NamedTuple):
     T0: float  # Rest mass in GeV/n
     Z: float  # Atomic number
     A: float  # Mass number
@@ -106,7 +106,7 @@ class HeliosheatParameters(NamedTuple):
         return cls(*arr)
 
 
-class AdvectiveDrift(NamedTuple):
+class Position3D(NamedTuple):
     r: float  # heliocentric radial component
     th: float  # heliocentric polar component
     phi: float  # heliocentric azimutal - longitudinal angle component
@@ -130,10 +130,39 @@ class SimParameters(NamedTuple):
     N_T: int  # Number of energy bins
     N_initial_positions: int  # Number of initial positions (also Carrington rotations)
     T_centr: list[float]  # Energy array to be simulated
-    initial_position: list[AdvectiveDrift]  # Initial positions (assuming vect3D_t as array)
-    ion_to_be_simulated: PartDescription  # Ion being simulated
+    initial_position: list[Position3D]  # Initial positions (assuming vect3D_t as array)
+    ion_to_be_simulated: ParticleDescription  # Ion being simulated
     results: MonteCarloResult  # Placeholder for MonteCarloResult_t output
     relative_bin_amplitude: float  # Relative amplitude of energy bin
     heliosphere_to_be_simulated: SimulatedHeliosphere  # Heliosphere properties for the simulation
     prop_medium: list[HeliosphereProperties]  # Properties of the interplanetary medium
     prop_heliosheat: list[HeliosheatProperties]  # Properties of Heliosheat
+
+    def to_jit(self):
+        return SimParametersJit.from_sim(self)
+
+class SimParametersJit(NamedTuple):
+    N_part: int  # Number of events to simulate
+    N_T: int  # Number of energy bins
+    N_initial_positions: int  # Number of initial positions (also Carrington rotations)
+    T_centr: list[float]  # Energy array to be simulated
+    initial_position: list[Position3D]  # Initial positions (assuming vect3D_t as array)
+    ion_to_be_simulated: ParticleDescription  # Ion being simulated
+    results: MonteCarloResult  # Placeholder for MonteCarloResult_t output
+    relative_bin_amplitude: float  # Relative amplitude of energy bin
+    heliosphere_to_be_simulated: SimulatedHeliosphere  # Heliosphere properties for the simulation
+    prop_medium: list[HeliosphereProperties]  # Properties of the interplanetary medium
+    prop_heliosheat: list[HeliosheatProperties]  # Properties of Heliosheat
+
+    @classmethod
+    def from_sim(cls, sim: SimParameters):
+        params = sim._asdict()
+        params.pop('output_file_name')
+        return cls(**params)
+
+class QuasiParticle(NamedTuple):
+    r: float
+    th: float
+    phi: float
+    R: float
+    t_fly: float

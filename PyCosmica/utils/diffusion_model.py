@@ -1,65 +1,24 @@
-import numpy as np
-from math import sqrt
-from scipy.interpolate import interp1d
-
 from PyCosmica.structures import *
+from PyCosmica.utils.heliosphere_model import boundary_scalar
+from PyCosmica.utils.generic_math import smooth_transition
 
 
-## Magic physics functions!
+def rescale_to_effective_heliosphere(bound_real: HeliosphereBoundRadius,
+                                     a_drift: Position3D) -> (HeliosphereBoundRadius, Position3D):
+    R_ts_nose = 100.
+    R_ts_tail = bound_real.R_ts_tail * R_ts_nose / bound_real.R_ts_nose
+    R_hp_nose = R_ts_nose + bound_real.R_hp_nose - bound_real.R_ts_nose
+    R_hp_tail = R_ts_tail + bound_real.R_hp_tail - bound_real.R_ts_tail
 
-def en_to_rig(t, mass_number=1., z=1.):
-    """
-    Convert energy to rigidity
-    :param t: energy
-    :param mass_number: mass number
-    :param z: charge
-    :return: rigidity
-    """
+    HM_Rts_d = boundary_scalar(a_drift.th, a_drift.phi, R_ts_nose, R_ts_tail)
+    RW_Rts_d = boundary_scalar(a_drift.th, a_drift.phi, bound_real.R_ts_nose, bound_real.R_ts_tail)
 
-    t0 = 0.931494061
-    if np.fabs(z) == 1:
-        t0 = 0.938272046
-    if mass_number == 0:
-        t0 = 5.11e-4
-        mass_number = 1
-    return mass_number / np.fabs(z) * np.sqrt(t * (t + 2. * t0))
+    part_r = (a_drift.r / RW_Rts_d * HM_Rts_d) if a_drift.r <= RW_Rts_d else HM_Rts_d + a_drift.r - RW_Rts_d
 
-
-def rig_to_en(r, mass_number=1., z=1.):
-    """
-    Convert rigidity to energy
-    :param r: rigidity
-    :param mass_number: mass number
-    :param z: charge
-    :return: energy
-    """
-
-    t0 = 0.931494061
-    if np.fabs(z) == 1:
-        t0 = 0.938272046
-    if mass_number == 0:
-        t0 = 5.11e-4
-        mass_number = 1
-    return np.sqrt((z * z) / (mass_number * mass_number) * (r * r) + (t0 * t0)) - t0
-
-
-def smooth_transition(initial_val, final_val, center_of_transition, smoothness, x):
-    """
-    Smooth transition between InitialVal to FinalVal centered at CenterOfTransition as function of x
-    If smoothness == 0 use a sharp transition (tanh), otherwise use a smooth transition
-    :param initial_val: initial value
-    :param final_val: final value
-    :param center_of_transition: center of transition
-    :param smoothness: smoothness
-    :param x: x value
-    :return: the transition value
-    """
-
-    if smoothness == 0:
-        return final_val if x >= center_of_transition else initial_val
-    else:
-        return (initial_val + final_val) / 2. - (initial_val - final_val) / 2. * np.tanh(
-            (x - center_of_transition) / smoothness)
+    return (
+        HeliosphereBoundRadius(R_ts_nose, R_ts_tail, R_hp_nose, R_hp_tail),
+        Position3D(part_r, a_drift.th, a_drift.phi)
+    )
 
 
 def k0_fit_ssn(p, solar_phase, ssn):
@@ -101,7 +60,7 @@ def k0_fit_nmc(nmc):
     :return: k0, gauss_var
     """
 
-    return np.exp(-10.83 - 0.0041 * nmc + 4.52e-5 * nmc * nmc), 0.1045
+    return jnp.exp(-10.83 - 0.0041 * nmc + 4.52e-5 * nmc * nmc), 0.1045
 
 
 def k0_corr_factor(p, q, solar_phase, tilt):
@@ -188,129 +147,6 @@ def eval_k0(is_high_activity_period, p, q, solar_phase, tilt, nmc, ssn):
     return float(k0 * k0cor), float(k0), float(kerr)
 
 
-def lin_log_interpolation(vx, vy, vx_new):
-    """
-    Linear-log interpolation
-    :param vx: x values
-    :param vy: y values
-    :param vx_new: new x values
-    :return: interpolated y values
-    """
-
-    vx = np.asarray(vx)
-    vy = np.asarray(vy)
-    vx_new = np.asarray(vx_new)
-    lvx, lvy = np.log10(vx), np.log10(vy)
-    lvx_new = np.log10(vx_new)
-    lvy_interp = interp1d(lvx, lvy, bounds_error=False, fill_value='extrapolate')(lvx_new)
-    return 10 ** lvy_interp
-
-
-def beta_eval(t, t0):
-    """
-    Evaluate beta factor
-    :param t: energy
-    :param t0: energy offset
-    :return: beta factor
-    """
-
-    tt = t + t0
-    t2 = tt + t0
-    return np.sqrt(t * t2) / tt
-
-
-def spectra_backward_energy(modulation_matrix_dict_isotope, lis_isotope, z, a, t0, rig_in=False):
-    """
-    Evaluate the modulated specra for a single isotope in case of SDE Monte Carlo in Rigidity
-    :param modulation_matrix_dict_isotope: modulation matrix dictionary for the isotope
-    :param lis_isotope: lis isotope
-    :param z: z
-    :param a: a
-    :param t0: energy offset
-    :param rig_in:
-    :return: energy, modulated flux, lis isotope
-    """
-
-    lis_isotope_tkin, lis_isotope_flux = lis_isotope
-    boundary_distribution = modulation_matrix_dict_isotope['BoundaryDistribution']
-    input_energy = np.asarray([a for a in modulation_matrix_dict_isotope['InputEnergy']])
-    n_generated_particle = np.asarray([a for a in modulation_matrix_dict_isotope['NGeneratedParticle']])
-    outer_energy = modulation_matrix_dict_isotope['OuterEnergy']
-
-    # Legacy loading
-    # boundary_distribution = modulation_matrix_dict_isotope['BounduaryDistribution']
-    # input_energy = np.asarray([a for a in modulation_matrix_dict_isotope['InputEnergy']])
-    # n_generated_particle = np.asarray([a for a in modulation_matrix_dict_isotope['NGeneratedPartcle']])
-    # outer_energy = modulation_matrix_dict_isotope['OuterEnergy']
-
-    is_object_array = outer_energy.dtype == 'object'
-
-    if rig_in:
-        input_energy = rig_to_en(input_energy, t0, z)
-        outer_energy = np.array([rig_to_en(x, t0, z) for x in outer_energy], dtype=object) \
-            if is_object_array else rig_to_en(outer_energy, t0, z)
-
-    lis_isotope_interp = lin_log_interpolation(lis_isotope_tkin, lis_isotope_flux, input_energy)
-
-    un_norm_flux = np.zeros(len(input_energy))
-    for indexTDet in range(len(input_energy)):
-        oenk = outer_energy[indexTDet] if is_object_array else outer_energy
-        lis_isotope_flux_outer = lin_log_interpolation(lis_isotope_tkin, lis_isotope_flux, oenk)
-
-        for indexTLIS_isotope in range(len(lis_isotope_flux_outer)):
-            lis_isotope_energy = oenk[indexTLIS_isotope]
-            # Compute $\frac{J_{LIS}(T_j)}{\beta(T_j)}\cdot \exp(L_j)$
-            un_norm_flux[indexTDet] += (
-                    lis_isotope_flux_outer[indexTLIS_isotope] *
-                    boundary_distribution[indexTDet][indexTLIS_isotope] /
-                    beta_eval(lis_isotope_energy, t0)
-            )
-
-    # Compute $J_{mod}(T) = \frac{\beta(T)}{N_{ev}} \sum_{j=1}^{N_{ev}} \frac{J_{LIS}(T_j)}{\beta(T_j)}\cdot \exp(L_j)$
-    j_mod = [beta_eval(t, t0) / n_part * un_flux
-             for t, un_flux, n_part in zip(input_energy, un_norm_flux, n_generated_particle)]
-
-    if input_energy[0] > input_energy[-1]:
-        return input_energy[::-1], j_mod[::-1], lis_isotope_interp[::-1]
-    else:
-        return input_energy, j_mod, lis_isotope_interp
-
-
-def rig_to_en_flux_factor(t=1, r=1, mass_number=1., z=1.):
-    """
-    Convert rigidity to energy flux factor
-    :param t: energy
-    :param r: rigidity
-    :param mass_number: mass number
-    :param z: charge
-    :return: energy flux factor
-    """
-
-    mass_number, z = map(float, (mass_number, z))
-    t0 = 0.931494061
-    if np.fabs(z) == 1.:
-        t0 = 0.938272046
-    if mass_number == 0.:
-        t0 = 5.11e-4
-        mass_number = 1.
-    return z * z / (mass_number * mass_number) * r / (t + t0)
-
-
-def en_to_rig_flux(x_val, spectra, mass_number=1., z=1.):
-    """
-    Convert energy to rigidity flux
-    :param x_val: energy values
-    :param spectra: spectra values
-    :param mass_number: mass number
-    :param z: charge
-    :return: rigidity, flux
-    """
-
-    rigi = np.array([en_to_rig(T, mass_number, z) for T in x_val])
-    flux = np.array([flux * rig_to_en_flux_factor(t, r, mass_number, z) for t, r, flux in zip(x_val, rigi, spectra)])
-    return rigi, flux
-
-
 def g_low_comp(solar_phase: int, polarity: int, tilt: float) -> float:
     """
     Evaluate g_low parameter (for Kparallel).
@@ -376,39 +212,5 @@ def r_const_comp(solar_phase: int, polarity: int, tilt: float) -> float:
 
 
 def a_sum_comp(V0: float, B_earth: float, polarity: int, ):
-    return float(polarity) * (AU_M ** 2) * B_earth * 1e-9 / sqrt(
-        1. + ((omega * (1 - R_helio)) / (V0 / AU_KM)) * ((omega * (1 - R_helio)) / (V0 / AU_KM)))
-
-
-def eval_p0_drift_suppression_factor(regular: bool, solar_phase: int, tilt_angle_deg: float, ssn: float) -> float:
-    if regular:  # Regular drift
-        initial_val = 0.5
-        final_val = 4.0
-        if solar_phase == 0:
-            center_of_transition = 73.0
-            smoothness = 1.0
-        else:
-            center_of_transition = 65.0
-            smoothness = 5.0
-    else:  # NS drift
-        initial_val = 0.5
-        final_val = ssn / 50.
-        if solar_phase == 0:
-            center_of_transition = 68.0
-            smoothness = 1.0
-        else:
-            center_of_transition = 57.0
-            smoothness = 5.0
-
-    return smooth_transition(initial_val, final_val, center_of_transition, smoothness, tilt_angle_deg)
-
-def eval_high_rigidity_drift_suppression_plateau(solar_phase: int, tilt_angle_deg: float) -> float:
-    # Plateau time dependence
-    if solar_phase == 0:
-        center_of_transition = 35.0
-        smoothness = 5.0
-    else:
-        center_of_transition = 40.0
-        smoothness = 5.0
-
-    return 1.0 - smooth_transition(1.0, 0.0, center_of_transition, smoothness, tilt_angle_deg)
+    return float(float(polarity) * (AU_M ** 2) * B_earth * 1e-9 / jnp.sqrt(
+        1. + ((omega * (1 - R_helio)) / (V0 / AU_KM)) * ((omega * (1 - R_helio)) / (V0 / AU_KM))))
