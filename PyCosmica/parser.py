@@ -9,7 +9,6 @@ from PyCosmica.utils import eval_k0, g_low_comp, r_const_comp, a_sum_comp, eval_
 def format_to_dict(
         itr,
         dup_keys: tuple = (),
-        float_arr_keys: tuple = (),
         float_list_keys: tuple = (),
         str_keys: tuple = (),
         int_keys: tuple = (),
@@ -20,8 +19,6 @@ def format_to_dict(
             v = str(v).strip()
         elif k in int_keys:
             v = int(v)
-        elif k in float_arr_keys:
-            v = jnp.array(list(map(float, v.split(','))))
         elif k in float_list_keys:
             v = list(map(float, v.split(',')))
         else:

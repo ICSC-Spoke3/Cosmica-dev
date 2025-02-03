@@ -1,11 +1,8 @@
-import jax
-import jax.numpy as jnp
-import jax.lax as lax
 import numpy as np
-from jax import Array
+from jax import Array, lax, numpy as jnp
 from jax.typing import ArrayLike
 
-from PyCosmica.structures import SimulatedHeliosphere, HeliosphereBoundRadius, Position3D
+from PyCosmica.structures import HeliosphereBoundRadius, Position3D
 
 
 def boundary(th: ArrayLike, phi: ArrayLike, a: ArrayLike, b: ArrayLike) -> Array:
@@ -15,6 +12,7 @@ def boundary(th: ArrayLike, phi: ArrayLike, a: ArrayLike, b: ArrayLike) -> Array
     cos_alpha = x * -0.996 + y * 0.03 + z * 0.088
 
     return lax.select(cos_alpha > 0, b - (b - a) * cos_alpha ** 2, b)
+
 
 def radial_zone(bound: HeliosphereBoundRadius, N_regions: ArrayLike, pos: Position3D) -> Array:
     r, th, phi = pos.r, pos.th, pos.phi
@@ -37,8 +35,10 @@ def radial_zone(bound: HeliosphereBoundRadius, N_regions: ArrayLike, pos: Positi
 
     return zone
 
+
 def select_np(cond, tr, fs):
     return tr if cond else fs
+
 
 def boundary_scalar(th: float, phi: float, a: float, b: float) -> float:
     x = np.cos(phi) * np.sin(th)
@@ -47,6 +47,7 @@ def boundary_scalar(th: float, phi: float, a: float, b: float) -> float:
     cos_alpha = x * -0.996 + y * 0.03 + z * 0.088
 
     return select_np(cos_alpha > 0, b - (b - a) * cos_alpha ** 2, b)
+
 
 def radial_zone_scalar(bound: HeliosphereBoundRadius, N_regions: float, pos: Position3D) -> int:
     r, th, phi = pos.r, pos.th, pos.phi

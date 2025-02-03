@@ -1,22 +1,16 @@
-from typing import NamedTuple
-
 import jax
-import jax.lax as lax
-import jax.numpy as jnp
-from jax import Array
-from jax.typing import ArrayLike
+from jax import Array, lax, numpy as jnp
 from math import floor
 from tqdm import tqdm
 
-from PyCosmica.structures import QuasiParticle, HeliosphereBoundRadius, SimParametersJit, HeliosphereProperties, \
-    HeliosheatProperties, PropagationState, PropagationConstants
+from PyCosmica.structures import QuasiParticle, SimParametersJit, PropagationState, PropagationConstants
 from PyCosmica.utils import pytrees_stack, pytrees_flatten
 from PyCosmica.utils.heliosphere_model import radial_zone_scalar
 
 
 def propagation_kernel(state: PropagationState, const: PropagationConstants) -> PropagationState:
     # const_items = const._at_index(state.init_zone, state.rad_zone)
-    x, y, z, w, nxt = jax.random.split(state.rand, 5)
+    x, y, z, w, nxt = jax.random.split(state.key, 5)
     # data = state._asdict()
     # data['t_fly'] += 1
     # data['r'] = jax.random.uniform(state.rand)
@@ -27,7 +21,7 @@ def propagation_kernel(state: PropagationState, const: PropagationConstants) -> 
     # jax.debug.print('{}', data['r'])
     # data['rand'] = nxt
     state = state._replace(t_fly=state.t_fly+1)
-    state = state._replace(rand=nxt)
+    state = state._replace(key=nxt)
     return state
     return PropagationState(**data)
 
@@ -36,8 +30,8 @@ def propagation_condition(state: PropagationState, const: PropagationConstants) 
     return (state.rad_zone >= 0) & (const.time_out > state.t_fly)
 
 
-def propagation_loop(init_state: PropagationState, const: PropagationConstants, init_rand: Array) -> QuasiParticle:
-    init_state = init_state._replace(rand=init_rand)
+def propagation_loop(init_state: PropagationState, const: PropagationConstants, key: Array) -> QuasiParticle:
+    init_state = init_state._replace(key=key)
 
     def propagation_condition_const(state):
         return propagation_condition(state, const)
@@ -53,9 +47,9 @@ def propagation_loop(init_state: PropagationState, const: PropagationConstants, 
     return final_state._particle
 
 
-def propagation_source(state: PropagationState, const: PropagationConstants, init_rand: Array, rep: int):
+def propagation_source(state: PropagationState, const: PropagationConstants, key: Array, rep: int):
     print('compile')
-    keys = jax.random.split(init_rand, rep)
+    keys = jax.random.split(key, rep)
     return jax.vmap(propagation_loop, in_axes=(None, None, 0))(state, const, keys)
 
 
@@ -76,10 +70,9 @@ def propagation_vector(sim: SimParametersJit):
             print(f'{k}: {v}')
     print()
 
-    return
-
     const = PropagationConstants(
         time_out=10000,
+        particle=sim.ion_to_be_simulated,
         N_regions=hs.N_regions,
         R_boundary_effe=pytrees_stack(hs.R_boundary_effe),
         # R_boundary_real=pytrees_stack(hs.R_boundary_real),
@@ -98,7 +91,7 @@ def propagation_vector(sim: SimParametersJit):
             t_fly=0,
             rad_zone=radial_zone_scalar(b, hs.N_regions, p),
             init_zone=i,
-            rand=0,
+            key=0,
             **p._asdict(),
         ) for i, (p, b) in enumerate(zip(sim.initial_position, hs.R_boundary_effe))
     ])

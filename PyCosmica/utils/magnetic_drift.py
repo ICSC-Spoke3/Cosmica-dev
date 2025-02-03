@@ -1,5 +1,3 @@
-import jax.numpy as jnp
-
 from PyCosmica.utils.generic_math import smooth_transition
 
 

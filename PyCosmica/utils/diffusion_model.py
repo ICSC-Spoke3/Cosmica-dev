@@ -1,3 +1,5 @@
+import jax.numpy as jnp
+
 from PyCosmica.structures import *
 from PyCosmica.utils.heliosphere_model import boundary_scalar
 from PyCosmica.utils.generic_math import smooth_transition
