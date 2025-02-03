@@ -36,14 +36,15 @@ def format_to_dict(
 
 def compute_simulated_heliosphere(
         heliospheric_parameters: list[HeliosphericParameters],
+        N_initial_positions: int,
         N_regions: int
 ) -> SimulatedHeliosphere:
     bounds_real = []
     activity = []
-    for i, hp in enumerate(heliospheric_parameters):
+    for i in range(N_initial_positions):
         aver_tilt = sum(x.tilt_angle for x in heliospheric_parameters[i:i + N_regions]) / N_regions
         activity.append(aver_tilt >= tilt_L_max_activity_threshold)
-        bounds_real.append(hp.heliosphere_bound_radius)
+        bounds_real.append(heliospheric_parameters[i].heliosphere_bound_radius)
     return SimulatedHeliosphere(
         N_regions=N_regions,
         R_boundary_effe=[],
@@ -86,14 +87,14 @@ def heliosheat_parameters_to_properties(params: list[HeliosheatParameters]) -> l
 
 
 def rescale_heliosphere(heliosphere: SimulatedHeliosphere,
-                        a_drift: list[Position3D]) -> (SimulatedHeliosphere, list[Position3D]):
+                        positions: list[Position3D]) -> (SimulatedHeliosphere, list[Position3D]):
     bound_eff = []
-    ad_out = []
-    for bound, ad in zip(heliosphere.R_boundary_real, a_drift):
-        b, a = rescale_to_effective_heliosphere(bound, ad)
+    pos_out = []
+    for bound, pos in zip(heliosphere.R_boundary_real, positions):
+        b, a = rescale_to_effective_heliosphere(bound, pos)
         bound_eff.append(b)
-        ad_out.append(a)
-    return heliosphere._replace(R_boundary_effe=bound_eff), ad_out
+        pos_out.append(a)
+    return heliosphere._replace(R_boundary_effe=bound_eff), pos_out
 
 
 def parse(filename):
@@ -110,12 +111,15 @@ def parse(filename):
         dup_keys=('HeliosphericParameters', 'HeliosheatParameters'),
     )
 
+    json['N_r'] = len(json['SourcePos_r'])
+
     json['InitialPosition'] = list(
         map(Position3D.from_list, zip(json['SourcePos_r'], json['SourcePos_theta'], json['SourcePos_phi']))
     )
     json['HeliosphericParameters'] = list(map(HeliosphericParameters.from_list, json['HeliosphericParameters']))
     json['HeliosheatParameters'] = list(map(HeliosheatParameters.from_list, json['HeliosheatParameters']))
-    json['HeliosphereToBeSimulated'] = compute_simulated_heliosphere(json['HeliosphericParameters'], json['Nregions'])
+    json['HeliosphereToBeSimulated'] = compute_simulated_heliosphere(json['HeliosphericParameters'],
+                                                                     json['N_r'], json['Nregions'])
     json['HeliosphereProperties'] = heliospheric_parameters_to_properties(json['HeliosphericParameters'],
                                                                           json['Particle_Charge'])
     json['HeliosheatProperties'] = heliosheat_parameters_to_properties(json['HeliosheatParameters'])
@@ -127,7 +131,7 @@ def parse(filename):
         output_file_name=json['OutputFilename'],
         N_part=json['Npart'],
         N_T=len(json['Tcentr']),
-        N_initial_positions=len(json['SourcePos_r']),
+        N_initial_positions=json['N_r'],
         T_centr=json['Tcentr'],
         initial_position=json['InitialPosition'],
         ion_to_be_simulated=ParticleDescription(

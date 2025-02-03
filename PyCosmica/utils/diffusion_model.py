@@ -4,20 +4,20 @@ from PyCosmica.utils.generic_math import smooth_transition
 
 
 def rescale_to_effective_heliosphere(bound_real: HeliosphereBoundRadius,
-                                     a_drift: Position3D) -> (HeliosphereBoundRadius, Position3D):
+                                     pos: Position3D) -> (HeliosphereBoundRadius, Position3D):
     R_ts_nose = 100.
     R_ts_tail = bound_real.R_ts_tail * R_ts_nose / bound_real.R_ts_nose
     R_hp_nose = R_ts_nose + bound_real.R_hp_nose - bound_real.R_ts_nose
     R_hp_tail = R_ts_tail + bound_real.R_hp_tail - bound_real.R_ts_tail
 
-    HM_Rts_d = boundary_scalar(a_drift.th, a_drift.phi, R_ts_nose, R_ts_tail)
-    RW_Rts_d = boundary_scalar(a_drift.th, a_drift.phi, bound_real.R_ts_nose, bound_real.R_ts_tail)
+    HM_Rts_d = boundary_scalar(pos.th, pos.phi, R_ts_nose, R_ts_tail)
+    RW_Rts_d = boundary_scalar(pos.th, pos.phi, bound_real.R_ts_nose, bound_real.R_ts_tail)
 
-    part_r = (a_drift.r / RW_Rts_d * HM_Rts_d) if a_drift.r <= RW_Rts_d else HM_Rts_d + a_drift.r - RW_Rts_d
+    part_r = (pos.r / RW_Rts_d * HM_Rts_d) if pos.r <= RW_Rts_d else HM_Rts_d + pos.r - RW_Rts_d
 
     return (
         HeliosphereBoundRadius(R_ts_nose, R_ts_tail, R_hp_nose, R_hp_tail),
-        Position3D(part_r, a_drift.th, a_drift.phi)
+        Position3D(part_r, pos.th, pos.phi)
     )
 
 

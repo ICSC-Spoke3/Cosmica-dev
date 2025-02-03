@@ -1,5 +1,7 @@
 from typing import NamedTuple
+from jax import Array, lax, tree_map
 import jax.numpy as jnp
+from jax.typing import ArrayLike
 
 # Constants
 PI = 3.141592653589793  # Pi
@@ -141,6 +143,7 @@ class SimParameters(NamedTuple):
     def to_jit(self):
         return SimParametersJit.from_sim(self)
 
+
 class SimParametersJit(NamedTuple):
     N_part: int  # Number of events to simulate
     N_T: int  # Number of energy bins
@@ -160,9 +163,54 @@ class SimParametersJit(NamedTuple):
         params.pop('output_file_name')
         return cls(**params)
 
+
 class QuasiParticle(NamedTuple):
     r: float
     th: float
     phi: float
     R: float
     t_fly: float
+
+
+class PropagationState(NamedTuple):
+    r: ArrayLike
+    th: ArrayLike
+    phi: ArrayLike
+    R: ArrayLike
+    t_fly: ArrayLike
+    rad_zone: ArrayLike
+    init_zone: ArrayLike
+    rand: ArrayLike
+
+    @property
+    def _particle(self):
+        return QuasiParticle(self.r, self.th, self.phi, self.R, self.t_fly)
+
+
+class PropagationConstants(NamedTuple):
+    time_out: ArrayLike
+    N_regions: int  # Number of inner heliosphere regions
+    R_boundary_effe: HeliosphereBoundRadius  # Boundaries in effective heliosphere
+    # R_boundary_real: HeliosphereBoundRadius  # Real boundaries heliosphere
+    is_high_activity_period: ArrayLike
+    LIM: HeliosphereProperties
+    HS: HeliosheatProperties | tuple[HeliosheatProperties, HeliosphereProperties]
+
+    def _at_index(self, init_zone, rad_zone):
+        def init_index(v):
+            return lax.dynamic_index_in_dim(v, init_zone, -1, False)
+
+        def rad_index(v):
+            return lax.dynamic_index_in_dim(v, rad_zone, -1, False)
+
+        def initrad_index(v):
+            return lax.dynamic_index_in_dim(v, init_zone + rad_zone, -1, False)
+
+        return PropagationConstants(
+            time_out=self.time_out,
+            N_regions=self.N_regions,
+            R_boundary_effe=tree_map(init_index, self.R_boundary_effe),
+            is_high_activity_period=tree_map(init_index, self.is_high_activity_period),
+            LIM=tree_map(initrad_index, self.LIM),
+            HS=(tree_map(init_index, self.HS), tree_map(rad_index, self.HS)),
+        )

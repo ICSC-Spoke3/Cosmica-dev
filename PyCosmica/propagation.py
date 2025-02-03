@@ -9,64 +9,26 @@ from math import floor
 from tqdm import tqdm
 
 from PyCosmica.structures import QuasiParticle, HeliosphereBoundRadius, SimParametersJit, HeliosphereProperties, \
-    HeliosheatProperties
+    HeliosheatProperties, PropagationState, PropagationConstants
 from PyCosmica.utils import pytrees_stack, pytrees_flatten
 from PyCosmica.utils.heliosphere_model import radial_zone_scalar
 
 
-class PropagationConstants(NamedTuple):
-    time_out: ArrayLike
-    N_regions: int  # Number of inner heliosphere regions
-    R_boundary_effe: HeliosphereBoundRadius  # Boundaries in effective heliosphere
-    # R_boundary_real: HeliosphereBoundRadius  # Real boundaries heliosphere
-    is_high_activity_period: ArrayLike
-    LIM: HeliosphereProperties
-    HS: HeliosheatProperties
-
-    def _at_index(self, init_zone, rad_zone):
-        def read_init_index(v):
-            return lax.dynamic_index_in_dim(v, init_zone, -1, False)
-
-        def read_rad_index(v):
-            return lax.dynamic_index_in_dim(v, init_zone + rad_zone, -1, False)
-
-        return PropagationConstants(
-            time_out=self.time_out,
-            N_regions=self.N_regions,
-            R_boundary_effe=jax.tree_map(read_init_index, self.R_boundary_effe),
-            is_high_activity_period=jax.tree_map(read_init_index, self.is_high_activity_period),
-            LIM=jax.tree_map(read_rad_index, self.LIM),
-            HS=jax.tree_map(read_init_index, self.HS),
-        )
-
-
-class PropagationState(NamedTuple):
-    r: ArrayLike
-    th: ArrayLike
-    phi: ArrayLike
-    R: ArrayLike
-    t_fly: ArrayLike
-    rad_zone: ArrayLike
-    init_zone: ArrayLike
-    rand: ArrayLike
-
-    @property
-    def _particle(self):
-        return QuasiParticle(self.r, self.th, self.phi, self.R, self.t_fly)
-
-
 def propagation_kernel(state: PropagationState, const: PropagationConstants) -> PropagationState:
-    const_items = const._at_index(state.init_zone, state.rad_zone)
+    # const_items = const._at_index(state.init_zone, state.rad_zone)
     x, y, z, w, nxt = jax.random.split(state.rand, 5)
-    data = state._asdict()
-    data['t_fly'] += 1
-    data['r'] = jax.random.uniform(state.rand)
+    # data = state._asdict()
+    # data['t_fly'] += 1
+    # data['r'] = jax.random.uniform(state.rand)
     # jax.debug.print('{}', const_items.LIM)
     # data['r'] += const_items.LIM.K0_perp[0]
     # data['r'] += const.LIM.V0.at[state.init_zone + state.rad_zone].get()
     # data['r'] += jnp.stack(const.LIM.V0)[state.init_zone + state.rad_zone]
     # jax.debug.print('{}', data['r'])
-    data['rand'] = nxt
+    # data['rand'] = nxt
+    state = state._replace(t_fly=state.t_fly+1)
+    state = state._replace(rand=nxt)
+    return state
     return PropagationState(**data)
 
 
@@ -114,8 +76,10 @@ def propagation_vector(sim: SimParametersJit):
             print(f'{k}: {v}')
     print()
 
+    return
+
     const = PropagationConstants(
-        time_out=100000,
+        time_out=10000,
         N_regions=hs.N_regions,
         R_boundary_effe=pytrees_stack(hs.R_boundary_effe),
         # R_boundary_real=pytrees_stack(hs.R_boundary_real),
