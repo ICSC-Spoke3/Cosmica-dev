@@ -1,4 +1,4 @@
-import numpy as np
+from numpy import cos as _np_cos
 
 # Constants
 PI = 3.141592653589793  # Pi
@@ -20,7 +20,7 @@ VERBOSE_HIGH = 3
 
 # Magnetic field disturbance and threshold
 polar_zone = 30
-cos_polar_zone = np.cos(polar_zone * PI / 180.0)
+cos_polar_zone = _np_cos(polar_zone * PI / 180.0)
 delta_m = 2.000000e-05
 tilt_L_max_activity_threshold = 50
 
@@ -28,7 +28,12 @@ tilt_L_max_activity_threshold = 50
 omega = 3.03008e-6  # Solar angular velocity
 R_helio = 0.004633333  # Solar radius in AU
 
+rho_1 = 0.065  # Kpar/Kperp (ex Kp0)
+polar_enhance = 2  # 2 polar enhancement in polar region
+
+HPB_SupK = 50  # suppressive factor at barrier
+HP_width = 2  # amplitude in AU of suppressive factor at barrier
+HP_SupSmooth = 3e-2  # smoothness of suppressive factor at barrier
+
 # Maximum number of simulation regions
 n_max_regions = 335
-
-del np

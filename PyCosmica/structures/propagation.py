@@ -83,6 +83,18 @@ class PropagationState(NamedTuple):
         return QuasiParticle(self.r, self.th, self.phi, self.R, self.t_fly)
 
 
+class PropagationConstantsItem(NamedTuple):
+    time_out: ArrayLike
+    N_regions: ArrayLike  # Number of inner heliosphere regions
+    particle: ParticleDescription
+    R_boundary_effe_init: HeliosphereBoundRadius  # Boundaries in effective heliosphere
+    R_boundary_effe_rad: HeliosphereBoundRadius  # Boundaries in effective heliosphere
+    is_high_activity_period: ArrayLike
+    LIM: HeliosphereProperties
+    HS_init: HeliosheatProperties
+    HS_rad: HeliosheatProperties
+
+
 class PropagationConstants(NamedTuple):
     time_out: ArrayLike
     N_regions: ArrayLike  # Number of inner heliosphere regions
@@ -91,9 +103,9 @@ class PropagationConstants(NamedTuple):
     # R_boundary_real: HeliosphereBoundRadius  # Real boundaries heliosphere
     is_high_activity_period: ArrayLike
     LIM: HeliosphereProperties
-    HS: HeliosheatProperties | tuple[HeliosheatProperties, HeliosphereProperties]
+    HS: HeliosheatProperties
 
-    def _at_index(self, init_zone, rad_zone):
+    def _at_index(self, init_zone, rad_zone) -> PropagationConstantsItem:
         def init_index(v):
             return lax.dynamic_index_in_dim(v, init_zone, -1, False)
 
@@ -103,9 +115,14 @@ class PropagationConstants(NamedTuple):
         def initrad_index(v):
             return lax.dynamic_index_in_dim(v, init_zone + rad_zone, -1, False)
 
-        return self._replace(
-            R_boundary_effe=tree_map(init_index, self.R_boundary_effe),
+        return PropagationConstantsItem(
+            time_out=self.time_out,
+            N_regions=self.N_regions,
+            particle=self.particle,
+            R_boundary_effe_init=tree_map(init_index, self.R_boundary_effe),
+            R_boundary_effe_rad=tree_map(rad_index, self.R_boundary_effe),
             is_high_activity_period=tree_map(init_index, self.is_high_activity_period),
             LIM=tree_map(initrad_index, self.LIM),
-            HS=(tree_map(init_index, self.HS), tree_map(rad_index, self.HS)),
+            HS_init=tree_map(init_index, self.HS),
+            HS_rad=tree_map(rad_index, self.HS),
         )

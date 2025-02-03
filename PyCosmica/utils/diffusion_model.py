@@ -1,8 +1,9 @@
-import jax.numpy as jnp
+from jax import lax, Array, numpy as jnp
+from jax.typing import ArrayLike
 
 from PyCosmica.structures import *
-from PyCosmica.utils.heliosphere_model import boundary_scalar
 from PyCosmica.utils.generic_math import smooth_transition
+from PyCosmica.utils.heliosphere_model import boundary_scalar, boundary
 
 
 def rescale_to_effective_heliosphere(bound_real: HeliosphereBoundRadius,
@@ -216,3 +217,42 @@ def r_const_comp(solar_phase: int, polarity: int, tilt: float) -> float:
 def a_sum_comp(V0: float, B_earth: float, polarity: int, ):
     return float(float(polarity) * (AU_M ** 2) * B_earth * 1e-9 / jnp.sqrt(
         1. + ((omega * (1 - R_helio)) / (V0 / AU_KM)) * ((omega * (1 - R_helio)) / (V0 / AU_KM))))
+
+
+def diffusion_tensor_hmf_frame(state: PropagationState, const: PropagationConstantsItem, beta: ArrayLike,
+                               w: ArrayLike) -> tuple[Array, Array, Array, Array, Array, Array]:
+    K0_paral = lax.select(const.is_high_activity_period, *const.LIM.K0_paral)
+    K0_perp = lax.select(const.is_high_activity_period, *const.LIM.K0_perp)
+    gauss_var = lax.select(const.is_high_activity_period, *const.LIM.gauss_var)
+    g_low, r_const = const.LIM.g_low, const.LIM.r_const
+
+    c1 = beta / 3. * (state.R + g_low)
+    c2 = (r_const + state.r)
+
+    # Kpar = k0 * beta/3 * (P/1GV + glow)*( Rconst+r/1AU) with k0 gaussian distributed
+    dKpar_dr = (K0_paral + w * gauss_var * K0_paral) * c1
+    Kpar = dKpar_dr * c2
+
+    # Kperp1 = rho_1(theta)* k0 * beta/3 * (P/1GV + glow)*( Rconst+r/1AU)
+    dKperp_dr = rho_1 * K0_perp * c1 * lax.select(jnp.fabs(jnp.cos(state.th)) > cos_polar_zone, polar_enhance, 1)
+    Kperp = dKperp_dr * c2
+
+    # Kperp2 = rho_2 * k0 * beta/3 * (P/1GV + glow)*( Rconst+r/1AU) with rho_2=rho_1
+    dKperp2_dr = rho_1 * K0_perp * c1
+    Kperp2 = dKperp2_dr * c2
+
+    return Kpar, dKpar_dr, Kperp, dKperp_dr, Kperp2, dKperp2_dr
+
+
+def diffusion_coeff_heliosheat(state: PropagationState, const: PropagationConstantsItem, beta: ArrayLike) -> tuple[
+    Array, ArrayLike]:
+    R_hp_direction = boundary(state.th, state.phi, const.R_boundary_effe_rad.R_hp_nose,
+                              const.R_boundary_effe_rad.R_hp_tail)
+    coeff = lax.select(state.r > R_hp_direction,
+                       const.HS_rad.K0 * beta * state.R * smooth_transition(1, 1. / HPB_SupK,
+                                                                            R_hp_direction - HP_width / 2.,
+                                                                            HP_SupSmooth,
+                                                                            state.r),
+                       const.HS_rad.K0 * beta * state.R
+                       )
+    return coeff, 0.

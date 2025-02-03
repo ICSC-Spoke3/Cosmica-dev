@@ -3,27 +3,30 @@ from jax import Array, lax, numpy as jnp
 from math import floor
 from tqdm import tqdm
 
+from PyCosmica.sde import diffusion_tensor_symmetric
 from PyCosmica.structures import QuasiParticle, SimParametersJit, PropagationState, PropagationConstants
 from PyCosmica.utils import pytrees_stack, pytrees_flatten
 from PyCosmica.utils.heliosphere_model import radial_zone_scalar
 
 
 def propagation_kernel(state: PropagationState, const: PropagationConstants) -> PropagationState:
-    # const_items = const._at_index(state.init_zone, state.rad_zone)
-    x, y, z, w, nxt = jax.random.split(state.key, 5)
+    const_item = const._at_index(state.init_zone, state.rad_zone)
+    key, subkey = jax.random.split(state.key)
+    x, y, z, w = jax.random.normal(subkey, (4,))
+
+    tmp = diffusion_tensor_symmetric(state, const_item, w)
     # data = state._asdict()
     # data['t_fly'] += 1
     # data['r'] = jax.random.uniform(state.rand)
     # jax.debug.print('{}', const_items.LIM)
-    # data['r'] += const_items.LIM.K0_perp[0]
+    state = state._replace(r=state.r + const_item.LIM.K0_perp[0])
     # data['r'] += const.LIM.V0.at[state.init_zone + state.rad_zone].get()
     # data['r'] += jnp.stack(const.LIM.V0)[state.init_zone + state.rad_zone]
     # jax.debug.print('{}', data['r'])
     # data['rand'] = nxt
-    state = state._replace(t_fly=state.t_fly+1)
-    state = state._replace(key=nxt)
+    state = state._replace(t_fly=state.t_fly + 1)
+    state = state._replace(key=key)
     return state
-    return PropagationState(**data)
 
 
 def propagation_condition(state: PropagationState, const: PropagationConstants) -> bool:
@@ -71,7 +74,7 @@ def propagation_vector(sim: SimParametersJit):
     print()
 
     const = PropagationConstants(
-        time_out=10000,
+        time_out=100000,
         particle=sim.ion_to_be_simulated,
         N_regions=hs.N_regions,
         R_boundary_effe=pytrees_stack(hs.R_boundary_effe),
@@ -103,7 +106,7 @@ def propagation_vector(sim: SimParametersJit):
     # print(sources_map_jit.lower(base_states, const, keys[0], part_per_pos).as_text())
 
     out = []
-    for R, k in tqdm(zip(sim.T_centr[:5], keys), total=5):
+    for R, k in tqdm(zip(sim.T_centr[:10], keys), total=10):
         states = base_states._replace(R=jnp.full_like(base_states.R, R))
         res = sources_map_jit(states, const, k, part_per_pos)
         out.append(pytrees_flatten(res))

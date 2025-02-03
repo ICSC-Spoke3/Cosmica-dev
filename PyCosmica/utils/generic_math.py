@@ -1,4 +1,11 @@
-import jax.numpy as jnp
+from jax import Array, numpy as jnp
+from jax.typing import ArrayLike
+
+from PyCosmica.structures import ParticleDescription
+
+
+def beta_R(R: ArrayLike, p: ParticleDescription) -> Array:
+    return R / jnp.sqrt(R ** 2 + (p.T0 * p.A / p.Z) ** 2)
 
 
 def en_to_rig(t, mass_number=1., z=1.):

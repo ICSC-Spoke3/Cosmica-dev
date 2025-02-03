@@ -58,7 +58,7 @@ def heliospheric_parameters_to_properties(params: list[HeliosphericParameters], 
             gauss_var = (0, 0)
         else:
             K0_high = eval_k0(True, hp.polarity, Z, hp.solar_phase, hp.smooth_tilt, hp.NMCR, hp.ssn)
-            K0_low = eval_k0(True, hp.polarity, Z, hp.solar_phase, hp.smooth_tilt, hp.NMCR, hp.ssn)
+            K0_low = eval_k0(False, hp.polarity, Z, hp.solar_phase, hp.smooth_tilt, hp.NMCR, hp.ssn)
             K0_paral, K0_perp, gauss_var = [(K0_high[i], K0_low[i]) for i in range(3)]
         props.append(
             HeliosphereProperties(
