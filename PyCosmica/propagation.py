@@ -13,7 +13,7 @@ def propagation_kernel(state: PropagationState, const: PropagationConstants) -> 
     const_item = const._at_index(state.init_zone, state.rad_zone)
     key, subkey = jax.random.split(state.key)
     x, y, z, w = jax.random.normal(subkey, (4,))
-
+    # state = state._replace(r=x, th=x, phi=x, R=x)
     tmp = diffusion_tensor_symmetric(state, const_item, w)
     # data = state._asdict()
     # data['t_fly'] += 1

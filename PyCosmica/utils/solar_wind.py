@@ -42,17 +42,17 @@ def solar_wind_derivative(state: PropagationState, const: PropagationConstantsIt
     V0 = lax.select(state.rad_zone < const.N_regions, const.LIM.V0, const.HS_init.V0)
 
     def high_activity():
-        return 0
+        return 0.
 
     def low_activity():
         V_ang = lax.select(V_high / V0 <= 2., V_high / V0 - 1., 1.)
         cos_th, sin_th = jnp.cos(state.th), jnp.sin(state.th)
         return lax.select(jnp.abs(cos_th) > V_ang, # if
-                          0,
+                          0.,
                           lax.select(cos_th < 0, # elif
                                      V0 * sin_th,
                                      lax.select(cos_th == 0, # elif
-                                                0,
+                                                0.,
                                                 -V0 * sin_th))) #else
 
     return lax.cond(const.is_high_activity_period, high_activity, low_activity)
