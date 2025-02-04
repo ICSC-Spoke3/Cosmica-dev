@@ -1,9 +1,8 @@
-from PyCosmica.structures import delta_m, R_helio, omega, PropagationState
+from jax import Array, numpy as jnp
 from jax.typing import ArrayLike
-from jax import Array
 
-import jax
-import jax.numpy as jnp
+from PyCosmica.structures import delta_m, R_helio, omega, PropagationState
+
 
 # ----------------------------------------------------------------
 #  B-field functions
