@@ -1,5 +1,5 @@
 from PyCosmica.structures import delta_m, R_helio, omega, PropagationState, PropagationConstantsItem
-from PyCosmica.sde import Tensor3D
+from PyCosmica.sde import Tensor3D, DiffusionTensor
 from PyCosmica.utils import solar_wind_speeed
 from jax.typing import ArrayLike
 from jax import Array, lax, numpy as jnp
@@ -141,29 +141,26 @@ def eval_DcosZeta_dtheta(sign_asun: ArrayLike, pol_sign: ArrayLike,
 
 def SquareRoot_DiffusionTerm(
     state: PropagationState, consts:PropagationConstantsItem,
-    KSym_rr: ArrayLike, KSym_tr: ArrayLike, KSym_tt: ArrayLike,
-    KSym_pr: ArrayLike, KSym_pt: ArrayLike, KSym_pp: ArrayLike) -> Array:
+    conv_diff: DiffusionTensor) -> Array:
 
-    rr = jnp.sqrt(2.0 * KSym_rr)
+    rr = jnp.sqrt(2.0 * conv_diff.rr)
     
     def in_heliosphere():
         sintheta = jnp.sin(state.th)
-        KSym_tr_ = 2.0 * KSym_tr / state.r
-        KSym_tt_ = 2.0 * KSym_tt / (state.r * state.r)
-        KSym_pr_ = 2.0 * KSym_pr / (state.r * sintheta)
-        KSym_pt_ = 2.0 * KSym_pt / (state.r * state.r * sintheta)
-        KSym_pp_ = 2.0 * KSym_pp / (state.r * state.r * sintheta * sintheta)
+        KSym_tr = 2.0 * conv_diff.tr / state.r
+        KSym_tt = 2.0 * conv_diff.tt / (state.r * state.r)
+        KSym_pr = 2.0 * conv_diff.pr / (state.r * sintheta)
+        KSym_pt = 2.0 * conv_diff.pt / (state.r * state.r * sintheta)
+        KSym_pp = 2.0 * conv_diff.pp / (state.r * state.r * sintheta * sintheta)
 
-        tr = KSym_tr_ / rr
-        pr = KSym_pr_ / rr
-        tt = jnp.sqrt(KSym_tt_ - tr * tr)
-        pt = 1.0 / tt * (KSym_pt_ - tr * pr)
-        pp = jnp.sqrt(KSym_pp_ - pr * pr - pt * pt)
-
+        tr = KSym_tr / rr
+        pr = KSym_pr / rr
+        tt = jnp.sqrt(KSym_tt - tr * tr)
+        pt = 1.0 / tt * (KSym_pt - tr * pr)
+        pp = jnp.sqrt(KSym_pp - pr * pr - pt * pt)
 
         return Tensor3D(rr, tr, tt, pr, pt, pp)
         
-
     def out_heliosphere():
         return Tensor3D(rr, 0.0, 0.0, 0.0, 0.0, 0.0)
    
@@ -171,32 +168,31 @@ def SquareRoot_DiffusionTerm(
 
 
 
-def AdvectiveTerm_radius(v_drift_rad: ArrayLike, K_rr: ArrayLike, K_tr: ArrayLike,
-                            DKrr_dr: ArrayLike, DKtr_dt: ArrayLike,
-                            state: PropagationState, consts: PropagationConstantsItem) -> Array:
+def AdvectiveTerm_radius(v_drift_rad: ArrayLike,
+                        conv_diff: DiffusionTensor,
+                        state: PropagationState, consts: PropagationConstantsItem) -> Array:
     
     AdvTerm += -solar_wind_speeed(state.init_zone, state.rad_zone, state.r, state.th, state.phi)
     
     def in_heliosphere():
         tantheta = jnp.tan(state.th)
-        AdvTerm += 2.0 * K_rr / state.r + DKrr_dr + K_tr / (state.r * tantheta) + DKtr_dt / state.r - v_drift_rad
+        AdvTerm += 2.0 * conv_diff.rr / state.r + conv_diff.DKrr_dr + conv_diff.tr / (state.r * tantheta) + DKtr_dt / state.r - v_drift_rad
         return AdvTerm
     
     def out_heliosphere():
-        AdvTerm += 2.0 * K_rr / state.r + DKrr_dr
+        AdvTerm += 2.0 * conv_diff.rr / state.r + conv_diff.DKrr_dr
         return AdvTerm
     
     return lax.cond(state.rad_zone < consts.N_regions, in_heliosphere, out_heliosphere)
 
 
 
-def AdvectiveTerm_theta (v_drift_th: ArrayLike, K_tr: ArrayLike, K_tt: ArrayLike, 
-                        DKrt_dr: ArrayLike, DKtt_dt: ArrayLike,
-                        state: PropagationState, consts: PropagationConstantsItem) -> Array:
+def AdvectiveTerm_theta (state: PropagationState, conv_diff: DiffusionTensor,
+                         consts: PropagationConstantsItem, v_drift_th: ArrayLike) -> Array:
     def in_heliosphere():
         r2 = state.r * state.r
         tantheta = jnp.tan(state.th)
-        AdvTerm = K_tr / r2 + K_tt / (tantheta * r2) + DKrt_dr / state.r + DKtt_dt / r2 - v_drift_th / state.r
+        AdvTerm = conv_diff.tr / r2 + conv_diff.tt / (tantheta * r2) + conv_diff.DKrt_dr / state.r + conv_diff.DKtt_dt / r2 - v_drift_th / state.r
         return AdvTerm
     
     def out_heliosphere():
@@ -206,13 +202,12 @@ def AdvectiveTerm_theta (v_drift_th: ArrayLike, K_tr: ArrayLike, K_tt: ArrayLike
 
 
 
-def AdvectiveTerm_phi (v_drift_phi: ArrayLike, K_pr: ArrayLike, DKrp_dr: ArrayLike, 
-                       DKtp_dt: ArrayLike, state: PropagationState, 
-                       consts: PropagationConstantsItem) -> Array:
+def AdvectiveTerm_phi (state: PropagationState,  conv_diff: DiffusionTensor, 
+                       consts: PropagationConstantsItem, v_drift_phi: ArrayLike) -> Array:
     def in_heliosphere():
         sintheta = jnp.sin(state.th)
         r2 = state.r * state.r
-        AdvTerm = K_pr / (r2 * sintheta) + DKrp_dr / (state.r * sintheta) + DKtp_dt / (r2 * sintheta) + (-v_drift_phi / (state.r * sintheta))
+        AdvTerm = conv_diff.pr / (r2 * sintheta) + conv_diff.DKrp_dr / (state.r * sintheta) + conv_diff.DKtp_dt / (r2 * sintheta) + (-v_drift_phi / (state.r * sintheta))
         return AdvTerm
     
     def out_heliosphere():
