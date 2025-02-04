@@ -1,9 +1,8 @@
-from PyCosmica.structures import delta_m, R_helio, omega, PropagationState
+from PyCosmica.structures import delta_m, R_helio, omega, PropagationState, PropagationConstantsItem
+from PyCosmica.sde import Tensor3D
 from jax.typing import ArrayLike
-from jax import Array
+from jax import Array, lax, numpy as jnp
 
-import jax
-import jax.numpy as jnp
 
 # ----------------------------------------------------------------
 #  B-field functions
@@ -134,3 +133,38 @@ def eval_DcosZeta_dtheta(sign_asun: ArrayLike, pol_sign: ArrayLike,
     num = ((-2.0 * DelDirac) * sqrtBR2BT2
                  - pol_sign * dsqrtBR2BT2_dth)
     return sign_asun * (num / (sqrtBR2BT2 * sqrtBR2BT2))
+
+# ----------------------------------------------------------------
+#  Diffusion tensor functions
+# ----------------------------------------------------------------
+
+def SquareRoot_DiffusionTerm(
+    state: PropagationState, consts:PropagationConstantsItem,
+    KSym_rr: ArrayLike, KSym_tr: ArrayLike, KSym_tt: ArrayLike,
+    KSym_pr: ArrayLike, KSym_pt: ArrayLike, KSym_pp: ArrayLike) -> Array:
+
+    rr = jnp.sqrt(2.0 * KSym_rr)
+    
+    def in_heliosphere():
+        sintheta = jnp.sin(state.th)
+        KSym_tr_ = 2.0 * KSym_tr / state.r
+        KSym_tt_ = 2.0 * KSym_tt / (state.r * state.r)
+        KSym_pr_ = 2.0 * KSym_pr / (state.r * sintheta)
+        KSym_pt_ = 2.0 * KSym_pt / (state.r * state.r * sintheta)
+        KSym_pp_ = 2.0 * KSym_pp / (state.r * state.r * sintheta * sintheta)
+
+        tr = KSym_tr_ / rr
+        pr = KSym_pr_ / rr
+        tt = jnp.sqrt(KSym_tt_ - tr * tr)
+        pt = 1.0 / tt * (KSym_pt_ - tr * pr)
+        pp = jnp.sqrt(KSym_pp_ - pr * pr - pt * pt)
+
+
+        return Tensor3D(rr, tr, tt, pr, pt, pp)
+        
+
+    def out_heliosphere():
+        return Tensor3D(rr, 0.0, 0.0, 0.0, 0.0, 0.0)
+   
+    return lax.cond(state.rad_zone < consts.N_regions, in_heliosphere, out_heliosphere)
+

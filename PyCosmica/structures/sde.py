@@ -16,3 +16,13 @@ class DiffusionTensor(NamedTuple):
     DKtt_dt: ArrayLike
     DKrp_dr: ArrayLike
     DKtp_dt: ArrayLike
+    
+
+class Tensor3D (NamedTuple):
+    rr: ArrayLike  
+    tr: ArrayLike
+    tt: ArrayLike
+    pr: ArrayLike
+    pt: ArrayLike
+    pp: ArrayLike
+
