@@ -1,16 +1,11 @@
 from jax import Array, lax, numpy as jnp
 
-from PyCosmica.structures import PropagationState, DiffusionTensor, PropagationConstantsItem, cos_polar_zone, PI
-from PyCosmica.utils import beta_R
-from PyCosmica.utils.diffusion_model import diffusion_tensor_hmf_frame, diffusion_coeff_heliosheat
-from PyCosmica.utils.sde_func import eval_Bth, eval_Bph, eval_HMF_Mag, eval_sinZeta, eval_cosZeta, eval_sinPsi, \
-    eval_cosPsi, eval_sqrtBR2BT2, eval_dBph_dr, eval_dsqrtBR2BT2_dr, eval_dBth_dth, eval_dsqrtBR2BT2_dth, eval_dBth_dr, \
-    eval_dBMag_dr, eval_DcosZeta_dr, eval_DcosZeta_dtheta, eval_DcosPsi_dr, eval_DsinPsi_dr, eval_dBph_dth, \
-    eval_dBMag_dth, eval_DsinZeta_dr, eval_DsinZeta_dtheta, eval_DcosPsi_dtheta, eval_DsinPsi_dtheta
-from PyCosmica.utils.solar_wind import solar_wind_speeed, solar_wind_derivative
+from PyCosmica.structures import *
+from PyCosmica.utils import *
 
 
-def diffusion_tensor_symmetric(state: PropagationState, const: PropagationConstantsItem, w: Array) -> DiffusionTensor:
+def diffusion_tensor_symmetric(state: PropagationState, const: PropagationConstantsItem,
+                               w: Array) -> ConvectionDiffusionTensor:
     def in_heliosphere():
         Kpar, dKpar_dr, Kperp, dKperp_dr, Kperp2, dKperp2_dr = diffusion_tensor_hmf_frame(
             state, const, beta_R(state.R, const.particle), w)
@@ -76,7 +71,7 @@ def diffusion_tensor_symmetric(state: PropagationState, const: PropagationConsta
                                                 del_dirac)
             D_sin_psi_dth = eval_DsinPsi_dtheta(sign_A_sun, HMF_mag, B_ph, dB_ph_dth, dB_mag_dth)
 
-            return DiffusionTensor(
+            return ConvectionDiffusionTensor(
                 rr, tr, tt, pr, pt, pp,
                 2. * cos_zeta * (
                         cos_psi ** 2 * Kpar + Kperp2 * sin_psi ** 2) * D_cos_zeta_dr + sin_zeta ** 2 * dKperp_dr + cos_zeta ** 2 * (
@@ -101,7 +96,7 @@ def diffusion_tensor_symmetric(state: PropagationState, const: PropagationConsta
             )
 
         def is_not_polar():
-            return DiffusionTensor(
+            return ConvectionDiffusionTensor(
                 rr, tr, tt, pr, pt, pp,
                 2. * cos_zeta * (cos_psi ** 2 * Kpar + Kperp2 * sin_psi ** 2) * D_cos_zeta_dr + cos_zeta ** 2 * (
                         2. * cos_psi * Kpar * D_cos_psi_dr + cos_psi ** 2 * dKpar_dr + sin_psi * (
@@ -110,8 +105,8 @@ def diffusion_tensor_symmetric(state: PropagationState, const: PropagationConsta
                 0.,
                 0.,
                 cos_zeta * (Kperp2 - Kpar) * sin_psi * D_cos_psi_dr + cos_psi * (
-                            Kperp2 - Kpar) * sin_psi * D_cos_zeta_dr + cos_psi * cos_zeta * sin_psi * (
-                            dKperp2_dr - dKpar_dr) + cos_psi * cos_zeta * (Kperp2 - Kpar) * D_sin_psi_dr,
+                        Kperp2 - Kpar) * sin_psi * D_cos_zeta_dr + cos_psi * cos_zeta * sin_psi * (
+                        dKperp2_dr - dKpar_dr) + cos_psi * cos_zeta * (Kperp2 - Kpar) * D_sin_psi_dr,
                 0.,
             )
 
@@ -119,6 +114,6 @@ def diffusion_tensor_symmetric(state: PropagationState, const: PropagationConsta
 
     def in_heliosheat():
         rr, dKrr_dr = diffusion_coeff_heliosheat(state, const, beta_R(state.R, const.particle))
-        return DiffusionTensor(rr, 0., 0., 0., 0., 0., dKrr_dr, 0., 0., 0., 0., 0.)
+        return ConvectionDiffusionTensor(rr, 0., 0., 0., 0., 0., dKrr_dr, 0., 0., 0., 0., 0.)
 
     return lax.cond(state.rad_zone < const.N_regions, in_heliosphere, in_heliosheat)

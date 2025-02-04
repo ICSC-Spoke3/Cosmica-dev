@@ -5,15 +5,14 @@ from tqdm import tqdm
 
 from PyCosmica.sde import diffusion_tensor_symmetric
 from PyCosmica.structures import QuasiParticle, SimParametersJit, PropagationState, PropagationConstants
-from PyCosmica.utils import pytrees_stack, pytrees_flatten
-from PyCosmica.utils.heliosphere_model import radial_zone_scalar
+from PyCosmica.utils import pytrees_stack, pytrees_flatten, radial_zone_scalar
 
 
 def propagation_kernel(state: PropagationState, const: PropagationConstants) -> PropagationState:
     const_item = const._at_index(state.init_zone, state.rad_zone)
     key, subkey = jax.random.split(state.key)
     x, y, z, w = jax.random.normal(subkey, (4,))
-    # state = state._replace(r=x, th=x, phi=x, R=x)
+    state = state._replace(r=x, th=x, phi=x, R=x)
     tmp = diffusion_tensor_symmetric(state, const_item, w)
     # data = state._asdict()
     # data['t_fly'] += 1
@@ -103,7 +102,8 @@ def propagation_vector(sim: SimParametersJit):
     sources_map_jit = jax.jit(sources_map, static_argnames='rep')
 
     print(jax.make_jaxpr(sources_map, static_argnums=3)(base_states, const, keys[0], part_per_pos))
-    # print(sources_map_jit.lower(base_states, const, keys[0], part_per_pos).as_text())
+    with open('tmp.stablehlo', 'w') as f:
+        f.write(sources_map_jit.lower(base_states, const, keys[0], part_per_pos).as_text())
 
     out = []
     for R, k in tqdm(zip(sim.T_centr[:10], keys), total=10):
