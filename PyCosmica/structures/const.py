@@ -11,7 +11,7 @@ GeV = 1e9  # GeV -> eV
 C = 3e8  # Light Velocity in m/s
 theta_north_limit = 0.000010  # Max latitude at north pole
 theta_south_limit = PI - theta_north_limit  # Max latitude at south pole
-R_mirror = 0.3  # [AU] Internal heliosphere bounduary - mirror radius
+R_mirror = 0.3  # [AU] Internal heliosphere boundary - mirror radius
 
 # Verbose Levels
 VERBOSE_LOW = 1
@@ -34,6 +34,10 @@ polar_enhance = 2  # 2 polar enhancement in polar region
 HPB_SupK = 50  # suppressive factor at barrier
 HP_width = 2  # amplitude in AU of suppressive factor at barrier
 HP_SupSmooth = 3e-2  # smoothness of suppressive factor at barrier
+
+s_tl = 2.7
+L_tl = 0.09  # smoothing distance for computing the decrease of solar win =
+V_high = 760. / AU_KM
 
 # Maximum number of simulation regions
 n_max_regions = 335

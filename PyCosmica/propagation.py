@@ -19,7 +19,7 @@ def propagation_kernel(state: PropagationState, const: PropagationConstants) -> 
     # data['t_fly'] += 1
     # data['r'] = jax.random.uniform(state.rand)
     # jax.debug.print('{}', const_items.LIM)
-    state = state._replace(r=state.r + const_item.LIM.K0_perp[0])
+    # state = state._replace(r=state.r + const_item.LIM.K0_perp[0])
     # data['r'] += const.LIM.V0.at[state.init_zone + state.rad_zone].get()
     # data['r'] += jnp.stack(const.LIM.V0)[state.init_zone + state.rad_zone]
     # jax.debug.print('{}', data['r'])
@@ -78,7 +78,7 @@ def propagation_vector(sim: SimParametersJit):
         particle=sim.ion_to_be_simulated,
         N_regions=hs.N_regions,
         R_boundary_effe=pytrees_stack(hs.R_boundary_effe),
-        # R_boundary_real=pytrees_stack(hs.R_boundary_real),
+        R_boundary_real=pytrees_stack(hs.R_boundary_real),
         is_high_activity_period=pytrees_stack(hs.is_high_activity_period),
         LIM=pytrees_stack(sim.prop_medium),
         HS=pytrees_stack(sim.prop_heliosheat),
@@ -102,7 +102,7 @@ def propagation_vector(sim: SimParametersJit):
     sources_map = jax.vmap(propagation_source, in_axes=(0, None, 0, None))
     sources_map_jit = jax.jit(sources_map, static_argnames='rep')
 
-    # print(jax.make_jaxpr(sources_map, static_argnums=3)(base_states, const, keys[0], part_per_pos))
+    print(jax.make_jaxpr(sources_map, static_argnums=3)(base_states, const, keys[0], part_per_pos))
     # print(sources_map_jit.lower(base_states, const, keys[0], part_per_pos).as_text())
 
     out = []
