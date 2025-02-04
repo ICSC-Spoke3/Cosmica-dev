@@ -1,5 +1,6 @@
 from PyCosmica.structures import delta_m, R_helio, omega, PropagationState, PropagationConstantsItem
 from PyCosmica.sde import Tensor3D
+from PyCosmica.utils import solar_wind_speeed
 from jax.typing import ArrayLike
 from jax import Array, lax, numpy as jnp
 
@@ -168,3 +169,53 @@ def SquareRoot_DiffusionTerm(
    
     return lax.cond(state.rad_zone < consts.N_regions, in_heliosphere, out_heliosphere)
 
+
+
+def AdvectiveTerm_radius(v_drift_rad: ArrayLike, K_rr: ArrayLike, K_tr: ArrayLike,
+                            DKrr_dr: ArrayLike, DKtr_dt: ArrayLike,
+                            state: PropagationState, consts: PropagationConstantsItem) -> Array:
+    
+    AdvTerm += -solar_wind_speeed(state.init_zone, state.rad_zone, state.r, state.th, state.phi)
+    
+    def in_heliosphere():
+        tantheta = jnp.tan(state.th)
+        AdvTerm += 2.0 * K_rr / state.r + DKrr_dr + K_tr / (state.r * tantheta) + DKtr_dt / state.r - v_drift_rad
+        return AdvTerm
+    
+    def out_heliosphere():
+        AdvTerm += 2.0 * K_rr / state.r + DKrr_dr
+        return AdvTerm
+    
+    return lax.cond(state.rad_zone < consts.N_regions, in_heliosphere, out_heliosphere)
+
+
+
+def AdvectiveTerm_theta (v_drift_th: ArrayLike, K_tr: ArrayLike, K_tt: ArrayLike, 
+                        DKrt_dr: ArrayLike, DKtt_dt: ArrayLike,
+                        state: PropagationState, consts: PropagationConstantsItem) -> Array:
+    def in_heliosphere():
+        r2 = state.r * state.r
+        tantheta = jnp.tan(state.th)
+        AdvTerm = K_tr / r2 + K_tt / (tantheta * r2) + DKrt_dr / state.r + DKtt_dt / r2 - v_drift_th / state.r
+        return AdvTerm
+    
+    def out_heliosphere():
+        return 0.0
+    
+    return lax.cond(state.rad_zone < consts.N_regions, in_heliosphere, out_heliosphere)
+
+
+
+def AdvectiveTerm_phi (v_drift_phi: ArrayLike, K_pr: ArrayLike, DKrp_dr: ArrayLike, 
+                       DKtp_dt: ArrayLike, state: PropagationState, 
+                       consts: PropagationConstantsItem) -> Array:
+    def in_heliosphere():
+        sintheta = jnp.sin(state.th)
+        r2 = state.r * state.r
+        AdvTerm = K_pr / (r2 * sintheta) + DKrp_dr / (state.r * sintheta) + DKtp_dt / (r2 * sintheta) + (-v_drift_phi / (state.r * sintheta))
+        return AdvTerm
+    
+    def out_heliosphere():
+        return 0.0
+    
+    return lax.cond(state.rad_zone < consts.N_regions, in_heliosphere, out_heliosphere)
