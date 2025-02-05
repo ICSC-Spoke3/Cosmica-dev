@@ -1,8 +1,10 @@
 from jax import Array, lax, numpy as jnp
 from jax.typing import ArrayLike
 
-from PyCosmica.structures import delta_m, R_helio, omega, PropagationState, PropagationConstantsItem, \
-    ConvectionDiffusionTensor, DiffusionTensor
+from PyCosmica.structures import delta_m, R_helio, omega, Omega, rhelio, \
+    high_rigi_suppression_smoothness, high_rigi_suppression_trans_point, \
+    PropagationState, PropagationConstantsItem, \
+    ConvectionDiffusionTensor, DiffusionTensor, vect3D
 from PyCosmica.utils import solar_wind_speeed
 
 
@@ -230,3 +232,134 @@ def advective_term_phi(state: PropagationState, consts: PropagationConstantsItem
         return 0.
 
     return lax.cond(state.rad_zone < consts.N_regions, in_heliosphere, out_heliosphere)
+
+
+
+
+# -- Helper functions for the drift model --
+def eval_HighRigiSupp(state: PropagationState, consts: PropagationConstantsItem) -> Array:
+    lim_val = consts.LIM[state.rad_zone + state.init_zone]
+    return lim_val.plateau + (1.0 - lim_val.plateau) / (
+        1.0 + jnp.exp(high_rigi_suppression_smoothness * (state.R - high_rigi_suppression_trans_point))
+    )
+
+
+def eval_E_drift(state: PropagationState, consts: PropagationConstantsItem, 
+                    IsPolarRegion: ArrayLike, Vsw: ArrayLike) -> Array:
+    def is_polar():
+        return (delta_m ** 2 * state.r ** 2 * Vsw ** 2 +
+                omega ** 2 * consts.R_h ** 2 * (state.r - R_helio) ** 2 * jnp.sin(state.th) ** 4 +
+                R_helio ** 2 * Vsw ** 2 * jnp.sin(state.th) ** 2)
+    
+    def is_not_polar():
+        return omega ** 2 * (state.r - R_helio) ** 2 * jnp.sin(state.th) ** 2 + Vsw ** 2
+    
+    return lax.cond(IsPolarRegion, is_polar, is_not_polar)
+
+def eval_C_drift_reg(state: PropagationState, consts: PropagationConstantsItem, 
+                        IsPolarRegion: ArrayLike, Asun: ArrayLike, Ka: ArrayLike, fth: ArrayLike, E: ArrayLike) -> Array:
+    
+    def compute_C():
+        def is_polar():
+            return fth * jnp.sin(state.th) * Ka * state.r * rhelio / (Asun * E**2)
+        
+        def is_not_polar():
+            return Omega * fth * Ka * state.r / (Asun * E**2)
+        
+        return lax.cond(IsPolarRegion, is_polar, is_not_polar)
+    
+    def compute_reduction():
+        lim_val = consts.LIM[state.rad_zone + state.init_zone]
+        # TODO:  Check P0d value from LIM
+        return state.R**2 / (state.R**2 + lim_val.P0d**2)
+        
+    return compute_C() * compute_reduction()
+
+
+def eval_C_drift_ns(state: PropagationState, consts: PropagationConstantsItem, 
+                        IsPolarRegion: ArrayLike, Asun: ArrayLike, Ka: ArrayLike, 
+                        fth: ArrayLike, E: ArrayLike, Dftheta_dtheta:ArrayLike, Vsw: ArrayLike) -> Array:
+    def compute_C():
+        def is_polar():
+            return Vsw * Dftheta_dtheta * jnp.sin(state.th)**2 * Ka * state.r * rhelio**2 / (Asun * E)
+        
+        def is_not_polar():
+            return Vsw * Dftheta_dtheta * Ka * state.r / (Asun * E)
+        
+        return lax.cond(IsPolarRegion, is_polar, is_not_polar)
+
+    def compute_reduction():
+        lim_val = consts.LIM[state.rad_zone + state.init_zone]
+        # TODO:  Check P0dNS value from LIM
+        return state.R**2 / (state.R**2 + lim_val.P0dNS**2)
+
+    return compute_C() * compute_reduction()
+
+
+def drift_pm89(state: PropagationState, consts: PropagationConstantsItem,
+                IsPolarRegion: ArrayLike, Asun: ArrayLike, Ka: ArrayLike, fth: ArrayLike, Dftheta_dtheta: ArrayLike,
+                Vsw: ArrayLike, dV_dth: ArrayLike, HighRigiSupp: ArrayLike) -> Array:
+    
+    
+    def apply_high_rigi_supp(r_, th_, phi_):
+        return r_ * HighRigiSupp, th_ * HighRigiSupp, phi_ * HighRigiSupp
+
+    def is_polar():
+        # Polar region
+        E = eval_E_drift(state, consts, 1., Vsw)
+        C = eval_C_drift_reg(state, consts, 1., Asun, Ka, fth, E)
+        # Regular drift contribution
+        v_r = - C * Omega * rhelio * 2.0 * (state.r - rhelio) * jnp.sin(state.th) * (
+                (2.0 * (delta_m**2) * state.r**2 + rhelio**2 * jnp.sin(state.th)**2) * Vsw**3 * jnp.cos(state.th)
+                - 0.5 * (delta_m**2 * state.r**2 * Vsw**2
+                         - Omega**2 * rhelio**2 * (state.r - rhelio)**2 * jnp.sin(state.th)**4
+                         + rhelio**2 * Vsw**2 * jnp.sin(state.th)**2)
+                  * jnp.sin(state.th) * dV_dth )
+        v_th = - C * Omega * rhelio * Vsw * jnp.sin(state.th)**2 * (
+                2.0 * state.r * (state.r - rhelio) * (delta_m**2 * state.r * Vsw**2 + Omega**2 * rhelio**2 * (state.r - rhelio) * jnp.sin(state.th)**4)
+                - (4.0 * state.r - 3.0 * rhelio) * E )
+        v_phi = 2.0 * C * Vsw * (
+                - (delta_m**2) * state.r**2 * (delta_m * state.r + rhelio * jnp.cos(state.th)) * Vsw**3
+                + 2.0 * delta_m * state.r * E * Vsw
+                - Omega**2 * rhelio**2 * (state.r - rhelio) * jnp.sin(state.th)**4 * (
+                    delta_m * state.r**2 * Vsw - rhelio * (state.r - rhelio) * Vsw * jnp.cos(state.th)
+                    + rhelio * (state.r - rhelio) * jnp.sin(state.th) * dV_dth ) )
+
+        # ns contribution
+        C = eval_C_drift_ns(state, consts, 1., Asun, Ka, fth, E, Dftheta_dtheta, Vsw)
+        v_r += - C * Omega * jnp.sin(state.th) * (state.r - rhelio)
+        v_th = - C * Vsw * jnp.sin(state.th) * (
+                  2.0 * Omega**2 * state.r * (state.r - rhelio)**2 * jnp.sin(state.th)**2
+                  - (4.0 * state.r - 3.0 * rhelio) * E )
+        v_phi += - C * Vsw
+
+        return vect3D(apply_high_rigi_supp(v_r, v_th, v_phi))
+    
+    def is_not_polar():
+        # Not Polar region (assume B_th = 0)
+        E = eval_E_drift(state, consts, 0., Vsw)
+        # Regular drift contribution
+        C = eval_C_drift_reg(state, consts, 1., Asun, Ka, fth, E)
+        v_r = - 2.0 * C * (state.r - rhelio) * (
+                0.5 * (Omega**2 * (state.r - rhelio)**2 * jnp.sin(state.th)**2 - Vsw**2) * jnp.sin(state.th) * dV_dth
+                + Vsw**3 * jnp.cos(state.th) )
+        v_phi = 2.0 * C * Vsw * Omega * (state.r - rhelio)**2 * jnp.sin(state.th) * (
+                    Vsw * jnp.cos(state.th) - jnp.sin(state.th) * dV_dth )
+        
+        # ns contribution
+        C = eval_C_drift_ns(state, consts, 1., Asun, Ka, fth, E, Dftheta_dtheta, Vsw)
+        v_r += - C * Omega * (state.r - rhelio) * jnp.sin(state.th)
+        v_phi += - C * Vsw
+        v_th = 0.0 
+
+        return vect3D(apply_high_rigi_supp(v_r, v_th, v_phi)) 
+
+    return lax.cond(IsPolarRegion, is_polar, is_not_polar)
+
+
+def energy_loss(state: PropagationState, consts: PropagationConstantsItem):
+    def in_heliosphere():
+        return 2. / 3. * solar_wind_speeed(state, consts) / state.r * state.R
+
+    return lax.cond(state.rad_zone < consts.N_regions, in_heliosphere, 0.)
+    
