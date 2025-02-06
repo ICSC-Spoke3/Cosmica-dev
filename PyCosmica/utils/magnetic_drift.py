@@ -90,8 +90,8 @@ def drift_pm89(state: PropagationState, const: PropagationConstantsItem,
 
     def is_polar():
         # Polar region
-        E = eval_E_drift(state, 1., V_sw)
-        C = eval_C_drift_reg(state, const, 1., const.LIM.A_sun, Ka, fth, E)
+        E = eval_E_drift(state, True, V_sw)
+        C = eval_C_drift_reg(state, const, True, Ka, fth, E)
         # Regular drift contribution
         v_r = - C * omega * R_helio * 2. * (state.r - R_helio) * jnp.sin(state.th) * (
                 (2. * (delta_m * state.r) ** 2 + (R_helio * jnp.sin(state.th)) ** 2) * V_sw ** 3 * jnp.cos(state.th)
@@ -111,7 +111,7 @@ def drift_pm89(state: PropagationState, const: PropagationConstantsItem,
                         + R_helio * (state.r - R_helio) * jnp.sin(state.th) * dV_dth))
 
         # ns contribution
-        C = eval_C_drift_ns(state, const, 1., Ka, E, Dftheta_dtheta, V_sw)
+        C = eval_C_drift_ns(state, const, True, Ka, E, Dftheta_dtheta, V_sw)
         v_r += - C * omega * jnp.sin(state.th) * (state.r - R_helio)
         v_phi += - C * V_sw
 
@@ -119,9 +119,9 @@ def drift_pm89(state: PropagationState, const: PropagationConstantsItem,
 
     def is_not_polar():
         # Not Polar region (assume B_th = 0)
-        E = eval_E_drift(state, 0., V_sw)
+        E = eval_E_drift(state, False, V_sw)
         # Regular drift contribution
-        C = eval_C_drift_reg(state, const, 1., const.LIM.A_sun, Ka, fth, E)
+        C = eval_C_drift_reg(state, const, False, Ka, fth, E)
         v_r = - 2. * C * (state.r - R_helio) * (
                 0.5 * (omega ** 2 * (state.r - R_helio) ** 2 * jnp.sin(state.th) ** 2 - V_sw ** 2) * jnp.sin(
             state.th) * dV_dth
@@ -133,7 +133,7 @@ def drift_pm89(state: PropagationState, const: PropagationConstantsItem,
                 V_sw * jnp.cos(state.th) - jnp.sin(state.th) * dV_dth)
 
         # ns contribution
-        C = eval_C_drift_ns(state, const, 1., Ka, E, Dftheta_dtheta, V_sw)
+        C = eval_C_drift_ns(state, const, False, Ka, E, Dftheta_dtheta, V_sw)
         v_r += - C * omega * (state.r - R_helio) * jnp.sin(state.th)
         v_phi += - C * V_sw
 

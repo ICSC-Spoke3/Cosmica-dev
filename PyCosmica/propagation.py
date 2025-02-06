@@ -15,12 +15,14 @@ def propagation_kernel(state: PropagationState, const: PropagationConstants) -> 
 
     key, subkey = jax.random.split(state.key)
     x, y, z, w = jax.random.normal(subkey, (4,))
-    state = state._replace(r=x, th=x, phi=x, R=x)
+
     conv_diff = diffusion_tensor_symmetric(state, const_item, w)
 
     diff = square_root_diffusion_term(state, const_item, conv_diff)
 
     # MISSING: positive definite check
+    for k in (conv_diff.DKrp_dr, conv_diff.DKtp_dt, diff.rr, diff.tr, diff.tt, diff.pr):
+        state = state._replace(R=lax.select(jnp.isnan(k) | jnp.isinf(k), -1., state.R))
 
     is_polar_region = jnp.fabs(jnp.cos(state.th)) > cos_polar_zone
     dv_dth = solar_wind_derivative(state, const_item)
@@ -35,7 +37,7 @@ def propagation_kernel(state: PropagationState, const: PropagationConstants) -> 
         (GeV / (C * AU_M)) * (2. * state.r * state.R) / (const_item.LIM.A_sun) * jnp.sqrt(
             1 + Gamma_Bfield(state_tilted, V_sw_PM89) ** 2) + (
                 is_polar_region * delta_Bfield(state_tilted) ** 2))
-    th_mez = PI / 2. - .5 * jnp.sin(jnp.minimum(PI / 2., const.LIM.tilt_angle + dth_ns))
+    th_mez = PI / 2. - .5 * jnp.sin(jnp.minimum(PI / 2., const_item.LIM.tilt_angle + dth_ns))
     f_th = eval_fth(state, th_mez)
     df_th_dth = eval_Dftheta_dtheta(state, th_mez)
 
@@ -45,7 +47,8 @@ def propagation_kernel(state: PropagationState, const: PropagationConstants) -> 
     v_drift = drift_pm89(state, const_item, is_polar_region, Ka, f_th, df_th_dth, V_sw, dv_dth, high_rigi_supp)
     adv_term_r = advective_term_radius(state, const_item, conv_diff, v_drift.r)
 
-    new_r = adv_term_r * dt + x * conv_diff.DKrp_dr * jnp.sqrt(dt)
+    new_r = state.r + adv_term_r * dt + x * conv_diff.DKrp_dr * jnp.sqrt(dt)
+    # jax.debug.('R: {}, DKrp_dr: {}, adv_term_r: {}, x:{}, dt: {}', new_r, conv_diff.DKrp_dr, adv_term_r, x, dt)
 
     def in_mirror():
         return state
@@ -66,21 +69,26 @@ def propagation_kernel(state: PropagationState, const: PropagationConstants) -> 
 
     # MISSING: TIMESTEP UPDATE!
 
-    # data = state._asdict()
-    # data['t_fly'] += 1
-    # data['r'] = jax.random.uniform(state.rand)
-    # jax.debug.print('{}', const_items.LIM)
-    # state = state._replace(r=state.r + const_item.LIM.K0_perp[0])
-    # data['r'] += const.LIM.V0.at[state.init_zone + state.rad_zone].get()
-    # data['r'] += jnp.stack(const.LIM.V0)[state.init_zone + state.rad_zone]
-    # jax.debug.print('{}', data['r'])
-    # data['rand'] = nxt
-    state = state._replace(key=key)
+    th = jnp.fabs(state.th)
+    th = jnp.fabs(jnp.fmod(2 * PI + sign(PI - th) * th, PI))
+    th = lax.select(th > theta_south_limit, 2 * theta_south_limit - th, th)
+    th = lax.select(th < theta_north_limit, 2 * theta_north_limit - th, th)
+
+    phi = jnp.fmod(state.phi, 2 * PI)
+    phi = jnp.fmod(2 * PI + phi, 2 * PI)
+
+    state = state._replace(
+        th=th,
+        phi=phi,
+        rad_zone=radial_zone(const_item.R_boundary_effe_init, const_item.N_regions, state._position),
+        key=key,
+    )
+
     return state
 
 
 def propagation_condition(state: PropagationState, const: PropagationConstants) -> bool:
-    return (state.rad_zone >= 0) & (const.time_out > state.t_fly)
+    return (state.rad_zone >= 0) & (const.time_out > state.t_fly) & (state.R != -1)
 
 
 def propagation_loop(init_state: PropagationState, const: PropagationConstants, key: Array) -> QuasiParticle:
@@ -124,8 +132,9 @@ def propagation_vector(sim: SimParametersJit):
     print()
 
     const = PropagationConstants(
-        time_out=100000,
+        time_out=200000,
         particle=sim.ion_to_be_simulated,
+        max_dt=50.,
         N_regions=hs.N_regions,
         R_boundary_effe=pytrees_stack(hs.R_boundary_effe),
         R_boundary_real=pytrees_stack(hs.R_boundary_real),
@@ -140,8 +149,8 @@ def propagation_vector(sim: SimParametersJit):
 
     base_states = pytrees_stack([
         PropagationState(
-            R=0,
-            t_fly=0,
+            R=0.,
+            t_fly=0.,
             rad_zone=radial_zone_scalar(b, hs.N_regions, p),
             init_zone=i,
             key=0,
@@ -162,4 +171,7 @@ def propagation_vector(sim: SimParametersJit):
         res = sources_map_jit(states, const, k, part_per_pos)
         out.append(pytrees_flatten(res))
 
+    out: QuasiParticle = pytrees_flatten(pytrees_stack(out))
+    print((out.R == -1).mean())
+    print(out.t_fly.mean())
     return out

@@ -82,6 +82,10 @@ class PropagationState(NamedTuple):
     def _particle(self):
         return QuasiParticle(self.r, self.th, self.phi, self.R, self.t_fly)
 
+    @property
+    def _position(self):
+        return Position3D(self.r, self.th, self.phi)
+
 
 class PropagationConstantsItem(NamedTuple):
     time_out: ArrayLike
