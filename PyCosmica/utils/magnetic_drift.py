@@ -178,7 +178,6 @@ def delta_Bfield(state: PropagationState) -> Array:
 def eval_Ka (state: PropagationState, const: PropagationConstantsItem) -> Array:
     return (sign(const.particle.Z) * GeV * beta_R(state.R,const.particle)) * state.R / 3.
 
-
 def eval_fth(state: PropagationState, theta_mez:ArrayLike) -> Array:
     def neutral_sheet_not_flat():
         return 1. / jnp.arccos(jnp.pi / (2. * theta_mez) -1.) * jnp.arctan(
