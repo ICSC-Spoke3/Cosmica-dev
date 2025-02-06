@@ -26,8 +26,3 @@ class DiffusionTensor(NamedTuple):
     pt: ArrayLike
     pp: ArrayLike
 
-
-class vect3D(NamedTuple):
-    r: ArrayLike
-    th: ArrayLike
-    phi: ArrayLike

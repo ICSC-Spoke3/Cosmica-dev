@@ -42,7 +42,5 @@ V_high = 760. / AU_KM
 # Maximum number of simulation regions
 n_max_regions = 335
 
-Omega = 3.03008e-6  # Solar angular velocity
-rhelio = 0.004633333 # Solar radius in AU
 high_rigi_suppression_smoothness = 0.3
 high_rigi_suppression_trans_point = 9.5 
