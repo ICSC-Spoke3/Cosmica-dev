@@ -61,3 +61,12 @@ def smooth_transition(initial_val, final_val, center_of_transition, smoothness, 
     else:
         return (initial_val + final_val) / 2. - (initial_val - final_val) / 2. * jnp.tanh(
             (x - center_of_transition) / smoothness)
+
+
+def sign(x: ArrayLike) -> ArrayLike:
+    """
+    Return the sign of x
+    :param x: input value
+    :return: sign of x: 1 if x >= 0, -1 otherwise
+    """
+    return jnp.sign(x) + (x == 0)
