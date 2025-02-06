@@ -8,7 +8,7 @@ def diffusion_tensor_symmetric(state: PropagationState, const: PropagationConsta
                                w: Array) -> ConvectionDiffusionTensor:
     def in_heliosphere():
         Kpar, dKpar_dr, Kperp, dKperp_dr, Kperp2, dKperp2_dr = diffusion_tensor_hmf_frame(
-            state, const, beta_R(state.R, const.particle), w)
+            state, const, beta_R(state, const), w)
         is_polar_region = jnp.fabs(jnp.cos(state.th)) > cos_polar_zone
 
         pol_sign = lax.select((state.th - PI / 2.) > 0, -1, 1)
@@ -113,7 +113,7 @@ def diffusion_tensor_symmetric(state: PropagationState, const: PropagationConsta
         return lax.cond(is_polar_region, is_polar, is_not_polar)
 
     def in_heliosheat():
-        rr, dKrr_dr = diffusion_coeff_heliosheat(state, const, beta_R(state.R, const.particle))
+        rr, dKrr_dr = diffusion_coeff_heliosheat(state, const, beta_R(state, const))
         return ConvectionDiffusionTensor(rr, 0., 0., 0., 0., 0., dKrr_dr, 0., 0., 0., 0., 0.)
 
     return lax.cond(state.rad_zone < const.N_regions, in_heliosphere, in_heliosheat)

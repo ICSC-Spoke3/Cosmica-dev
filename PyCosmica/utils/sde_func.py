@@ -1,10 +1,7 @@
 from jax import Array, lax, numpy as jnp
 from jax.typing import ArrayLike
 
-from PyCosmica.structures import delta_m, rhelio, omega, omega, rhelio, \
-    high_rigi_suppression_smoothness, high_rigi_suppression_trans_point, \
-    PropagationState, PropagationConstantsItem, \
-    ConvectionDiffusionTensor, DiffusionTensor, Position3D
+from PyCosmica.structures import *
 from PyCosmica.utils import solar_wind_speeed
 
 
@@ -12,11 +9,11 @@ from PyCosmica.utils import solar_wind_speeed
 #  B-field functions
 # ----------------------------------------------------------------
 def eval_Bth(state: PropagationState, is_polar_region: ArrayLike) -> Array:
-    return jnp.where(is_polar_region, state.r * delta_m / (rhelio * jnp.sin(state.th)), 0.0)
+    return jnp.where(is_polar_region, state.r * delta_m / (R_helio * jnp.sin(state.th)), 0.0)
 
 
 def eval_Bph(state: PropagationState, pol_sign: ArrayLike, V_SW: ArrayLike) -> Array:
-    return - pol_sign * ((omega * (state.r - rhelio) * jnp.sin(state.th)) / V_SW)
+    return - pol_sign * ((omega * (state.r - R_helio) * jnp.sin(state.th)) / V_SW)
 
 
 def eval_HMF_Mag(Bth: ArrayLike, Bph: ArrayLike) -> Array:
@@ -47,21 +44,21 @@ def eval_cosZeta(pol_sign: ArrayLike, sign_A_sun: ArrayLike, Bth: ArrayLike) -> 
 #  Derivatives of B-field functions
 # ----------------------------------------------------------------
 def eval_dBth_dr(state: PropagationState, is_polar_region: ArrayLike) -> Array:
-    return jnp.where(is_polar_region, -delta_m / (rhelio * jnp.sin(state.th)), 0.0)
+    return jnp.where(is_polar_region, -delta_m / (R_helio * jnp.sin(state.th)), 0.0)
 
 
 def eval_dBph_dr(state: PropagationState, pol_sign: ArrayLike, V_SW: ArrayLike) -> Array:
-    return pol_sign * ((state.r - 2.0 * rhelio) * omega * jnp.sin(state.th)) / (state.r * V_SW)
+    return pol_sign * ((state.r - 2.0 * R_helio) * omega * jnp.sin(state.th)) / (state.r * V_SW)
 
 
 def eval_dBth_dth(state: PropagationState, is_polar_region: ArrayLike) -> Array:
-    val = state.r * delta_m / (rhelio * jnp.sin(state.th) * jnp.sin(state.th)) * (-jnp.cos(state.th))
+    val = state.r * delta_m / (R_helio * jnp.sin(state.th) * jnp.sin(state.th)) * (-jnp.cos(state.th))
     return jnp.where(is_polar_region, val, 0.0)
 
 
 def eval_dBph_dth(state: PropagationState, pol_sign: ArrayLike, V_SW: ArrayLike, dV_SWdth: ArrayLike,
                   DelDirac: ArrayLike) -> Array:
-    num = -(state.r - rhelio) * omega * (
+    num = -(state.r - R_helio) * omega * (
             -pol_sign * (jnp.cos(state.th) * V_SW - jnp.sin(state.th) * dV_SWdth)
             + 2.0 * jnp.sin(state.th) * V_SW * DelDirac
     )
@@ -168,7 +165,7 @@ def eval_DcosZeta_dtheta(sign_A_sun: ArrayLike, pol_sign: ArrayLike,
 # ----------------------------------------------------------------
 
 def square_root_diffusion_term(state: PropagationState, const: PropagationConstantsItem,
-                               conv_diff: ConvectionDiffusionTensor) -> Array:
+                               conv_diff: ConvectionDiffusionTensor) -> DiffusionTensor:
     rr = jnp.sqrt(2. * conv_diff.rr)
 
     def in_heliosphere():
@@ -234,4 +231,9 @@ def advective_term_phi(state: PropagationState, const: PropagationConstantsItem,
     return lax.cond(state.rad_zone < const.N_regions, in_heliosphere, out_heliosphere)
 
 
-
+def energy_loss(state: PropagationState, const: PropagationConstantsItem):
+    return lax.select(
+        state.rad_zone < const.N_regions,
+        2. / 3. * solar_wind_speeed(state, const) / state.r * state.R,
+        0.
+    )

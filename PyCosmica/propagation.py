@@ -4,16 +4,68 @@ from math import floor
 from tqdm import tqdm
 
 from PyCosmica.sde import diffusion_tensor_symmetric
-from PyCosmica.structures import QuasiParticle, SimParametersJit, PropagationState, PropagationConstants
-from PyCosmica.utils import pytrees_stack, pytrees_flatten, radial_zone_scalar
+from PyCosmica.structures import *
+from PyCosmica.utils import *
 
 
 def propagation_kernel(state: PropagationState, const: PropagationConstants) -> PropagationState:
     const_item = const._at_index(state.init_zone, state.rad_zone)
+
+    dt = const_item.max_dt
+
     key, subkey = jax.random.split(state.key)
     x, y, z, w = jax.random.normal(subkey, (4,))
     state = state._replace(r=x, th=x, phi=x, R=x)
-    tmp = diffusion_tensor_symmetric(state, const_item, w)
+    conv_diff = diffusion_tensor_symmetric(state, const_item, w)
+
+    diff = square_root_diffusion_term(state, const_item, conv_diff)
+
+    # MISSING: positive definite check
+
+    is_polar_region = jnp.fabs(jnp.cos(state.th)) > cos_polar_zone
+    dv_dth = solar_wind_derivative(state, const_item)
+    tilt_pos_th = PI / 2. - const_item.LIM.tilt_angle
+
+    Ka = eval_Ka(state, const_item)
+
+    state_tilted = state._replace(th=tilt_pos_th)
+    V_sw_PM89 = solar_wind_speeed(state_tilted, const_item)
+
+    dth_ns = jnp.fabs(
+        (GeV / (C * AU_M)) * (2. * state.r * state.R) / (const_item.LIM.A_sun) * jnp.sqrt(
+            1 + Gamma_Bfield(state_tilted, V_sw_PM89) ** 2) + (
+                is_polar_region * delta_Bfield(state_tilted) ** 2))
+    th_mez = PI / 2. - .5 * jnp.sin(jnp.minimum(PI / 2., const.LIM.tilt_angle + dth_ns))
+    f_th = eval_fth(state, th_mez)
+    df_th_dth = eval_Dftheta_dtheta(state, th_mez)
+
+    V_sw = solar_wind_speeed(state, const_item)
+    high_rigi_supp = eval_high_rigi_supp(state, const_item)
+
+    v_drift = drift_pm89(state, const_item, is_polar_region, Ka, f_th, df_th_dth, V_sw, dv_dth, high_rigi_supp)
+    adv_term_r = advective_term_radius(state, const_item, conv_diff, v_drift.r)
+
+    new_r = adv_term_r * dt + x * conv_diff.DKrp_dr * jnp.sqrt(dt)
+
+    def in_mirror():
+        return state
+
+    def out_mirror():
+        adv_term_th = advective_term_theta(state, const_item, conv_diff, v_drift.th)
+        adv_term_phi = advective_term_phi(state, const_item, conv_diff, v_drift.phi)
+        en_loss = energy_loss(state, const_item)
+        return state._replace(
+            r=new_r,
+            th=state.th + adv_term_th * dt + (x * conv_diff.DKtp_dt + y * diff.rr) * jnp.sqrt(dt),
+            phi=state.phi + adv_term_phi * dt + (x * diff.tr + y * diff.tt + z * diff.pr) * jnp.sqrt(dt),
+            R=state.R + en_loss * dt,
+            t_fly=state.t_fly + dt,
+        )
+
+    state = lax.cond(new_r < R_mirror, in_mirror, out_mirror)
+
+    # MISSING: TIMESTEP UPDATE!
+
     # data = state._asdict()
     # data['t_fly'] += 1
     # data['r'] = jax.random.uniform(state.rand)
@@ -23,7 +75,6 @@ def propagation_kernel(state: PropagationState, const: PropagationConstants) -> 
     # data['r'] += jnp.stack(const.LIM.V0)[state.init_zone + state.rad_zone]
     # jax.debug.print('{}', data['r'])
     # data['rand'] = nxt
-    state = state._replace(t_fly=state.t_fly + 1)
     state = state._replace(key=key)
     return state
 

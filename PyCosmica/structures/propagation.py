@@ -86,6 +86,7 @@ class PropagationState(NamedTuple):
 class PropagationConstantsItem(NamedTuple):
     time_out: ArrayLike
     N_regions: ArrayLike  # Number of inner heliosphere regions
+    max_dt: ArrayLike
     particle: ParticleDescription
     R_boundary_effe_init: HeliosphereBoundRadius  # Boundaries in effective heliosphere
     R_boundary_effe_rad: HeliosphereBoundRadius  # Boundaries in effective heliosphere
@@ -99,6 +100,7 @@ class PropagationConstantsItem(NamedTuple):
 class PropagationConstants(NamedTuple):
     time_out: ArrayLike
     N_regions: ArrayLike  # Number of inner heliosphere regions
+    max_dt: ArrayLike
     particle: ParticleDescription
     R_boundary_effe: HeliosphereBoundRadius  # Boundaries in effective heliosphere
     R_boundary_real: HeliosphereBoundRadius  # Real boundaries heliosphere
@@ -119,6 +121,7 @@ class PropagationConstants(NamedTuple):
         return PropagationConstantsItem(
             time_out=self.time_out,
             N_regions=self.N_regions,
+            max_dt=self.max_dt,
             particle=self.particle,
             R_boundary_effe_init=tree_map(init_index, self.R_boundary_effe),
             R_boundary_effe_rad=tree_map(rad_index, self.R_boundary_effe),
