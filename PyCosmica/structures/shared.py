@@ -1,5 +1,7 @@
 from typing import NamedTuple
 
+from jax.typing import ArrayLike
+
 
 class HeliosphereBoundRadius(NamedTuple):
     R_ts_nose: float  # Termination shock position
@@ -9,12 +11,12 @@ class HeliosphereBoundRadius(NamedTuple):
 
 
 class Position3D(NamedTuple):
-    r: float  # heliocentric radial component
-    th: float  # heliocentric polar component
-    phi: float  # heliocentric azimutal - longitudinal angle component
+    r: ArrayLike  # heliocentric radial component
+    th: ArrayLike  # heliocentric polar component
+    phi: ArrayLike  # heliocentric azimutal - longitudinal angle component
 
     @classmethod
-    def from_list(cls, arr: list[float]):
+    def from_list(cls, arr: list[ArrayLike]):
         return cls(*arr)
 
 

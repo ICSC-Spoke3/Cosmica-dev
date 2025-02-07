@@ -1,8 +1,7 @@
 from jax import Array, lax, numpy as jnp
-from jax.typing import ArrayLike
 
 from PyCosmica.structures import *
-from PyCosmica.utils import solar_wind_speeed
+from PyCosmica.utils import solar_wind_speeed, drift_pm89
 
 
 # ----------------------------------------------------------------
@@ -190,43 +189,27 @@ def square_root_diffusion_term(state: PropagationState, const: PropagationConsta
     return lax.cond(state.rad_zone < const.N_regions, in_heliosphere, out_heliosphere)
 
 
-def advective_term_radius(state: PropagationState, const: PropagationConstantsItem,
-                          conv_diff: ConvectionDiffusionTensor, v_drift_rad: ArrayLike) -> Array:
+def advective_term(state: PropagationState, const: PropagationConstantsItem,
+                   conv_diff: ConvectionDiffusionTensor) -> Position3D:
     V_sw = solar_wind_speeed(state, const)
 
     def in_heliosphere():
-        return 2. * conv_diff.rr / state.r + conv_diff.DKrr_dr + conv_diff.tr / (
-                state.r * jnp.tan(state.th)) + conv_diff.DKtr_dt / state.r - v_drift_rad - V_sw
-
-    def out_heliosphere():
-        return 2. * conv_diff.rr / state.r + conv_diff.DKrr_dr - V_sw
-
-    return lax.cond(state.rad_zone < const.N_regions, in_heliosphere, out_heliosphere)
-
-
-def advective_term_theta(state: PropagationState, const: PropagationConstantsItem,
-                         conv_diff: ConvectionDiffusionTensor, v_drift_th: ArrayLike) -> Array:
-    def in_heliosphere():
-        r2 = state.r * state.r
-        return conv_diff.tr / r2 + conv_diff.tt / (
-                jnp.tan(state.th) * r2) + conv_diff.DKrt_dr / state.r + conv_diff.DKtt_dt / r2 - v_drift_th / state.r
-
-    def out_heliosphere():
-        return 0.
-
-    return lax.cond(state.rad_zone < const.N_regions, in_heliosphere, out_heliosphere)
-
-
-def advective_term_phi(state: PropagationState, const: PropagationConstantsItem,
-                       conv_diff: ConvectionDiffusionTensor, v_drift_phi: ArrayLike) -> Array:
-    def in_heliosphere():
         sin_theta = jnp.sin(state.th)
-        r2 = state.r * state.r
-        return conv_diff.pr / (r2 * sin_theta) + conv_diff.DKrp_dr / (state.r * sin_theta) + conv_diff.DKtp_dt / (
-                r2 * sin_theta) + (-v_drift_phi / (state.r * sin_theta))
+        tan_theta = jnp.tan(state.th)
+        r2 = state.r ** 2
+
+        drift = drift_pm89(state, const)
+        return Position3D(
+            2. * conv_diff.rr / state.r + conv_diff.DKrr_dr + conv_diff.tr / (
+                    state.r * tan_theta) + conv_diff.DKtr_dt / state.r - drift.r - V_sw,
+            conv_diff.tr / r2 + conv_diff.tt / (
+                    tan_theta * r2) + conv_diff.DKrt_dr / state.r + conv_diff.DKtt_dt / r2 - drift.th / state.r,
+            conv_diff.pr / (r2 * sin_theta) + conv_diff.DKrp_dr / (state.r * sin_theta) + conv_diff.DKtp_dt / (
+                    r2 * sin_theta) - drift.phi / (state.r * sin_theta)
+        )
 
     def out_heliosphere():
-        return 0.
+        return Position3D(2. * conv_diff.rr / state.r + conv_diff.DKrr_dr - V_sw, 0., 0.)
 
     return lax.cond(state.rad_zone < const.N_regions, in_heliosphere, out_heliosphere)
 
@@ -237,3 +220,15 @@ def energy_loss(state: PropagationState, const: PropagationConstantsItem):
         2. / 3. * solar_wind_speeed(state, const) / state.r * state.R,
         0.
     )
+
+
+def adaptive_dt(const: PropagationConstantsItem, diff: DiffusionTensor, adv_term: Position3D) -> Array:
+    dt = const.max_dt
+    dt = jnp.minimum(dt, const.min_dt * (diff.rr / adv_term.r) ** 2)
+    dt = jnp.minimum(dt, const.min_dt * ((diff.tr + diff.tt) / adv_term.th) ** 2)
+    return jnp.maximum(const.min_dt, dt)
+
+    # if dt > min_dt * (diff.rr / adv_term.r) ** 2:
+    #     dt = jnp.maximum(min_dt, min_dt * (diff.rr / adv_term.r) ** 2)
+    # if dt > min_dt * ((diff.tr + diff.tt) / adv_term.th) ** 2:
+    #     dt = jnp.maximum(min_dt, min_dt * ((diff.tr + diff.tt) / adv_term.th) ** 2)

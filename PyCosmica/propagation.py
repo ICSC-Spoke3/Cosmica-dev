@@ -15,83 +15,52 @@ def propagation_kernel(state: PropagationState, const: PropagationConstants) -> 
 
     key, subkey = jax.random.split(state.key)
     x, y, z, w = jax.random.normal(subkey, (4,))
-    # x, y, z, w = (.5, .5, .5, .5)
 
     conv_diff = diffusion_tensor_symmetric(state, const_item, w)
 
     diff = square_root_diffusion_term(state, const_item, conv_diff)
 
-    # MISSING: positive definite check
-    # for k in (conv_diff.DKrp_dr, conv_diff.DKtp_dt, diff.rr, diff.tr, diff.tt, diff.pr):
-    #     state = state._replace(R=lax.select(jnp.isnan(k) | jnp.isinf(k), -1., state.R))
+    for k in diff:
+        state = state._replace(R=lax.select(jnp.isnan(k) | jnp.isinf(k), -jnp.inf, state.R))
 
-    is_polar_region = jnp.fabs(jnp.cos(state.th)) > cos_polar_zone
-    dv_dth = solar_wind_derivative(state, const_item)
-    tilt_pos_th = PI / 2. - const_item.LIM.tilt_angle
+    adv_term = advective_term(state, const_item, conv_diff)
+    en_loss = energy_loss(state, const_item)
 
-    Ka = eval_Ka(state, const_item)
+    dt = adaptive_dt(const_item, diff, adv_term)
 
-    state_tilted = state._replace(th=tilt_pos_th)
-    V_sw_PM89 = solar_wind_speeed(state_tilted, const_item)
-
-    dth_ns = jnp.fabs(
-        (GeV / (C * AU_M)) * (2. * state.r * state.R) / (const_item.LIM.A_sun) * jnp.sqrt(
-            1 + Gamma_Bfield(state_tilted, V_sw_PM89) ** 2) + (
-                is_polar_region * delta_Bfield(state_tilted) ** 2))
-    th_mez = PI / 2. - .5 * jnp.sin(jnp.minimum(PI / 2., const_item.LIM.tilt_angle + dth_ns))
-    f_th = eval_fth(state, th_mez)
-    df_th_dth = eval_Dftheta_dtheta(state, th_mez)
-
-    V_sw = solar_wind_speeed(state, const_item)
-    high_rigi_supp = eval_high_rigi_supp(state, const_item)
-
-    v_drift = drift_pm89(state, const_item, is_polar_region, Ka, f_th, df_th_dth, V_sw, dv_dth, high_rigi_supp)
-    adv_term_r = advective_term_radius(state, const_item, conv_diff, v_drift.r)
-
-    new_r = state.r + adv_term_r * dt + x * diff.rr * jnp.sqrt(dt)
-    # jax.debug.('R: {}, DKrp_dr: {}, adv_term_r: {}, x:{}, dt: {}', new_r, conv_diff.DKrp_dr, adv_term_r, x, dt)
+    new_r = state.r + adv_term.r * dt + x * diff.rr * jnp.sqrt(dt)
 
     def in_mirror():
         return state
 
     def out_mirror():
-        adv_term_th = advective_term_theta(state, const_item, conv_diff, v_drift.th)
-        adv_term_phi = advective_term_phi(state, const_item, conv_diff, v_drift.phi)
-        en_loss = energy_loss(state, const_item)
         return state._replace(
             r=new_r,
-            th=state.th + adv_term_th * dt + (x * diff.tr + y * diff.tt) * jnp.sqrt(dt),
-            phi=state.phi + adv_term_phi * dt + (x * diff.pr + y * diff.pt + z * diff.pp) * jnp.sqrt(dt),
+            th=state.th + adv_term.th * dt + (x * diff.tr + y * diff.tt) * jnp.sqrt(dt),
+            phi=state.phi + adv_term.phi * dt + (x * diff.pr + y * diff.pt + z * diff.pp) * jnp.sqrt(dt),
             R=state.R + en_loss * dt,
             t_fly=state.t_fly + dt,
         )
 
     state = lax.cond(new_r < R_mirror, in_mirror, out_mirror)
 
-    # MISSING: TIMESTEP UPDATE!
 
     th = jnp.fabs(state.th)
-    th = jnp.fabs(jnp.fmod(2 * PI + sign(PI - th) * th, PI))
-    th = lax.select(th > theta_south_limit, 2 * theta_south_limit - th, th)
-    th = lax.select(th < theta_north_limit, 2 * theta_north_limit - th, th)
+    th = jnp.fabs(jnp.fmod(2. * PI + sign(PI - th) * th, PI))
+    th = lax.select(th > theta_south_limit, 2. * theta_south_limit - th, th)
+    th = lax.select(th < theta_north_limit, 2. * theta_north_limit - th, th)
+    phi = jnp.fmod(state.phi, 2. * PI)
+    phi = jnp.fmod(2. * PI + phi, 2. * PI)
+    state = state._replace(th=th, phi=phi)
 
-    phi = jnp.fmod(state.phi, 2 * PI)
-    phi = jnp.fmod(2 * PI + phi, 2 * PI)
-
-    state = state._replace(
-        th=th,
-        phi=phi
-    )
-    state = state._replace(
+    return state._replace(
         rad_zone=radial_zone(const_item.R_boundary_effe_init, const_item.N_regions, state._position),
         key=key,
     )
 
-    return state
-
 
 def propagation_condition(state: PropagationState, const: PropagationConstants) -> bool:
-    return (state.rad_zone >= 0) & (const.time_out > state.t_fly) & (state.R != -1)
+    return (state.rad_zone >= 0) & (const.time_out > state.t_fly) & (state.R < -1)
 
 
 def propagation_loop(init_state: PropagationState, const: PropagationConstants, key: Array) -> QuasiParticle:
@@ -137,6 +106,7 @@ def propagation_vector(sim: SimParametersJit):
     const = PropagationConstants(
         time_out=200,
         particle=sim.ion_to_be_simulated,
+        min_dt=.01,
         max_dt=50.,
         N_regions=hs.N_regions,
         R_boundary_effe=pytrees_stack(hs.R_boundary_effe),
@@ -169,7 +139,7 @@ def propagation_vector(sim: SimParametersJit):
         f.write(sources_map_jit.lower(base_states, const, keys[0], part_per_pos).as_text())
 
     out = []
-    for R, k in tqdm(zip(sim.T_centr[:10], keys), total=10):
+    for R, k in tqdm(zip(sim.T_centr, keys), total=len(sim.T_centr)):
         states = base_states._replace(R=jnp.full_like(base_states.R, R))
         res = sources_map_jit(states, const, k, part_per_pos)
         out.append(pytrees_flatten(res))

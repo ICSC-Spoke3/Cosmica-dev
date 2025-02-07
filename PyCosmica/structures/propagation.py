@@ -1,8 +1,9 @@
 from typing import NamedTuple
 
-from jax import tree_map, lax
+from jax import tree_map, lax, numpy as jnp
 from jax.typing import ArrayLike
 
+from PyCosmica.structures.constants import cos_polar_zone
 from PyCosmica.structures.shared import Position3D, ParticleDescription, HeliosphereBoundRadius, HeliosphereProperties, \
     HeliosheatProperties
 
@@ -86,10 +87,15 @@ class PropagationState(NamedTuple):
     def _position(self):
         return Position3D(self.r, self.th, self.phi)
 
+    @property
+    def _is_polar_region(self):
+        return jnp.fabs(jnp.cos(self.th)) > cos_polar_zone
+
 
 class PropagationConstantsItem(NamedTuple):
     time_out: ArrayLike
     N_regions: ArrayLike  # Number of inner heliosphere regions
+    min_dt: ArrayLike
     max_dt: ArrayLike
     particle: ParticleDescription
     R_boundary_effe_init: HeliosphereBoundRadius  # Boundaries in effective heliosphere
@@ -104,6 +110,7 @@ class PropagationConstantsItem(NamedTuple):
 class PropagationConstants(NamedTuple):
     time_out: ArrayLike
     N_regions: ArrayLike  # Number of inner heliosphere regions
+    min_dt: ArrayLike
     max_dt: ArrayLike
     particle: ParticleDescription
     R_boundary_effe: HeliosphereBoundRadius  # Boundaries in effective heliosphere
@@ -125,6 +132,7 @@ class PropagationConstants(NamedTuple):
         return PropagationConstantsItem(
             time_out=self.time_out,
             N_regions=self.N_regions,
+            min_dt=self.min_dt,
             max_dt=self.max_dt,
             particle=self.particle,
             R_boundary_effe_init=tree_map(init_index, self.R_boundary_effe),
