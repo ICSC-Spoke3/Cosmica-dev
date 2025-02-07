@@ -15,14 +15,15 @@ def propagation_kernel(state: PropagationState, const: PropagationConstants) -> 
 
     key, subkey = jax.random.split(state.key)
     x, y, z, w = jax.random.normal(subkey, (4,))
+    # x, y, z, w = (.5, .5, .5, .5)
 
     conv_diff = diffusion_tensor_symmetric(state, const_item, w)
 
     diff = square_root_diffusion_term(state, const_item, conv_diff)
 
     # MISSING: positive definite check
-    for k in (conv_diff.DKrp_dr, conv_diff.DKtp_dt, diff.rr, diff.tr, diff.tt, diff.pr):
-        state = state._replace(R=lax.select(jnp.isnan(k) | jnp.isinf(k), -1., state.R))
+    # for k in (conv_diff.DKrp_dr, conv_diff.DKtp_dt, diff.rr, diff.tr, diff.tt, diff.pr):
+    #     state = state._replace(R=lax.select(jnp.isnan(k) | jnp.isinf(k), -1., state.R))
 
     is_polar_region = jnp.fabs(jnp.cos(state.th)) > cos_polar_zone
     dv_dth = solar_wind_derivative(state, const_item)
@@ -47,7 +48,7 @@ def propagation_kernel(state: PropagationState, const: PropagationConstants) -> 
     v_drift = drift_pm89(state, const_item, is_polar_region, Ka, f_th, df_th_dth, V_sw, dv_dth, high_rigi_supp)
     adv_term_r = advective_term_radius(state, const_item, conv_diff, v_drift.r)
 
-    new_r = state.r + adv_term_r * dt + x * conv_diff.DKrp_dr * jnp.sqrt(dt)
+    new_r = state.r + adv_term_r * dt + x * diff.rr * jnp.sqrt(dt)
     # jax.debug.('R: {}, DKrp_dr: {}, adv_term_r: {}, x:{}, dt: {}', new_r, conv_diff.DKrp_dr, adv_term_r, x, dt)
 
     def in_mirror():
@@ -59,8 +60,8 @@ def propagation_kernel(state: PropagationState, const: PropagationConstants) -> 
         en_loss = energy_loss(state, const_item)
         return state._replace(
             r=new_r,
-            th=state.th + adv_term_th * dt + (x * conv_diff.DKtp_dt + y * diff.rr) * jnp.sqrt(dt),
-            phi=state.phi + adv_term_phi * dt + (x * diff.tr + y * diff.tt + z * diff.pr) * jnp.sqrt(dt),
+            th=state.th + adv_term_th * dt + (x * diff.tr + y * diff.tt) * jnp.sqrt(dt),
+            phi=state.phi + adv_term_phi * dt + (x * diff.pr + y * diff.pt + z * diff.pp) * jnp.sqrt(dt),
             R=state.R + en_loss * dt,
             t_fly=state.t_fly + dt,
         )
@@ -79,7 +80,9 @@ def propagation_kernel(state: PropagationState, const: PropagationConstants) -> 
 
     state = state._replace(
         th=th,
-        phi=phi,
+        phi=phi
+    )
+    state = state._replace(
         rad_zone=radial_zone(const_item.R_boundary_effe_init, const_item.N_regions, state._position),
         key=key,
     )
@@ -132,7 +135,7 @@ def propagation_vector(sim: SimParametersJit):
     print()
 
     const = PropagationConstants(
-        time_out=200000,
+        time_out=200,
         particle=sim.ion_to_be_simulated,
         max_dt=50.,
         N_regions=hs.N_regions,
