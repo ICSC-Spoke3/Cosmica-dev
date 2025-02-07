@@ -28,15 +28,15 @@ def diffusion_tensor_symmetric(state: PropagationState, const: PropagationConsta
         rr, tt, pp, tr, pr, pt = lax.select(
             is_polar_region,
             jnp.array([
-                Kperp * sin_zeta ** 2 + cos_zeta ** 2 * (Kpar * cos_psi ** 2 + Kpar * sin_psi ** 2),
-                Kperp * cos_zeta ** 2 + sin_zeta ** 2 * (Kpar * cos_psi ** 2 + Kpar * sin_psi ** 2),
+                Kperp * sin_zeta ** 2 + cos_zeta ** 2 * (Kpar * cos_psi ** 2 + Kperp2 * sin_psi ** 2),
+                Kperp * cos_zeta ** 2 + sin_zeta ** 2 * (Kpar * cos_psi ** 2 + Kperp2 * sin_psi ** 2),
                 Kpar * sin_psi ** 2 + Kperp2 * cos_psi ** 2,
                 sin_zeta * cos_zeta * (Kpar * cos_psi ** 2 + Kperp2 * sin_psi ** 2 - Kperp),
                 -(Kpar - Kperp2) * sin_psi * cos_psi * cos_zeta,
                 -(Kpar - Kperp2) * sin_psi * cos_psi * sin_zeta,
             ]),
             jnp.array([
-                cos_zeta ** 2 * (Kpar * cos_psi ** 2 + Kpar * sin_psi ** 2),
+                cos_zeta ** 2 * (Kpar * cos_psi ** 2 + Kperp2 * sin_psi ** 2),
                 Kperp * cos_zeta ** 2,
                 Kpar * sin_psi ** 2 + Kperp2 * cos_psi ** 2,
                 0.,
