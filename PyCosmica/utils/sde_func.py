@@ -245,16 +245,7 @@ def energy_loss(state: PropagationState, const: PropagationConstantsItem):
 
 
 def adaptive_dt(const: PropagationConstantsItem, diff: DiffusionTensor, adv_term: Position3D) -> Array:
-    dt1 = jnp.maximum(const.min_dt, const.min_dt * (diff.rr / adv_term.r) * 2)
-    dt2 = jnp.maximum(const.min_dt, const.min_dt * ((diff.tr + diff.tt) / adv_term.th) * 2)
-
-    return jnp.minimum(const.max_dt, jnp.minimum(dt1, dt2))
-    # dt = const.max_dt
-    # dt = jnp.minimum(dt, const.min_dt * (diff.rr / adv_term.r) ** 2)
-    # dt = jnp.minimum(dt, const.min_dt * ((diff.tr + diff.tt) / adv_term.th) ** 2)
-    # return jnp.maximum(const.min_dt, dt)
-
-    # if dt > min_dt * (diff.rr / adv_term.r) ** 2:
-    #     dt = jnp.maximum(min_dt, min_dt * (diff.rr / adv_term.r) ** 2)
-    # if dt > min_dt * ((diff.tr + diff.tt) / adv_term.th) ** 2:
-    #     dt = jnp.maximum(min_dt, min_dt * ((diff.tr + diff.tt) / adv_term.th) ** 2)
+    dt = const.max_dt
+    dt = jnp.fmin(dt, const.min_dt * (diff.rr / adv_term.r) ** 2)
+    dt = jnp.fmin(dt, const.min_dt * ((diff.tr + diff.tt) / adv_term.th) ** 2)
+    return jnp.fmax(const.min_dt, dt)
