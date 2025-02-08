@@ -1,3 +1,4 @@
+import jax
 from jax import Array, lax, numpy as jnp
 
 from PyCosmica.structures import *
@@ -190,10 +191,24 @@ def square_root_diffusion_term(state: PropagationState, const: PropagationConsta
 
 
 def check_pos_def(diff: DiffusionTensor) -> Array:
+    # def check(c, x):
+    #     i, k = x
+    #     def isn():
+    #         jax.debug.print('{} {}', i, k)
+    #         return True
+    #
+    #     def dn():
+    #         return False
+    #
+    #     return c | lax.cond(jnp.isinf(k) | jnp.isnan(k), isn, dn), None
+    #
+    # ll = jnp.array([(0, diff.rr), (1, diff.tr), (2, diff.tt), (3, diff.pr), (4, diff.pt), (5, diff.pp)])
+    #
+    # return ~(lax.scan(check, False, ll, unroll=True)[0])
     r = False
     for k in diff:
         r |= jnp.isinf(k) | jnp.isnan(k)
-    return ~r
+    return r
 
 
 def advective_term(state: PropagationState, const: PropagationConstantsItem,
@@ -230,10 +245,14 @@ def energy_loss(state: PropagationState, const: PropagationConstantsItem):
 
 
 def adaptive_dt(const: PropagationConstantsItem, diff: DiffusionTensor, adv_term: Position3D) -> Array:
-    dt = const.max_dt
-    dt = jnp.minimum(dt, const.min_dt * (diff.rr / adv_term.r) ** 2)
-    dt = jnp.minimum(dt, const.min_dt * ((diff.tr + diff.tt) / adv_term.th) ** 2)
-    return jnp.maximum(const.min_dt, dt)
+    dt1 = jnp.maximum(const.min_dt, const.min_dt * (diff.rr / adv_term.r) * 2)
+    dt2 = jnp.maximum(const.min_dt, const.min_dt * ((diff.tr + diff.tt) / adv_term.th) * 2)
+
+    return jnp.minimum(const.max_dt, jnp.minimum(dt1, dt2))
+    # dt = const.max_dt
+    # dt = jnp.minimum(dt, const.min_dt * (diff.rr / adv_term.r) ** 2)
+    # dt = jnp.minimum(dt, const.min_dt * ((diff.tr + diff.tt) / adv_term.th) ** 2)
+    # return jnp.maximum(const.min_dt, dt)
 
     # if dt > min_dt * (diff.rr / adv_term.r) ** 2:
     #     dt = jnp.maximum(min_dt, min_dt * (diff.rr / adv_term.r) ** 2)
