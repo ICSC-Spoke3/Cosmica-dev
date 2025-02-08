@@ -10,4 +10,4 @@ from .sde_func import eval_Bth, eval_Bph, eval_HMF_Mag, eval_sqrtBR2BT2, eval_si
     eval_cosZeta, eval_dBth_dr, eval_dBph_dr, eval_dBth_dth, eval_dBph_dth, eval_dBMag_dth, eval_dBMag_dr, \
     eval_DsinPsi_dr, eval_DsinPsi_dtheta, eval_dsqrtBR2BT2_dr, eval_dsqrtBR2BT2_dth, eval_DcosPsi_dr, \
     eval_DcosPsi_dtheta, eval_DsinZeta_dr, eval_DsinZeta_dtheta, eval_DcosZeta_dr, eval_DcosZeta_dtheta, \
-    square_root_diffusion_term, advective_term, energy_loss, adaptive_dt
+    square_root_diffusion_term, advective_term, energy_loss, adaptive_dt, check_pos_def

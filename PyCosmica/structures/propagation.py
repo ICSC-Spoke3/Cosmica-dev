@@ -78,6 +78,7 @@ class PropagationState(NamedTuple):
     rad_zone: ArrayLike
     init_zone: ArrayLike
     key: ArrayLike
+    stop: ArrayLike
 
     @property
     def _particle(self):

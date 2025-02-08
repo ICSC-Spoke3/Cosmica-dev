@@ -11,8 +11,6 @@ from PyCosmica.utils import *
 def propagation_kernel(state: PropagationState, const: PropagationConstants) -> PropagationState:
     const_item = const._at_index(state.init_zone, state.rad_zone)
 
-    dt = const_item.max_dt
-
     key, subkey = jax.random.split(state.key)
     x, y, z, w = jax.random.normal(subkey, (4,))
 
@@ -20,8 +18,7 @@ def propagation_kernel(state: PropagationState, const: PropagationConstants) -> 
 
     diff = square_root_diffusion_term(state, const_item, conv_diff)
 
-    for k in diff:
-        state = state._replace(R=lax.select(jnp.isnan(k) | jnp.isinf(k), -jnp.inf, state.R))
+    state = state._replace(stop=check_pos_def(diff))
 
     adv_term = advective_term(state, const_item, conv_diff)
     en_loss = energy_loss(state, const_item)
@@ -44,7 +41,6 @@ def propagation_kernel(state: PropagationState, const: PropagationConstants) -> 
 
     state = lax.cond(new_r < R_mirror, in_mirror, out_mirror)
 
-
     th = jnp.fabs(state.th)
     th = jnp.fabs(jnp.fmod(2. * PI + sign(PI - th) * th, PI))
     th = lax.select(th > theta_south_limit, 2. * theta_south_limit - th, th)
@@ -60,7 +56,7 @@ def propagation_kernel(state: PropagationState, const: PropagationConstants) -> 
 
 
 def propagation_condition(state: PropagationState, const: PropagationConstants) -> bool:
-    return (state.rad_zone >= 0) & (const.time_out > state.t_fly) & (state.R < -1)
+    return (state.rad_zone >= 0) & (const.time_out > state.t_fly) & (~state.stop)
 
 
 def propagation_loop(init_state: PropagationState, const: PropagationConstants, key: Array) -> QuasiParticle:
@@ -104,7 +100,7 @@ def propagation_vector(sim: SimParametersJit):
     print()
 
     const = PropagationConstants(
-        time_out=200,
+        time_out=200000000,
         particle=sim.ion_to_be_simulated,
         min_dt=.01,
         max_dt=50.,
@@ -127,6 +123,7 @@ def propagation_vector(sim: SimParametersJit):
             rad_zone=radial_zone_scalar(b, hs.N_regions, p),
             init_zone=i,
             key=0,
+            stop=False,
             **p._asdict(),
         ) for i, (p, b) in enumerate(zip(sim.initial_position, hs.R_boundary_effe))
     ])

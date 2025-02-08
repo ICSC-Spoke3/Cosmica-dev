@@ -189,6 +189,13 @@ def square_root_diffusion_term(state: PropagationState, const: PropagationConsta
     return lax.cond(state.rad_zone < const.N_regions, in_heliosphere, out_heliosphere)
 
 
+def check_pos_def(diff: DiffusionTensor) -> Array:
+    r = False
+    for k in diff:
+        r |= jnp.isinf(k) | jnp.isnan(k)
+    return ~r
+
+
 def advective_term(state: PropagationState, const: PropagationConstantsItem,
                    conv_diff: ConvectionDiffusionTensor) -> Position3D:
     V_sw = solar_wind_speeed(state, const)
