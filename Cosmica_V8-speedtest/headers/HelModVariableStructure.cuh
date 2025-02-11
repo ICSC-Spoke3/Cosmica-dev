@@ -35,7 +35,7 @@
 #ifndef PolarZone
 #define PolarZone 30
 #endif
-#define CosPolarZone cosf(PolarZone*Pi/180.)
+#define CosPolarZone cosf(PolarZone*Pi/180.f)
 #ifndef delta_m
 #define delta_m 2.000000e-05f       // megnetic field disturbance in high latitude region
 #endif

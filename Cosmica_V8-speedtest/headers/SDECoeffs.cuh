@@ -16,15 +16,15 @@ __device__ vect3D_t trivial_AdvectiveTerm(DiffusionTensor_t);
 __device__ float trivial_EnergyLoss();
 
 
-__device__ DiffusionTensor_t DiffusionTensor_symmetric(unsigned char, signed char, float, float, float, float,
+__device__ DiffusionTensor_t DiffusionTensor_symmetric(unsigned int, signed int, float, float, float, float,
                                                        PartDescription_t, float);
 
-__device__ Tensor3D_t SquareRoot_DiffusionTerm(signed char, DiffusionTensor_t, float, float, int *);
+__device__ Tensor3D_t SquareRoot_DiffusionTerm(signed int, DiffusionTensor_t, float, float, int *);
 
-__device__ vect3D_t AdvectiveTerm(unsigned char, signed char, const DiffusionTensor_t &, float, float, float,
+__device__ vect3D_t AdvectiveTerm(unsigned int, signed int, const DiffusionTensor_t &, float, float, float,
                                   float, PartDescription_t);
 
-__device__ float EnergyLoss(unsigned char, signed char, float, float, float, float);
+__device__ float EnergyLoss(unsigned int, signed int, float, float, float, float);
 
 // __device__ float LossTerm(unsigned char,signed char, float, float, float, float, float);
 

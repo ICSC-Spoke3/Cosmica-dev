@@ -16,7 +16,7 @@ int floor_int(const int a, const int b) {
     return static_cast<int>(floor(a / b));
 }
 
-__device__ float sign(const float num) {
+__device__ float safeSign(const float num) {
     if (num >= 0) return 1;
     return -1;
 }

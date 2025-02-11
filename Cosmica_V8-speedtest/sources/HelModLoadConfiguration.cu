@@ -1,7 +1,7 @@
 #include <cstdio>          // Supplies FILE, stdin, stdout, stderr, and the fprint() family of functions
 #include <unistd.h>         // Supplies EXIT_FAILURE, EXIT_SUCCESS
 
-#include "HelModLoadConfiguration2.cuh"
+#include "HelModLoadConfiguration.cuh"
 
 #include <fstream>
 #include <GenComputation.cuh>

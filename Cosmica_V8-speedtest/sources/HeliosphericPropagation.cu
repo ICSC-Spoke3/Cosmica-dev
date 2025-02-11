@@ -152,7 +152,7 @@ __global__ void HeliosphericProp(const int Npart_PerKernel, const float Min_dt, 
             // Remap the polar coordinates inside their range (th in [0, Pi] & phi in [0, 2*Pi])
             smem[threadIdx.x + blockDim.x] = fabsf(smem[threadIdx.x + blockDim.x]);
             smem[threadIdx.x + blockDim.x] = fabsf(fmodf(
-                2 * M_PI + sign(M_PI - smem[threadIdx.x + blockDim.x]) * smem[threadIdx.x + blockDim.x], M_PI));
+                2 * M_PI + safeSign(M_PI - smem[threadIdx.x + blockDim.x]) * smem[threadIdx.x + blockDim.x], M_PI));
             // --- reflecting latitudinal bounduary
             if (smem[threadIdx.x + blockDim.x] > thetaSouthlimit) {
                 smem[threadIdx.x + blockDim.x] = 2 * thetaSouthlimit - smem[threadIdx.x + blockDim.x];

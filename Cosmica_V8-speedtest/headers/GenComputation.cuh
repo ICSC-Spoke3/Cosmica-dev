@@ -1,6 +1,6 @@
 #ifndef GenComputation
 #define GenComputation
-#define sq(x) ((x)*(x))
+// #define sq(x) ((x)*(x))
 #define cb(x) ((x)*(x)*(x))
 
 // ------------------------------------------
@@ -13,10 +13,18 @@ int floor_int(int, int);
 /* Floor safe division for integer. Rounds x=a/b downward, returning the biggest integral value that is less than x.
    */
 
-__device__ float sign(float);
+__device__ float safeSign(float);
 
 /* Return the signum of a the number
    */
+
+__device__ __forceinline__ float sign(const float val) {
+    return static_cast<float>((0.f < val) - (val < 0.f));
+}
+
+__device__ __host__ __forceinline__ float sq(const float val) {
+    return val * val;
+}
 
 __host__ __device__ float SmoothTransition(float, float, float, float, float);
 

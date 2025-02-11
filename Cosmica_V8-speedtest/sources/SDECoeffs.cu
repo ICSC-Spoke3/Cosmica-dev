@@ -42,9 +42,9 @@ __device__ float trivial_EnergyLoss() {
 //..... Simmetric component and derivative  ....................
 ////////////////////////////////////////////////////////////////
 
-__device__ DiffusionTensor_t DiffusionTensor_symmetric(const unsigned char InitZone, const signed char HZone, const float r,
-                                                       const float th, const float phi, const float R, const PartDescription_t pt,
-                                                       const float GaussRndNumber) {
+__device__ DiffusionTensor_t DiffusionTensor_symmetric(const unsigned int InitZone, const signed int HZone,
+                                                       const float r, const float th, const float phi, const float R,
+                                                       const PartDescription_t pt, const float GaussRndNumber) {
     /*Authors: 2022 Stefano */
     /* * description: Evaluate the symmetric component (and derivative) of diffusion tensor in heliocentric coordinates
         \param InitZone initial Zone in the heliosphere (in the list of parameters)
@@ -68,7 +68,7 @@ __device__ DiffusionTensor_t DiffusionTensor_symmetric(const unsigned char InitZ
         // Kp1  = Kh.y    dKp1_dr  = dK_dr.y
         // Kp2  = Kh.z    dKp2_dr  = dK_dr.z
         float3 dK_dr;
-        const float3 Kh =
+        const auto [Kpar, Kperp, Kperp2] =
                 Diffusion_Tensor_In_HMF_Frame(InitZone, HZone, r, th, beta_R(R, pt), R, GaussRndNumber, dK_dr);
 
 
@@ -149,15 +149,18 @@ __device__ DiffusionTensor_t DiffusionTensor_symmetric(const unsigned char InitZ
          * KK.tp = -(Kpar-Kp3) *sinPsi*cosPsi*sinZeta;
          * KK.pt = -(Kpar-Kp3) *sinPsi*cosPsi*sinZeta;
          */
-
+#define POLAR_BRANCH_REDUCE
+#ifndef POLAR_BRANCH_REDUCE
         if (IsPolarRegion) {
-            // polar region
-            KK.rr = Kh.y * sq(sinZeta) + sq(cosZeta) * (Kh.x * sq(cosPsi) + Kh.z * sq(sinPsi));
-            KK.tt = Kh.y * sq(cosZeta) + sq(sinZeta) * (Kh.x * sq(cosPsi) + Kh.z * sq(sinPsi));
-            KK.pp = Kh.x * sq(sinPsi) + Kh.z * sq(cosPsi);
-            KK.tr = sinZeta * cosZeta * (Kh.x * sq(cosPsi) + Kh.z * sq(sinPsi) - Kh.y);
-            KK.pr = -(Kh.x - Kh.z) * sinPsi * cosPsi * cosZeta;
-            KK.pt = -(Kh.x - Kh.z) * sinPsi * cosPsi * sinZeta;
+        // polar region
+#endif
+        KK.rr = Kperp * sq(sinZeta) + sq(cosZeta) * (Kpar * sq(cosPsi) + Kperp2 * sq(sinPsi));
+        KK.tt = Kperp * sq(cosZeta) + sq(sinZeta) * (Kpar * sq(cosPsi) + Kperp2 * sq(sinPsi));
+        KK.pp = Kpar * sq(sinPsi) + Kperp2 * sq(cosPsi);
+        KK.tr = sinZeta * cosZeta * (Kpar * sq(cosPsi) + Kperp2 * sq(sinPsi) - Kperp);
+        KK.pr = -(Kpar - Kperp2) * sinPsi * cosPsi * cosZeta;
+        KK.pt = -(Kpar - Kperp2) * sinPsi * cosPsi * sinZeta;
+#ifndef POLAR_BRANCH_REDUCE
         } else {
             // equatorial region. Bth = 0
             // --> sinZeta = 0
@@ -169,6 +172,7 @@ __device__ DiffusionTensor_t DiffusionTensor_symmetric(const unsigned char InitZ
             KK.pr = -(Kh.x - Kh.z) * sinPsi * cosPsi * cosZeta;
             KK.pt = 0.;
         }
+#endif
 
         // ....... evaluate derivative of diffusion tensor
         /*  The complete calculations of derivatives are the follow:
@@ -188,30 +192,33 @@ __device__ DiffusionTensor_t DiffusionTensor_symmetric(const unsigned char InitZ
         // Here we apply some semplification due to HMF and Kdiff description
         // B field do not depend on phi
         // Kpar,Kperp1-2 do not depends on theta and phi
+#ifndef POLAR_BRANCH_REDUCE
         if (IsPolarRegion) {
-            // polar region
-            KK.DKrr_dr = 2.f * cosZeta * (sq(cosPsi) * Kh.x + Kh.z * sq(sinPsi)) * DcosZeta_dr + sinZeta *
-                         sinZeta * dK_dr.y + sq(cosZeta) * (
-                             2.f * cosPsi * Kh.x * DcosPsi_dr + sq(cosPsi) * dK_dr.x + sinPsi * (
-                                 sinPsi * dK_dr.z + 2.f * Kh.z * DsinPsi_dr)) + 2.f * Kh.y * sinZeta * DsinZeta_dr;
-            KK.DKtt_dt = 2.f * cosZeta * Kh.y * DcosZeta_dtheta + sq(sinZeta) * (
-                             2.f * cosPsi * Kh.x * DcosPsi_dtheta + 2.f * sinPsi * Kh.z * DsinPsi_dtheta) + 2.f * (
-                             sq(cosPsi) * Kh.x + Kh.z * sq(sinPsi)) * sinZeta * DsinZeta_dtheta;
-            // KK.DKpp_dp = 0. ;
-            KK.DKrt_dr = (-Kh.y + sq(cosPsi) * Kh.x + Kh.z * sq(sinPsi)) * (
-                             sinZeta * DcosZeta_dr + cosZeta * DsinZeta_dr) + cosZeta * sinZeta * (
-                             2.f * cosPsi * Kh.x * DcosPsi_dr + sq(cosPsi) * dK_dr.x - dK_dr.y + sinPsi * (
-                                 sinPsi * dK_dr.z + 2.f * Kh.z * DsinPsi_dr));
-            KK.DKtr_dt = (-Kh.y + sq(cosPsi) * Kh.x + Kh.z * sq(sinPsi)) * (
-                             sinZeta * DcosZeta_dtheta + cosZeta * DsinZeta_dtheta) + cosZeta * sinZeta * (
-                             2.f * cosPsi * Kh.x * DcosPsi_dtheta + 2.f * sinPsi * Kh.z * DsinPsi_dtheta);
-            KK.DKrp_dr = cosZeta * (Kh.z - Kh.x) * sinPsi * DcosPsi_dr + cosPsi * (Kh.z - Kh.x) * sinPsi * DcosZeta_dr +
-                         cosPsi * cosZeta * sinPsi * (dK_dr.z - dK_dr.x) + cosPsi * cosZeta * (Kh.z - Kh.x) *
-                         DsinPsi_dr; //-----------qui
-            // KK.DKpr_dp = 0. ;
-            KK.DKtp_dt = (Kh.z - Kh.x) * (sinPsi * sinZeta * DcosPsi_dtheta + cosPsi * (
-                                              sinZeta * DsinPsi_dtheta + sinPsi * DsinZeta_dtheta));
-            // KK.DKpt_dp = 0. ;
+        // polar region
+#endif
+        KK.DKrr_dr = 2.f * cosZeta * (sq(cosPsi) * Kpar + Kperp2 * sq(sinPsi)) * DcosZeta_dr + sinZeta *
+                     sinZeta * dK_dr.y + sq(cosZeta) * (
+                         2.f * cosPsi * Kpar * DcosPsi_dr + sq(cosPsi) * dK_dr.x + sinPsi * (
+                             sinPsi * dK_dr.z + 2.f * Kperp2 * DsinPsi_dr)) + 2.f * Kperp * sinZeta * DsinZeta_dr;
+        KK.DKtt_dt = 2.f * cosZeta * Kperp * DcosZeta_dtheta + sq(sinZeta) * (
+                         2.f * cosPsi * Kpar * DcosPsi_dtheta + 2.f * sinPsi * Kperp2 * DsinPsi_dtheta) + 2.f * (
+                         sq(cosPsi) * Kpar + Kperp2 * sq(sinPsi)) * sinZeta * DsinZeta_dtheta;
+        // KK.DKpp_dp = 0. ;
+        KK.DKrt_dr = (-Kperp + sq(cosPsi) * Kpar + Kperp2 * sq(sinPsi)) * (
+                         sinZeta * DcosZeta_dr + cosZeta * DsinZeta_dr) + cosZeta * sinZeta * (
+                         2.f * cosPsi * Kpar * DcosPsi_dr + sq(cosPsi) * dK_dr.x - dK_dr.y + sinPsi * (
+                             sinPsi * dK_dr.z + 2.f * Kperp2 * DsinPsi_dr));
+        KK.DKtr_dt = (-Kperp + sq(cosPsi) * Kpar + Kperp2 * sq(sinPsi)) * (
+                         sinZeta * DcosZeta_dtheta + cosZeta * DsinZeta_dtheta) + cosZeta * sinZeta * (
+                         2.f * cosPsi * Kpar * DcosPsi_dtheta + 2.f * sinPsi * Kperp2 * DsinPsi_dtheta);
+        KK.DKrp_dr = cosZeta * (Kperp2 - Kpar) * sinPsi * DcosPsi_dr + cosPsi * (Kperp2 - Kpar) * sinPsi * DcosZeta_dr +
+                     cosPsi * cosZeta * sinPsi * (dK_dr.z - dK_dr.x) + cosPsi * cosZeta * (Kperp2 - Kpar) *
+                     DsinPsi_dr; //-----------qui
+        // KK.DKpr_dp = 0. ;
+        KK.DKtp_dt = (Kperp2 - Kpar) * (sinPsi * sinZeta * DcosPsi_dtheta + cosPsi * (
+                                            sinZeta * DsinPsi_dtheta + sinPsi * DsinZeta_dtheta));
+        // KK.DKpt_dp = 0. ;
+#ifndef POLAR_BRANCH_REDUCE
         } else {
             // equatorial region. Bth = 0
             // --> sinZeta = 0
@@ -231,6 +238,7 @@ __device__ DiffusionTensor_t DiffusionTensor_symmetric(const unsigned char InitZ
             KK.DKtp_dt = 0.;
             // KK.DKpt_dp = 0. ;
         }
+#endif
     } else {
         // heliosheat ...............................
         KK.rr = Diffusion_Coeff_heliosheat(InitZone, r, th, phi, beta_R(R, pt), R, KK.DKrr_dr);
@@ -247,8 +255,8 @@ __device__ DiffusionTensor_t DiffusionTensor_symmetric(const unsigned char InitZ
 //
 // the diffusion tensor is written in the form that arise from SDE calculation
 ///////////////////////////////////////////////////////
-__device__ Tensor3D_t SquareRoot_DiffusionTerm(const signed char HZone, DiffusionTensor_t K, const float r, const float th,
-                                               int *res) {
+__device__ Tensor3D_t SquareRoot_DiffusionTerm(const signed int HZone, DiffusionTensor_t K, const float r,
+                                               const float th, int *res) {
     /* * description:  ========== Decomposition of Diffusion Tensor ======
                       solve square root of diffusion tensor in heliocentric spherical coordinates
         \par Tensor3D K     input tensor
@@ -313,8 +321,9 @@ __device__ Tensor3D_t SquareRoot_DiffusionTerm(const signed char HZone, Diffusio
 // dphi_Adv = K.rp/(r2*sin(theta))+ K.DKrp_dr/(r*sintheta) + K.DKtp_dt/( r2*sintheta) + K.DKpp_dp/( r2*sq(sintheta)) ;
 // dphi_Adv+= - (vdph+vdns_p)/(r*sintheta);
 ///////////////////////////
-__device__ vect3D_t AdvectiveTerm(const unsigned char InitZone, const signed char HZone, const DiffusionTensor_t &K, const float r,
-                                  const float th, const float phi, const float R, const PartDescription_t pt) {
+__device__ vect3D_t AdvectiveTerm(const unsigned int InitZone, const signed int HZone, const DiffusionTensor_t &K,
+                                  const float r, const float th, const float phi, const float R,
+                                  const PartDescription_t pt) {
     vect3D_t AdvTerm;
     if (HZone < Heliosphere.Nregions) {
         // inner Heliosphere .........................
@@ -350,7 +359,8 @@ __device__ vect3D_t AdvectiveTerm(const unsigned char InitZone, const signed cha
 ////////////////////////////////////////////////////////////////
 //..... Energy loss term   .....................................
 ////////////////////////////////////////////////////////////////
-__device__ float EnergyLoss(const unsigned char InitZone, const signed char HZone, const float r, const float th, const float phi, const float R) {
+__device__ float EnergyLoss(const unsigned int InitZone, const signed int HZone, const float r, const float th,
+                            const float phi, const float R) {
     if (HZone < Heliosphere.Nregions) {
         // inner Heliosphere .........................
         return 2.f / 3.f * SolarWindSpeed(InitZone, HZone, r, th, phi) / r * R;

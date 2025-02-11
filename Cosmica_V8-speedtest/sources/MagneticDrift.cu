@@ -17,7 +17,7 @@ __device__ float delta_Bfield(const float r, const float th) {
     return r / rhelio * delta_m / sinf(th);;
 }
 
-__device__ vect3D_t Drift_PM89(const unsigned char InitZone, const signed char HZone, const float r, const float th,
+__device__ vect3D_t Drift_PM89(const unsigned int InitZone, const signed int HZone, const float r, const float th,
                                const float phi, const float R, const PartDescription_t pt) {
     /*Authors: 2022 Stefano */
     /* * description: Evalaute drift velocity vector, including Neutral sheetdrift. This drift is based on Potgieter e Mooral Model (1989), this model was modified to include a theta-component in Bfield.
@@ -33,8 +33,8 @@ __device__ vect3D_t Drift_PM89(const unsigned char InitZone, const signed char H
         See:  Strauss et al 2011, Minnie et al 2007 Burger et al 2000
      */
     vect3D_t v;
-    const bool IsPolarRegion = fabsf(cosf(th)) > CosPolarZone;
-    const float Ka = sign(pt.Z) * GeV * beta_R(R, pt) * R / 3;
+    const float IsPolarRegion = fabsf(cosf(th)) > CosPolarZone;
+    const float Ka = safeSign(pt.Z) * GeV * beta_R(R, pt) * R / 3;
     /* sign(Z)*beta*P/3 constant part of antisymmetric diffusion coefficient */
     // pt.A*sqrt(Ek*(Ek+2*pt.T0))/pt.Z
     const float Asun = LIM[HZone + InitZone].Asun; /* Magnetic Field Amplitude constant / aum^2*/
@@ -44,26 +44,34 @@ __device__ vect3D_t Drift_PM89(const unsigned char InitZone, const signed char H
     // .. Scaling factor of drift in 2D approximation.  to account Neutral sheet
     float fth = 0; /* scaling function of drift vel */
     float Dftheta_dtheta = 0;
-    float theta_mez; /* scaling parameter */
     const float TiltPos_r = r;
     const float TiltPos_th = Pi / 2. - TiltAngle;
     const float TiltPos_phi = phi;
     float Vsw = SolarWindSpeed(InitZone, HZone, TiltPos_r, TiltPos_th, TiltPos_phi);
-    const float dthetans = fabsf(GeV / (c * aum) * (2. * r * R) / (Asun * sqrtf(
-                                                                       1 + Gamma_Bfield(r, TiltPos_th, Vsw) *
-                                                                       Gamma_Bfield(r, TiltPos_th, Vsw) + (
-                                                                           IsPolarRegion
-                                                                               ? delta_Bfield(r, TiltPos_th) *
-                                                                                   delta_Bfield(
-                                                                                       r, TiltPos_th)
-                                                                               : 0)))); /*dTheta_ns = 2*R_larmor/r*/
+    // const float dthetans = fabsf(GeV / (c * aum) * (2. * r * R) / (Asun * sqrtf(
+    //                                                                    1 + Gamma_Bfield(r, TiltPos_th, Vsw) *
+    //                                                                    Gamma_Bfield(r, TiltPos_th, Vsw) + (
+    //                                                                        IsPolarRegion
+    //                                                                            ? delta_Bfield(r, TiltPos_th) *
+    //                                                                                delta_Bfield(
+    //                                                                                    r, TiltPos_th)
+    //                                                                            : 0)))); /*dTheta_ns = 2*R_larmor/r*/
+    const float dthetans = fabsf(GeV / (c * aum) * (2.f * r * R) / (Asun * sqrtf(
+                                                                        1 + sq(Gamma_Bfield(r, TiltPos_th, Vsw)) +
+                                                                        IsPolarRegion * sq(
+                                                                            delta_Bfield(r, TiltPos_th)))));
+
+
     //               (pt.A*sqrt(Ek*(Ek+2*pt.T0)))/fabs(pt.Z)                                   B_mag_alfa    = Asun/r2*sqrt(1.+ Gamma_alfa*Gamma_alfa + delta_alfa*delta_alfa );
     // double B2_mag_alfa   = B_mag_alfa*B_mag_alfa;
     //       dthetans = fabs((GeV/(c*aum))*(2.*       (MassNumber*sqrt(T*(T+2*T0))         ))/(Z*r*sqrt(B2_mag_alfa)));  /*dTheta_ns = 2*R_larmor/r*/
 
-    if (TiltAngle + dthetans > Pi / 2.) theta_mez = Pi / 2. - 0.5 * sinf(Pi / 2.);
-    else theta_mez = Pi / 2. - .5 * sinf(TiltAngle + dthetans);
-    if (theta_mez < Pi / .2) {
+
+
+    // if (TiltAngle + dthetans > Pi / 2.) theta_mez = Pi / 2. - 0.5 * sinf(Pi / 2.);
+    // else theta_mez = Pi / 2. - .5 * sinf(TiltAngle + dthetans);
+    if (const float theta_mez = Pi / 2. - 0.5 * sinf(fminf(TiltAngle + dthetans, Pi / 2.));
+        theta_mez < Pi / .2) {
         const float a_f = acosf(Pi / (2. * theta_mez) - 1);
         fth = 1.f / a_f * atanf((1.f - 2.f * th / Pi) * tanf(a_f));
         Dftheta_dtheta = -2.f * tanf(a_f) / (a_f * Pi * (
@@ -71,7 +79,8 @@ __device__ vect3D_t Drift_PM89(const unsigned char InitZone, const signed char H
                                                  tanf(a_f)));
     } else {
         /* if the smoothness parameter "theta_mez" is greater then Pi/2, then the neutral sheet is flat, only heaviside function is applied.*/
-        if (th > Pi / 2) { fth = 1.; } else { if (th < Pi / 2) { fth = -1.; } else { if (th == Pi / 2) fth = 0.; } }
+        // if (th > Pi / 2) { fth = 1.f; } else { if (th < Pi / 2) { fth = -1.f; } else { if (th == Pi / 2) fth = 0.f; } }
+        fth = sign(th-Pi/2.f);
     }
     // if (debug){
     //    printf("Vsw(tilt) %e\tBMagAlpha=%e\tAsun=%e\tr2=%e\tGamma_alfa=%e\tdelta_alfa=%e\n\n", Vsw,(Asun/(r*r))*sqrt( 1+Gamma_Bfield(r,TiltPos_th,Vsw)*Gamma_Bfield(r,TiltPos_th,Vsw)+delta_Bfield(r,TiltPos_th)*delta_Bfield(r,TiltPos_th)),

@@ -17,7 +17,7 @@ float g_low(int, int, float);
 float rconst(int, int, float);
 
 __device__ float3
-Diffusion_Tensor_In_HMF_Frame(unsigned char, signed char, float, float, float, float, float, float3 &);
+Diffusion_Tensor_In_HMF_Frame(unsigned int, signed int, float, float, float, float, float, float3 &);
 
-__device__ float Diffusion_Coeff_heliosheat(unsigned char, float, float, float, float, float, float &);
+__device__ float Diffusion_Coeff_heliosheat(unsigned int, float, float, float, float, float, float &);
 #endif

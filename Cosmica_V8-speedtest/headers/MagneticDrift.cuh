@@ -65,7 +65,7 @@ __device__ float Gamma_Bfield(float, float, float);
 
 __device__ float delta_Bfield(float, float);
 
-__device__ vect3D_t Drift_PM89(unsigned char, signed char, float, float, float, float, struct PartDescription_t);
+__device__ vect3D_t Drift_PM89(unsigned int, signed int, float, float, float, float, struct PartDescription_t);
 
 /* * description: Evaluate the components of drift velocity according to Potgieter Mooral 1985 - See Burger&Hatttingh 1995 */
 float EvalP0DriftSuppressionFactor(int, int, float, float);

@@ -302,10 +302,9 @@ float rconst(const int SolarPhase, const int Polarity, const float tilt) {
     return rconst;
 }
 
-__device__ float3 Diffusion_Tensor_In_HMF_Frame(const unsigned char InitZone, const signed char HZone, const float r,
-                                                const float theta,
-                                                const float beta, const float P, const float GaussRndNumber,
-                                                float3 &dK_dr) {
+__device__ float3 Diffusion_Tensor_In_HMF_Frame(const unsigned int InitZone, const signed int HZone, const float r,
+                                                const float theta, const float beta, const float P,
+                                                const float GaussRndNumber, float3 &dK_dr) {
     /*Authors: 2022 Stefano */
     /* * description: evaluate the diffusion tensor in the HMF frame, i.e. Kparallel & Kperpendicular.
         \param HZone   Zone in the Heliosphere
@@ -334,14 +333,14 @@ __device__ float3 Diffusion_Tensor_In_HMF_Frame(const unsigned char InitZone, co
     Ktensor.x = dK_dr.x * (rconst + r);
 
 #ifndef rho_1
-#define rho_1 0.065 // Kpar/Kperp (ex Kp0)
+#define rho_1 0.065f // Kpar/Kperp (ex Kp0)
 #endif
 #ifndef PolarEnhanc
 #define PolarEnhanc 2 // polar enhancement in polar region
 #endif
 
     // Kperp1 = rho_1(theta)* k0 * beta/3 * (P/1GV + glow)*( Rconst+r/1AU)
-    dK_dr.y = rho_1 * k0_perp * beta / 3. * (P + g_low) * (fabsf(cosf(theta)) > CosPolarZone ? PolarEnhanc : 1);
+    dK_dr.y = rho_1 * k0_perp * beta / 3.f * (P + g_low) * (fabsf(cosf(theta)) > CosPolarZone ? PolarEnhanc : 1.f);
     Ktensor.y = dK_dr.y * (rconst + r);
 
     // Kperp2 = rho_2 * k0 * beta/3 * (P/1GV + glow)*( Rconst+r/1AU) with rho_2=rho_1
@@ -351,7 +350,7 @@ __device__ float3 Diffusion_Tensor_In_HMF_Frame(const unsigned char InitZone, co
     return Ktensor;
 }
 
-__device__ float Diffusion_Coeff_heliosheat(const unsigned char HZone, const float r, const float th, const float phi,
+__device__ float Diffusion_Coeff_heliosheat(const unsigned int HZone, const float r, const float th, const float phi,
                                             const float beta, const float P, float &dK_dr) {
     /*Authors: 2022 Stefano */
     /* * description: evaluate the diffusion tensor in the HMF frame, i.e. Kparallel & Kperpendicular.
