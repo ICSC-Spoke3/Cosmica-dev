@@ -83,7 +83,7 @@ __device__ vect3D_t Drift_PM89(const unsigned int InitZone, const signed int HZo
     //             Asun,r*r, Gamma_Bfield(r,TiltPos_th,Vsw), ((IsPolarRegion)?delta_Bfield(r,TiltPos_th)*delta_Bfield(r,TiltPos_th):0));
     //    printf("KA %f\tdthetans=%e\tftheta=%e\tDftheta_dtheta=%e\n", Ka, dthetans,fth,Dftheta_dtheta);
     // }
-c    Vsw = SolarWindSpeed(InitZone, HZone, r, th, phi); // solar wind evaluated
+    Vsw = SolarWindSpeed(InitZone, HZone, r, th, phi); // solar wind evaluated
     // .. drift velocity
 
 #ifndef POLAR_BRANCH_REDUCE
