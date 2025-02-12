@@ -53,13 +53,9 @@ __global__ void HeliosphericProp(const int Npart_PerKernel, const float Min_dt, 
         // smem[threadIdx.x + 5*blockDim.x] =  QuasiParts_out.alphapath[id];
 
         // Initialize the quasi particle position
-#if TRIVIAL
-      smem[threadIdx.x + 5*blockDim.x] = Zone(smem[threadIdx.x], smem[threadIdx.x + blockDim.x], smem[threadIdx.x + 2*blockDim.x]);
-#else
         smem[threadIdx.x + 5 * blockDim.x] = RadialZone(PeriodIndexes[id], smem[threadIdx.x],
                                                         smem[threadIdx.x + blockDim.x],
                                                         smem[threadIdx.x + 2 * blockDim.x]);
-#endif
 
         // Initialize the random state seed per thread
         //LocalState[id] = CudaState[id];
@@ -77,24 +73,6 @@ __global__ void HeliosphericProp(const int Npart_PerKernel, const float Min_dt, 
             // float loss_term;
             float dt = Max_dt;
 
-#if TRIVIAL
-        // Evaluate the convective-diffusive tensor and its decomposition
-        KSym = trivial_DiffusionTensor_symmetric(smem[threadIdx.x + 5*blockDim.x]); // Needed only to compute the two following terms
-        Ddif = trivial_SquareRoot_DiffusionTensor(KSym);
-
-        // Evaluate advective-drift vector
-        AdvTerm = trivial_AdvectiveTerm(KSym);
-
-        // Evaluate the energy loss term
-        en_loss = fabsf(RandNum.x)*trivial_EnergyLoss();
-
-        // Evaluate the loss term (Montecarlo statistical weight)
-        // loss_term = 0;
-
-        // Evaluate the time step of the SDE (dynamic or static time step? if it's dynamic would be also be individual for each thread?)
-        dt = Max_dt/100;
-
-#else
             // Evaluate the convective-diffusive tensor and its decomposition
             KSym = DiffusionTensor_symmetric(PeriodIndexes[id], smem[threadIdx.x + 5 * blockDim.x], smem[threadIdx.x],
                                              smem[threadIdx.x + blockDim.x], smem[threadIdx.x + 2 * blockDim.x],
@@ -132,7 +110,6 @@ __global__ void HeliosphericProp(const int Npart_PerKernel, const float Min_dt, 
                 dt = max(Min_dt, Min_dt * (Ddif.rr * Ddif.rr) / (AdvTerm.r * AdvTerm.r));
             if (dt > Min_dt * (Ddif.tr + Ddif.tt) * (Ddif.tr + Ddif.tt) / (AdvTerm.th * AdvTerm.th))
                 dt = max(Min_dt, Min_dt * (Ddif.tr + Ddif.tt) * (Ddif.tr + Ddif.tt) / (AdvTerm.th * AdvTerm.th));
-#endif
 
             const float prev_r = smem[threadIdx.x];
 
@@ -167,13 +144,9 @@ __global__ void HeliosphericProp(const int Npart_PerKernel, const float Min_dt, 
             smem[threadIdx.x + 2 * blockDim.x] = fmodf(2 * M_PI + smem[threadIdx.x + 2 * blockDim.x], 2 * M_PI);
 
             // Check of the zone of heliosphere, heliosheat or interstellar medium where the quasi-particle is after a step
-#if TRIVIAL
-        smem[threadIdx.x + 5*blockDim.x] = Zone(smem[threadIdx.x], smem[threadIdx.x + blockDim.x], smem[threadIdx.x + 2*blockDim.x]);
-#else
             smem[threadIdx.x + 5 * blockDim.x] = RadialZone(PeriodIndexes[id], smem[threadIdx.x],
                                                             smem[threadIdx.x + blockDim.x],
                                                             smem[threadIdx.x + 2 * blockDim.x]);
-#endif
         }
 
         // Save peopagation exit values

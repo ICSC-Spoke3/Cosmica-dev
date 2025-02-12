@@ -4,22 +4,18 @@
 #include "HeliosphereModel.cuh"
 #include "SolarWind.cuh"
 
-/*
-* Solar Wind Model
-*/
-
+/**
+ * @brief Calculate the solar wind speed at a given position in the heliosphere.
+ *
+ * @param InitZone Index of the initial zone
+ * @param HZone Index of the heliosphere region
+ * @param r Radial distance
+ * @param th th
+ * @param phi phi
+ * @return Solar wind speed
+ */
 __device__ float SolarWindSpeed(const unsigned int InitZone, const signed int HZone, const float r, const float th,
                                 const float phi) {
-    /**
-     * @brief Calculate the solar wind speed at a given position in the heliosphere.
-     * @param InitZone Index of the initial zone
-     * @param HZone Index of the heliosphere region
-     * @param r Radial distance
-     * @param th th
-     * @param phi phi
-     * @return Solar wind speed
-     */
-    
     const float V0 = HZone < Heliosphere.Nregions ? LIM[HZone + InitZone].V0 : HS[InitZone].V0;
 
 
@@ -45,18 +41,18 @@ __device__ float SolarWindSpeed(const unsigned int InitZone, const signed int HZ
     return min(Vhigh, V0 * (1 + fabsf(cosf(th))));
 }
 
+/**
+ * @brief Derivative of solar wind speed in d theta
+ *
+ * @param InitZone Index of the initial zone
+ * @param HZone Index of the heliosphere region
+ * @param r Radial distance
+ * @param th th
+ * @param phi phi
+ * @return Derivative of solar wind speed in d theta
+ */
 __device__ float DerivativeOfSolarWindSpeed_dtheta(const unsigned int InitZone, const signed int HZone, const float r,
                                                    const float th, const float phi) {
-    /**
-     * @brief Derivative of solar wind speed in d theta
-     * @param InitZone Index of the initial zone
-     * @param HZone Index of the heliosphere region
-     * @param r Radial distance
-     * @param th th
-     * @param phi phi
-     * @return Derivative of solar wind speed in d theta
-     * 
-     */
     const float V0 = HZone < Heliosphere.Nregions ? LIM[HZone + InitZone].V0 : HS[InitZone].V0;
 
     // heliosheat ...............................

@@ -47,13 +47,6 @@ InitialPositions_t LoadInitPos(int Npos, const bool verbose) {
     InitialPositions.phi = new float[Npos];
 
     // Set the InitialPositions arrays with default values
-#if TRIVIAL
-        for (int i=0; i<Npos; i++) {
-            InitialPositions.r[i] = i;
-            InitialPositions.th[i] = M_PI_2;
-            InitialPositions.phi[i] = 0;
-        }
-#endif
 
     if (verbose) {
         printf("Default initial quasi particles configuration loaded\n");

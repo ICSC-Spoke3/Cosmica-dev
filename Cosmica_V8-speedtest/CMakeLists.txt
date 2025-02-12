@@ -21,7 +21,6 @@ set(SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/DiffusionModel.cu
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/GenComputation.cu
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/GPUManage.cu
-        ${CMAKE_CURRENT_SOURCE_DIR}/sources/HeliosphereLocation.cu
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/HeliosphereModel.cu
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/HeliosphericPropagation.cu
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/HelModLoadConfiguration.cu
@@ -58,7 +57,7 @@ target_compile_options(Cosmica
 )
 
 # Instruct NVLink to use dynamic linking for libraries (fixes the libpthread error).
-target_link_options(Cosmica PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-Xnvlink;-Bdynamic>)
+#target_link_options(Cosmica PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-Xnvlink;-Bdynamic>)
 
 # (Optional) Link OpenMP libraries so that host code compiles with OpenMP support.
 if(OpenMP_FOUND)
