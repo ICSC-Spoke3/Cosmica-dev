@@ -8,12 +8,22 @@
 #include "SDECoeffs.cuh"
 
 __device__ DiffusionTensor_t trivial_DiffusionTensor_symmetric(int ZoneNum) {
+    /**
+     * @brief Trivial symmetric component of the diffusion tensor
+     * @param ZoneNum Zone number
+     * @return Diffusion tensor of the symmetric component
+     */
     const DiffusionTensor_t KSym;
 
     return KSym;
 }
 
 __device__ Tensor3D_t trivial_SquareRoot_DiffusionTensor(DiffusionTensor_t KSym) {
+    /**
+     * @brief Trivial square root of the diffusion tensor
+     * @param KSym Symmetric component of the diffusion tensor
+     * @return Square root of the diffusion tensor
+     */
     Tensor3D_t Ddif;
     Ddif.rr = 1;
 
@@ -21,37 +31,51 @@ __device__ Tensor3D_t trivial_SquareRoot_DiffusionTensor(DiffusionTensor_t KSym)
 }
 
 __device__ vect3D_t trivial_AdvectiveTerm(DiffusionTensor_t KSym) {
+    /**
+     * @brief Trivial advective term
+     * @param KSym Symmetric component of the diffusion tensor
+     * @return Advective term
+     */
     const vect3D_t AdvTerm;
 
     return AdvTerm;
 }
 
 __device__ float trivial_EnergyLoss() {
+    /**
+     * @brief Trivial energy loss term
+     * @return Energy loss term
+     */
     const float R_loss = 0.1;
-    // float R_loss = 0;
-
     return R_loss;
 }
 
 
-////////////////////////////////////////////////////////////////
-//.....  Diffusion Term  .....................................
-////////////////////////////////////////////////////////////////
+/*
+* Diffusion Tensor
+*/
 
-////////////////////////////////////////////////////////////////
-//..... Simmetric component and derivative  ....................
-////////////////////////////////////////////////////////////////
+/*
+* Simmetric component and derivative
+*/
+
 
 __device__ DiffusionTensor_t DiffusionTensor_symmetric(const unsigned int InitZone, const signed int HZone,
                                                        const float r, const float th, const float phi, const float R,
                                                        const PartDescription_t pt, const float GaussRndNumber) {
-    /*Authors: 2022 Stefano */
-    /* * description: Evaluate the symmetric component (and derivative) of diffusion tensor in heliocentric coordinates
-        \param InitZone initial Zone in the heliosphere (in the list of parameters)
-        \param HZone   Zone in the Heliosphere
-        \param part    particle position and energy
-        \return  the symmetric component (and derivative) of diffusion tensor
+    /**
+     * @brief Evaluation of the symmetric component of the diffusion tensor in heliocentric coordinates, and its derivative
+     * @param InitZone Initial Zone in the heliosphere (in the list of parameters)
+     * @param HZone Zone in the Heliosphere
+     * @param r Radial distance
+     * @param th th
+     * @param phi phi
+     * @param R R
+     * @param pt Particle rest mass, atomic number, and mass number
+     * @param GaussRndNumber Gaussian random number
+     * @return Symmetric component of the diffusion tensor
      */
+
     DiffusionTensor_t KK;
     if (HZone < Heliosphere.Nregions) {
         /*  NOTE about HMF
@@ -241,14 +265,19 @@ __device__ DiffusionTensor_t DiffusionTensor_symmetric(const unsigned int InitZo
 ///////////////////////////////////////////////////////
 __device__ Tensor3D_t SquareRoot_DiffusionTerm(const signed int HZone, DiffusionTensor_t K, const float r,
                                                const float th, int *res) {
-    /* * description:  ========== Decomposition of Diffusion Tensor ======
-                      solve square root of diffusion tensor in heliocentric spherical coordinates
-        \par Tensor3D K     input tensor
-        \par qvect_t  part  particle Position
-        \par int      &res  0 if ok; 1 if error
-       */
+    /**
+     * @brief Solving the square root of diffusion tensor in heliocentric spherical coordinates
+     * @param HZone Zone in the Heliosphere
+     * @param K Diffusion tensor
+     * @param r Radial distance
+     * @param th th
+     * @param res 0 if ok; 1 if error
+     * @return Square root of the diffusion tensor
+     * @note This function is not implemented for the outer heliosphere: HZone >= Heliosphere.Nregions
+     * 
+     */
 
-    // // ---- Create diffusion matrix of FPE from diffusion tensor
+    // Create diffusion matrix of FPE from diffusion tensor
     Tensor3D_t D;
 
     K.rr = 2.f * K.rr;
@@ -288,6 +317,9 @@ __device__ Tensor3D_t SquareRoot_DiffusionTerm(const signed int HZone, Diffusion
     return D;
 }
 
+/*
+* Advective Term of SDE
+*/
 ////////////////////////////////////////////////////////////////
 //.....  Advective term of SDE  ................................
 ////////////////////////////////////////////////////////////////
@@ -305,6 +337,18 @@ __device__ Tensor3D_t SquareRoot_DiffusionTerm(const signed int HZone, Diffusion
 __device__ vect3D_t AdvectiveTerm(const unsigned int InitZone, const signed int HZone, const DiffusionTensor_t &K,
                                   const float r, const float th, const float phi, const float R,
                                   const PartDescription_t pt) {
+    /**
+     * @brief Advective term of the SDE in heliocentric spherical coordinates
+     * @param InitZone Initial Zone in the heliosphere (in the list of parameters)
+     * @param HZone Zone in the Heliosphere
+     * @param K Diffusion tensor
+     * @param r Radial distance
+     * @param th th
+     * @param phi phi
+     * @param R R
+     * @param pt Particle rest mass, atomic number, and mass number
+     * @return Advective term
+     */
     vect3D_t AdvTerm = {2.f * K.rr / r + K.DKrr_dr, 0, 0};
 
     if (HZone < Heliosphere.Nregions) {
@@ -327,11 +371,22 @@ __device__ vect3D_t AdvectiveTerm(const unsigned int InitZone, const signed int 
     return AdvTerm;
 }
 
-////////////////////////////////////////////////////////////////
-//..... Energy loss term   .....................................
-////////////////////////////////////////////////////////////////
+/*
+* Energy Loss Term
+*/
 __device__ float EnergyLoss(const unsigned int InitZone, const signed int HZone, const float r, const float th,
                             const float phi, const float R) {
+    /**
+     * @brief Calculation of the energy loss term in heliocentric spherical coordinates
+     * @param InitZone Initial Zone in the heliosphere (in the list of parameters)
+     * @param HZone Zone in the Heliosphere
+     * @param r Radial distance
+     * @param th th
+     * @param phi phi
+     * @param R R
+     * @return Energy loss term
+     * 
+     */
     if (HZone < Heliosphere.Nregions) {
         // inner Heliosphere .........................
         return 2.f / 3.f * SolarWindSpeed(InitZone, HZone, r, th, phi) / r * R;
