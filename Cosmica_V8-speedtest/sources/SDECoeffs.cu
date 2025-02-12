@@ -198,55 +198,30 @@ __device__ DiffusionTensor_t DiffusionTensor_symmetric(const unsigned int InitZo
         // Here we apply some semplification due to HMF and Kdiff description
         // B field do not depend on phi
         // Kpar,Kperp1-2 do not depends on theta and phi
-#ifndef POLAR_BRANCH_REDUCE
-        if (IsPolarRegion) {
-            // polar region
-#endif
-            KK.DKrr_dr = 2.f * cosZeta * (sq(cosPsi) * Kpar + Kperp2 * sq(sinPsi)) * DcosZeta_dr + sinZeta *
-                         sinZeta * dK_dr.y + sq(cosZeta) * (
-                             2.f * cosPsi * Kpar * DcosPsi_dr + sq(cosPsi) * dK_dr.x + sinPsi * (
-                                 sinPsi * dK_dr.z + 2.f * Kperp2 * DsinPsi_dr)) + 2.f * Kperp1 * sinZeta * DsinZeta_dr;
-            KK.DKtt_dt = 2.f * cosZeta * Kperp1 * DcosZeta_dtheta + sq(sinZeta) * (
-                             2.f * cosPsi * Kpar * DcosPsi_dtheta + 2.f * sinPsi * Kperp2 * DsinPsi_dtheta) + 2.f * (
-                             sq(cosPsi) * Kpar + Kperp2 * sq(sinPsi)) * sinZeta * DsinZeta_dtheta;
-            // KK.DKpp_dp = 0. ;
-            KK.DKrt_dr = (-Kperp1 + sq(cosPsi) * Kpar + Kperp2 * sq(sinPsi)) * (
-                             sinZeta * DcosZeta_dr + cosZeta * DsinZeta_dr) + cosZeta * sinZeta * (
-                             2.f * cosPsi * Kpar * DcosPsi_dr + sq(cosPsi) * dK_dr.x - dK_dr.y + sinPsi * (
-                                 sinPsi * dK_dr.z + 2.f * Kperp2 * DsinPsi_dr));
-            KK.DKtr_dt = (-Kperp1 + sq(cosPsi) * Kpar + Kperp2 * sq(sinPsi)) * (
-                             sinZeta * DcosZeta_dtheta + cosZeta * DsinZeta_dtheta) + cosZeta * sinZeta * (
-                             2.f * cosPsi * Kpar * DcosPsi_dtheta + 2.f * sinPsi * Kperp2 * DsinPsi_dtheta);
-            KK.DKrp_dr = cosZeta * (Kperp2 - Kpar) * sinPsi * DcosPsi_dr + cosPsi * (Kperp2 - Kpar) * sinPsi *
-                         DcosZeta_dr +
-                         cosPsi * cosZeta * sinPsi * (dK_dr.z - dK_dr.x) + cosPsi * cosZeta * (Kperp2 - Kpar) *
-                         DsinPsi_dr; //-----------qui
-            // KK.DKpr_dp = 0. ;
-            KK.DKtp_dt = (Kperp2 - Kpar) * (sinPsi * sinZeta * DcosPsi_dtheta + cosPsi * (
-                                                sinZeta * DsinPsi_dtheta + sinPsi * DsinZeta_dtheta));
-            // KK.DKpt_dp = 0. ;
-#ifndef POLAR_BRANCH_REDUCE
-        } else {
-            // equatorial region. Bth = 0
-            // --> sinZeta = 0
-            // --> cosZeta = 1
-            // --> derivative of sinZeta or cosZeta = 0
-            KK.DKrr_dr = 2.f * cosZeta * (sq(cosPsi) * Kpar + Kperp2 * sq(sinPsi)) * DcosZeta_dr + cosZeta *
-                         cosZeta * (2.f * cosPsi * Kpar * DcosPsi_dr + sq(cosPsi) * dK_dr.x + sinPsi * (
-                                        sinPsi * dK_dr.z + 2.f * Kperp2 * DsinPsi_dr));
-            KK.DKtt_dt = 2.f * cosZeta * Kperp1 * DcosZeta_dtheta;
-            // KK.DKpp_dp = 0. ;
-            KK.DKrt_dr = 0.;
-            KK.DKtr_dt = 0.;
-            KK.DKrp_dr = cosZeta * (Kperp2 - Kpar) * sinPsi * DcosPsi_dr + cosPsi * (Kperp2 - Kpar) * sinPsi *
-                         DcosZeta_dr +
-                         cosPsi * cosZeta * sinPsi * (dK_dr.z - dK_dr.x) + cosPsi * cosZeta * (Kperp2 - Kpar) *
-                         DsinPsi_dr; //-----------qui
-            // KK.DKpr_dp = 0. ;
-            KK.DKtp_dt = 0.;
-            // KK.DKpt_dp = 0. ;
-        }
-#endif
+
+        KK.DKrr_dr = 2.f * cosZeta * (sq(cosPsi) * Kpar + Kperp2 * sq(sinPsi)) * DcosZeta_dr + sinZeta *
+                     sinZeta * dK_dr.y + sq(cosZeta) * (
+                         2.f * cosPsi * Kpar * DcosPsi_dr + sq(cosPsi) * dK_dr.x + sinPsi * (
+                             sinPsi * dK_dr.z + 2.f * Kperp2 * DsinPsi_dr)) + 2.f * Kperp1 * sinZeta * DsinZeta_dr;
+        KK.DKtt_dt = 2.f * cosZeta * Kperp1 * DcosZeta_dtheta + sq(sinZeta) * (
+                         2.f * cosPsi * Kpar * DcosPsi_dtheta + 2.f * sinPsi * Kperp2 * DsinPsi_dtheta) + 2.f * (
+                         sq(cosPsi) * Kpar + Kperp2 * sq(sinPsi)) * sinZeta * DsinZeta_dtheta;
+        // KK.DKpp_dp = 0. ;
+        KK.DKrt_dr = (-Kperp1 + sq(cosPsi) * Kpar + Kperp2 * sq(sinPsi)) * (
+                         sinZeta * DcosZeta_dr + cosZeta * DsinZeta_dr) + cosZeta * sinZeta * (
+                         2.f * cosPsi * Kpar * DcosPsi_dr + sq(cosPsi) * dK_dr.x - dK_dr.y + sinPsi * (
+                             sinPsi * dK_dr.z + 2.f * Kperp2 * DsinPsi_dr));
+        KK.DKtr_dt = (-Kperp1 + sq(cosPsi) * Kpar + Kperp2 * sq(sinPsi)) * (
+                         sinZeta * DcosZeta_dtheta + cosZeta * DsinZeta_dtheta) + cosZeta * sinZeta * (
+                         2.f * cosPsi * Kpar * DcosPsi_dtheta + 2.f * sinPsi * Kperp2 * DsinPsi_dtheta);
+        KK.DKrp_dr = cosZeta * (Kperp2 - Kpar) * sinPsi * DcosPsi_dr + cosPsi * (Kperp2 - Kpar) * sinPsi *
+                     DcosZeta_dr +
+                     cosPsi * cosZeta * sinPsi * (dK_dr.z - dK_dr.x) + cosPsi * cosZeta * (Kperp2 - Kpar) *
+                     DsinPsi_dr;
+        // KK.DKpr_dp = 0. ;
+        KK.DKtp_dt = (Kperp2 - Kpar) * (sinPsi * sinZeta * DcosPsi_dtheta + cosPsi * (
+                                            sinZeta * DsinPsi_dtheta + sinPsi * DsinZeta_dtheta));
+        // KK.DKpt_dp = 0. ;
     } else {
         // heliosheat ...............................
         KK.rr = Diffusion_Coeff_heliosheat(InitZone, r, th, phi, beta_R(R, pt), R, KK.DKrr_dr);
