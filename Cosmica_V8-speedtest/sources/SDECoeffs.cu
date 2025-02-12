@@ -265,26 +265,24 @@ __device__ Tensor3D_t SquareRoot_DiffusionTerm(const signed int HZone, Diffusion
        */
 
     // // ---- Create diffusion matrix of FPE from diffusion tensor
-    const float sintheta = sinf(th);
-    K.rr = 2.f * K.rr;
-    if (HZone < Heliosphere.Nregions) {
-        //K.rt=2.*K.rt/r;                       K.rp=2.*K.rp/(r*sintheta);
-        K.tr = 2.f * K.tr / r;
-        K.tt = 2.f * K.tt / (r * r); //K.tp=2.*K.tp/(r2*sintheta);
-        K.pr = 2.f * K.pr / (r * sintheta);
-        K.pt = 2.f * K.pt / (r * r * sintheta);
-        K.pp = 2.f * K.pp / (r * r * sintheta * sintheta);
-    }
-
-    // ---- square root of diffusion tensor in heliocentric spherical coordinates
     Tensor3D_t D;
-    // // first try
-    // // h=0 i=0 n=0
-    // // D.rt = 0;
-    // // D.rp = 0;
-    // // D.tp = 0;
+
+    K.rr = 2.f * K.rr;
     D.rr = sqrtf(K.rr); // g = sqrt(a)
     if (HZone < Heliosphere.Nregions) {
+        //K.rt=2.*K.rt/r;                       K.rp=2.*K.rp/(r*sinf(th));
+        K.tr = 2.f * K.tr / r;
+        K.tt = 2.f * K.tt / (r * r); //K.tp=2.*K.tp/(sq(r)*sinf(th));
+        K.pr = 2.f * K.pr / (r * sinf(th));
+        K.pt = 2.f * K.pt / (r * r * sinf(th));
+        K.pp = 2.f * K.pp / (r * r * sinf(th) * sinf(th));
+
+        // ---- square root of diffusion tensor in heliocentric spherical coordinates
+        // // first try
+        // // h=0 i=0 n=0
+        // // D.rt = 0;
+        // // D.rp = 0;
+        // // D.tp = 0;
         // do this only in the inner heliosphere (questo perchè D.pp vale nan nell'outer heliosphere, forse legato alla radice di un elemento negativo (i.e. arrotondamenti allo zero non ottimali))
         D.tr = K.tr / D.rr; // l = b/g
         D.pr = K.pr / D.rr; // o = c/g
@@ -294,8 +292,7 @@ __device__ Tensor3D_t SquareRoot_DiffusionTerm(const signed int HZone, Diffusion
     }
 
     // check if ok
-    if (isinf(D.rr) || isinf(D.tr) || isinf(D.pr) || isinf(D.tt) || isinf(D.pt) || isinf(D.pp)
-        || isnan(D.rr) || isnan(D.tr) || isnan(D.pr) || isnan(D.tt) || isnan(D.pt) || isnan(D.pp)) {
+    if (const float sum = D.rr + D.tr + D.pr + D.tt + D.pt + D.pp; isnan(sum) || isinf(sum)) {
         // there was some error...
         // -- TODO -- check an other solution... see Pei et al 2010 or Kopp et al 2012
         // not implemented since such cases are rare
@@ -312,46 +309,36 @@ __device__ Tensor3D_t SquareRoot_DiffusionTerm(const signed int HZone, Diffusion
 ////////////////////////////////////////////////////////////////
 
 // -- Radial --------------------------------------------------
-// dr_Adv = 2.* K.rr/r + K.DKrr_dr + K.tr/(r*tantheta) + K.DKtr_dt/r + K.DKpr_dp/(r*sintheta) ;
+// dr_Adv = 2.* K.rr/r + K.DKrr_dr + K.tr/(r*tanf(th)) + K.DKtr_dt/r + K.DKpr_dp/(r*sinf(th)) ;
 // dr_Adv+= - Vsw - vdr - vdns  ;
 // -- latitudinal ----------------------------------------------
-// dtheta_Adv = K.rt/(r2) + K.tt/(tantheta*r2 ) + K.DKrt_dr/r + K.DKtt_dt/r2 + K.DKpt_dp / (sintheta*r2);
+// dtheta_Adv = K.rt/(sq(r)) + K.tt/(tanf(th)*sq(r) ) + K.DKrt_dr/r + K.DKtt_dt/sq(r) + K.DKpt_dp / (sinf(th)*sq(r));
 //_Adv+= - vdth/r;
 // -- Azimutal -------------------------------------------------
-// dphi_Adv = K.rp/(r2*sin(theta))+ K.DKrp_dr/(r*sintheta) + K.DKtp_dt/( r2*sintheta) + K.DKpp_dp/( r2*sq(sintheta)) ;
-// dphi_Adv+= - (vdph+vdns_p)/(r*sintheta);
+// dphi_Adv = K.rp/(sq(r)*sin(theta))+ K.DKrp_dr/(r*sinf(th)) + K.DKtp_dt/( sq(r)*sinf(th)) + K.DKpp_dp/( sq(r)*sq(sinf(th))) ;
+// dphi_Adv+= - (vdph+vdns_p)/(r*sinf(th));
 ///////////////////////////
 __device__ vect3D_t AdvectiveTerm(const unsigned int InitZone, const signed int HZone, const DiffusionTensor_t &K,
                                   const float r, const float th, const float phi, const float R,
                                   const PartDescription_t pt) {
-    vect3D_t AdvTerm;
+    vect3D_t AdvTerm = {2.f * K.rr / r + K.DKrr_dr, 0, 0};
+
     if (HZone < Heliosphere.Nregions) {
         // inner Heliosphere .........................
-        const float sintheta = sinf(th);
-        const float tantheta = tanf(th);
-        const float r2 = r * r;
         // advective part related to diffision tensor
-        AdvTerm.r = 2.f * K.rr / r + K.DKrr_dr + K.tr / (r * tantheta) + K.DKtr_dt / r;
-        AdvTerm.th = K.tr / r2 + K.tt / (tantheta * r2) + K.DKrt_dr / r + K.DKtt_dt / r2;
+        AdvTerm.r += K.tr / (r * tanf(th)) + K.DKtr_dt / r;
+        AdvTerm.th += K.tr / sq(r) + K.tt / (tanf(th) * sq(r)) + K.DKrt_dr / r + K.DKtt_dt / sq(r);
 
-        AdvTerm.phi = K.pr / (r2 * sintheta) + K.DKrp_dr / (r * sintheta) + K.DKtp_dt / (r2 * sintheta);
+        AdvTerm.phi += K.pr / (sq(r) * sinf(th)) + K.DKrp_dr / (r * sinf(th)) + K.DKtp_dt / (sq(r) * sinf(th));
         // drift component
-        const vect3D_t v_drift = Drift_PM89(InitZone, HZone, r, th, phi, R, pt);
-        AdvTerm.r += -v_drift.r;
-        AdvTerm.th += -v_drift.th / r;
-        AdvTerm.phi += -v_drift.phi / (r * sintheta);
-    } else {
-        // heliosheat ...............................
-        // advective part related to diffision tensor
-        AdvTerm.r = 2.f * K.rr / r + K.DKrr_dr;
-        AdvTerm.th = 0;
-        AdvTerm.phi = 0;
-        // drift component
-        // -- none --
+        const auto [drift_r, drift_th, drift_phi] = Drift_PM89(InitZone, HZone, r, th, phi, R, pt);
+        AdvTerm.r -= drift_r;
+        AdvTerm.th -= drift_th / r;
+        AdvTerm.phi -= drift_phi / (r * sinf(th));
     }
 
     // convective part related to solar wind
-    AdvTerm.r += -SolarWindSpeed(InitZone, HZone, r, th, phi);
+    AdvTerm.r -= SolarWindSpeed(InitZone, HZone, r, th, phi);
 
     return AdvTerm;
 }

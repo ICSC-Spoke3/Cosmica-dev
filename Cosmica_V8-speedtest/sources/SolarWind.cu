@@ -16,11 +16,12 @@ __device__ float SolarWindSpeed(const unsigned int InitZone, const signed int HZ
     * \param part  Pseudoparticle position
     */
     const float V0 = HZone < Heliosphere.Nregions ? LIM[HZone + InitZone].V0 : HS[InitZone].V0;
-    const float RtsDirection = Boundary(th, phi, Heliosphere.RadBoundary_effe[InitZone].Rts_nose,
-                                        Heliosphere.RadBoundary_effe[InitZone].Rts_tail);
+
 
     // heliosheat (or near to)...............................
-    if (HZone >= Heliosphere.Nregions - 1 && r > RtsDirection - L_tl) {
+    if (const float RtsDirection = Boundary(th, phi, Heliosphere.RadBoundary_effe[InitZone].Rts_nose,
+                                            Heliosphere.RadBoundary_effe[InitZone].Rts_tail);
+        HZone >= Heliosphere.Nregions - 1 && r > RtsDirection - L_tl) {
         const float RtsRWDirection = Boundary(th, phi, Heliosphere.RadBoundary_real[InitZone].Rts_nose,
                                               Heliosphere.RadBoundary_real[InitZone].Rts_tail);
         float DecreasFactor = SmoothTransition(1., 1. / s_tl, RtsDirection, L_tl, r);
@@ -36,12 +37,7 @@ __device__ float SolarWindSpeed(const unsigned int InitZone, const signed int HZ
         return V0;
     }
 
-    // low solar activity
-    if (const float VswAngl = Vhigh / V0 <= 2.f ? Vhigh / V0 - 1.f : 1.f;
-        fabsf(cosf(th)) > VswAngl)
-        return Vhigh;
-
-    return V0 * (1 + fabsf(cosf(th)));
+    return min(Vhigh, V0 * (1 + fabsf(cosf(th))));
 }
 
 __device__ float DerivativeOfSolarWindSpeed_dtheta(const unsigned int InitZone, const signed int HZone, const float r,
@@ -53,15 +49,14 @@ __device__ float DerivativeOfSolarWindSpeed_dtheta(const unsigned int InitZone, 
     * \param part  Pseudoparticle position
     */
     const float V0 = HZone < Heliosphere.Nregions ? LIM[HZone + InitZone].V0 : HS[InitZone].V0;
-    const float RtsDirection = Boundary(th, phi, Heliosphere.RadBoundary_effe[InitZone].Rts_nose,
-                                        Heliosphere.RadBoundary_effe[InitZone].Rts_tail);
 
     // heliosheat ...............................
     // inner Heliosphere .........................
-    if (const float VswAngl = Vhigh / V0 <= 2.f ? Vhigh / V0 - 1.f : 1.f;
+    if (const float RtsDirection = Boundary(th, phi, Heliosphere.RadBoundary_effe[InitZone].Rts_nose,
+                                            Heliosphere.RadBoundary_effe[InitZone].Rts_tail);
         (HZone >= Heliosphere.Nregions - 1 && r > RtsDirection - L_tl) ||
         Heliosphere.IsHighActivityPeriod[InitZone] ||
-        fabsf(cosf(th)) > VswAngl
+        V0 * (1 + fabsf(cosf(th))) > Vhigh
     ) {
         return 0;
     }

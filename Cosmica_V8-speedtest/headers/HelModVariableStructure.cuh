@@ -84,7 +84,7 @@ typedef struct HeliosphereZoneProperties_t {
     float P0d = 0; // Drift Suppression rigidity
     float P0dNS = 0; // NS Drift Suppression rigidity
     float plateau = 0.; // Time dependent plateau in the high rigidity suppression
-    signed char Polarity = 0; // HMF polarity
+    signed int Polarity = 0; // HMF polarity
 } HeliosphereZoneProperties_t;
 
 typedef struct HeliosheatProperties_t {
@@ -96,7 +96,7 @@ typedef struct HeliosheatProperties_t {
 typedef struct SimulatedHeliosphere_t {
     // properties related to heliosphere like dimension, coefficients
     float Rmirror = 0.3; // [AU] Internal heliosphere bounduary - mirror radius.
-    unsigned char Nregions = 0; // Number of Inner Heliosphere region (15 inner region + 1 Heliosheat)
+    unsigned int Nregions = 0; // Number of Inner Heliosphere region (15 inner region + 1 Heliosheat)
     HeliosphereBoundRadius_t RadBoundary_effe[NMaxRegions] = {0}; // boundaries in effective heliosphere
     HeliosphereBoundRadius_t RadBoundary_real[NMaxRegions] = {0}; // real boundaries heliosphere
     bool IsHighActivityPeriod[NMaxRegions] = {false}; // active the modification for high activity period
@@ -107,8 +107,8 @@ typedef struct SimParameters_t {
     // Place here all simulation variables
     char output_file_name[struct_string_lengh] = "SimTest";
     unsigned long Npart = 5000; // number of event to be simulated
-    unsigned char NT; // number of bins of energies to be simulated
-    unsigned char NInitialPositions = 0;
+    unsigned int NT; // number of bins of energies to be simulated
+    unsigned int NInitialPositions = 0;
     // number of initial positions -> this number represent also the number of Carrington rotation that
     float *Tcentr; // array of energies to be simulated
     vect3D_t *InitialPosition; // initial position

@@ -67,9 +67,6 @@ __device__ vect3D_t Drift_PM89(const unsigned int InitZone, const signed int HZo
     //       dthetans = fabs((GeV/(c*aum))*(2.*       (MassNumber*sqrt(T*(T+2*T0))         ))/(Z*r*sqrt(B2_mag_alfa)));  /*dTheta_ns = 2*R_larmor/r*/
 
 
-
-    // if (TiltAngle + dthetans > Pi / 2.) theta_mez = Pi / 2. - 0.5 * sinf(Pi / 2.);
-    // else theta_mez = Pi / 2. - .5 * sinf(TiltAngle + dthetans);
     if (const float theta_mez = Pi / 2. - 0.5 * sinf(fminf(TiltAngle + dthetans, Pi / 2.));
         theta_mez < Pi / .2) {
         const float a_f = acosf(Pi / (2. * theta_mez) - 1);
@@ -79,8 +76,7 @@ __device__ vect3D_t Drift_PM89(const unsigned int InitZone, const signed int HZo
                                                  tanf(a_f)));
     } else {
         /* if the smoothness parameter "theta_mez" is greater then Pi/2, then the neutral sheet is flat, only heaviside function is applied.*/
-        // if (th > Pi / 2) { fth = 1.f; } else { if (th < Pi / 2) { fth = -1.f; } else { if (th == Pi / 2) fth = 0.f; } }
-        fth = sign(th-Pi/2.f);
+        fth = sign(th - Pi / 2.f);
     }
     // if (debug){
     //    printf("Vsw(tilt) %e\tBMagAlpha=%e\tAsun=%e\tr2=%e\tGamma_alfa=%e\tdelta_alfa=%e\n\n", Vsw,(Asun/(r*r))*sqrt( 1+Gamma_Bfield(r,TiltPos_th,Vsw)*Gamma_Bfield(r,TiltPos_th,Vsw)+delta_Bfield(r,TiltPos_th)*delta_Bfield(r,TiltPos_th)),
@@ -90,38 +86,42 @@ __device__ vect3D_t Drift_PM89(const unsigned int InitZone, const signed int HZo
     Vsw = SolarWindSpeed(InitZone, HZone, r, th, phi); // solar wind evaluated 
     // .. drift velocity
 
+#define POLAR_BRANCH_REDUCE
+#ifndef POLAR_BRANCH_REDUCE
     if (IsPolarRegion) {
         // polar region
-        const float E = delta_m * delta_m * r * r * Vsw * Vsw + Omega * Omega * rhelio * rhelio * (r - rhelio) * (
-                            r - rhelio)
-                        * sinf(th) * sinf(th) * sinf(th) * sinf(th) + rhelio * rhelio * Vsw * Vsw * sinf(th) * sinf(th);
-        float C = fth * sinf(th) * Ka * r * rhelio / (Asun * E * E);
-        C *= R * R / (R * R + LIM[HZone + InitZone].P0d * LIM[HZone + InitZone].P0d);
-        /* drift reduction factor. <------------------------------ */
-        //reg drift
-        v.r = -C * Omega * rhelio * 2 * (r - rhelio) * sinf(th) * (
-                  (2 * delta_m * delta_m * r * r + rhelio * rhelio * sinf(th) * sinf(th)) * Vsw * Vsw * Vsw * cosf(th) -
-                  .5f * (delta_m * delta_m * r * r * Vsw * Vsw - Omega * Omega * rhelio * rhelio * (r - rhelio) * (
-                             r - rhelio) * sinf(th) * sinf(th) * sinf(th) * sinf(th) + rhelio * rhelio * Vsw * Vsw *
-                         sinf(th)
-                         * sinf(th)) * sinf(th) * dV_dth);
-        v.th = -C * Omega * rhelio * Vsw * sinf(th) * sinf(th) * (
-                   2 * r * (r - rhelio) * (
-                       delta_m * delta_m * r * Vsw * Vsw + Omega * Omega * rhelio * rhelio * (r - rhelio) * sinf(th) *
-                       sinf(th) * sinf(th) * sinf(th)) - (4 * r - 3 * rhelio) * E);
-        v.phi = 2 * C * Vsw * (-delta_m * delta_m * r * r * (delta_m * r + rhelio * cosf(th)) * Vsw * Vsw * Vsw + 2 *
-                               delta_m * r * E * Vsw - Omega * Omega * rhelio * rhelio * (r - rhelio) * sinf(th) *
-                               sinf(th) * sinf(th) * sinf(th) * (
-                                   delta_m * r * r * Vsw - rhelio * (r - rhelio) * Vsw * cosf(th) + rhelio * (
-                                       r - rhelio)
-                                   * sinf(th) * dV_dth));
-        //ns drift
-        C = Vsw * Dftheta_dtheta * sinf(th) * sinf(th) * Ka * r * rhelio * rhelio / (Asun * E);
-        C *= R * R / (R * R + LIM[HZone + InitZone].P0dNS * LIM[HZone + InitZone].P0dNS);
-        /* drift reduction factor.  <------------------------------ */
-        v.r += -C * Omega * sinf(th) * (r - rhelio);
-        //v.th += 0;
-        v.phi += -C * Vsw;
+#endif
+    const float E = delta_m * delta_m * r * r * Vsw * Vsw + Omega * Omega * rhelio * rhelio * (r - rhelio) * (
+                        r - rhelio)
+                    * sinf(th) * sinf(th) * sinf(th) * sinf(th) + rhelio * rhelio * Vsw * Vsw * sinf(th) * sinf(th);
+    float C = fth * sinf(th) * Ka * r * rhelio / (Asun * E * E);
+    C *= R * R / (R * R + LIM[HZone + InitZone].P0d * LIM[HZone + InitZone].P0d);
+    /* drift reduction factor. <------------------------------ */
+    //reg drift
+    v.r = -C * Omega * rhelio * 2 * (r - rhelio) * sinf(th) * (
+              (2 * delta_m * delta_m * r * r + rhelio * rhelio * sinf(th) * sinf(th)) * Vsw * Vsw * Vsw * cosf(th) -
+              .5f * (delta_m * delta_m * r * r * Vsw * Vsw - Omega * Omega * rhelio * rhelio * (r - rhelio) * (
+                         r - rhelio) * sinf(th) * sinf(th) * sinf(th) * sinf(th) + rhelio * rhelio * Vsw * Vsw *
+                     sinf(th)
+                     * sinf(th)) * sinf(th) * dV_dth);
+    v.th = -C * Omega * rhelio * Vsw * sinf(th) * sinf(th) * (
+               2 * r * (r - rhelio) * (
+                   delta_m * delta_m * r * Vsw * Vsw + Omega * Omega * rhelio * rhelio * (r - rhelio) * sinf(th) *
+                   sinf(th) * sinf(th) * sinf(th)) - (4 * r - 3 * rhelio) * E);
+    v.phi = 2 * C * Vsw * (-delta_m * delta_m * r * r * (delta_m * r + rhelio * cosf(th)) * Vsw * Vsw * Vsw + 2 *
+                           delta_m * r * E * Vsw - Omega * Omega * rhelio * rhelio * (r - rhelio) * sinf(th) *
+                           sinf(th) * sinf(th) * sinf(th) * (
+                               delta_m * r * r * Vsw - rhelio * (r - rhelio) * Vsw * cosf(th) + rhelio * (
+                                   r - rhelio)
+                               * sinf(th) * dV_dth));
+    //ns drift
+    C = Vsw * Dftheta_dtheta * sinf(th) * sinf(th) * Ka * r * rhelio * rhelio / (Asun * E);
+    C *= R * R / (R * R + LIM[HZone + InitZone].P0dNS * LIM[HZone + InitZone].P0dNS);
+    /* drift reduction factor.  <------------------------------ */
+    v.r += -C * Omega * sinf(th) * (r - rhelio);
+    //v.th += 0;
+    v.phi += -C * Vsw;
+#ifndef POLAR_BRANCH_REDUCE
     } else {
         // equatorial region. Bth = 0 
         const float E = +Omega * Omega * (r - rhelio) * (r - rhelio) * sinf(th) * sinf(th) + Vsw * Vsw;
@@ -153,13 +153,14 @@ __device__ vect3D_t Drift_PM89(const unsigned int InitZone, const signed int HZo
         //    printf("Drift_PM89:: Dftheta_dtheta=%e\t KA=%e\tr=%f\tAsun=%e\tGamma2=%e\n",Dftheta_dtheta,Ka,r,Asun,Vsw*Vsw*Vsw*Vsw/(E*E ));
         // }
     }
+#endif
 
     // Suppression rigidity dependence: logistic function (~1 at low energy ---> ~0 at high energy)
     const float HighRigiSupp = LIM[HZone + InitZone].plateau + (1.f - LIM[HZone + InitZone].plateau) / (
                                    1.f + expf(HighRigiSupp_smoothness * (R - HighRigiSupp_TransPoint)));
-    v.r = v.r * HighRigiSupp;
-    v.th = v.th * HighRigiSupp;
-    v.phi = v.phi * HighRigiSupp;
+    v.r *= HighRigiSupp;
+    v.th *= HighRigiSupp;
+    v.phi *= HighRigiSupp;
 
     return v;
 }
