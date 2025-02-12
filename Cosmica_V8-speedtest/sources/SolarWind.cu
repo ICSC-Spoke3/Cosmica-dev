@@ -4,17 +4,22 @@
 #include "HeliosphereModel.cuh"
 #include "SolarWind.cuh"
 
-////////////////////////////////////////////////////////////////
-//..... Solar Wind Speed   .....................................
-////////////////////////////////////////////////////////////////
+/*
+* Solar Wind Model
+*/
+
 __device__ float SolarWindSpeed(const unsigned int InitZone, const signed int HZone, const float r, const float th,
                                 const float phi) {
-    /* Author: SDT - adapted for CUDA in Feb 2022
-    * description: return the solar wind speed
-    *
-    * \param HZone Index of Heliosphere region
-    * \param part  Pseudoparticle position
-    */
+    /**
+     * @brief Calculate the solar wind speed at a given position in the heliosphere.
+     * @param InitZone Index of the initial zone
+     * @param HZone Index of the heliosphere region
+     * @param r Radial distance
+     * @param th th
+     * @param phi phi
+     * @return Solar wind speed
+     */
+    
     const float V0 = HZone < Heliosphere.Nregions ? LIM[HZone + InitZone].V0 : HS[InitZone].V0;
 
 
@@ -42,12 +47,16 @@ __device__ float SolarWindSpeed(const unsigned int InitZone, const signed int HZ
 
 __device__ float DerivativeOfSolarWindSpeed_dtheta(const unsigned int InitZone, const signed int HZone, const float r,
                                                    const float th, const float phi) {
-    /* Author: SDT - adapted for CUDA in Feb 2022
-    * description: return the derivative of solar wind speed in d theta
-    *
-    * \param HZone Index of Heliosphere region
-    * \param part  Pseudoparticle position
-    */
+    /**
+     * @brief Derivative of solar wind speed in d theta
+     * @param InitZone Index of the initial zone
+     * @param HZone Index of the heliosphere region
+     * @param r Radial distance
+     * @param th th
+     * @param phi phi
+     * @return Derivative of solar wind speed in d theta
+     * 
+     */
     const float V0 = HZone < Heliosphere.Nregions ? LIM[HZone + InitZone].V0 : HS[InitZone].V0;
 
     // heliosheat ...............................

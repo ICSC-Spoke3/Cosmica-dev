@@ -5,13 +5,16 @@
 #include <cstdio>          // Supplies FILE, stdin, stdout, stderr, and the fprint() family of functions
 
 
-/////////////////////////////////////////////////////////////////////////////
-////////////////// Diffusion Parameters Description /////////////////////////
-/////////////////////////////////////////////////////////////////////////////
+/*
+*       Diffusion parameters
+*/
 void RescaleToEffectiveHeliosphere(HeliosphereBoundRadius_t &Rbound, vect3D_t &part) {
-    /* * description: create an effective heliosphere of 100 AU. thisis due to the fact that K0 parameters are tuned on such dimension.
-         \param  Rbound heliospher boundaries to be rescaled
-         \param  part   initial position to be rescaled
+    /**
+     * @brief Create an effective heliosphere of 100 AU. This is due to the fact that K0 parameters are tuned on such dimension.
+     * 
+     * @param Rbound Heliosphere boundaries to be rescaled
+     * @param part Initial position to be rescaled
+     * @return void
      */
     const float Rts_nose_realworld = Rbound.Rts_nose;
     const float Rhp_nose_realworld = Rbound.Rhp_nose;
@@ -32,27 +35,30 @@ void RescaleToEffectiveHeliosphere(HeliosphereBoundRadius_t &Rbound, vect3D_t &p
 
 
 float K0Fit_ssn(const int p, const int SolarPhase, const float ssn, float *GaussVar) {
-    /*Authors: 2011 Stefano - update 2012 Stefano - update 2015 GLV*/
-    /* * description: K0 evaluated using ssn as a proxy
-         \param p            solar polarity of HMF
-         \param SolarPhase   0=rising / 1=Declining phase of solar activity cycle
-         \param ssn          smoothed sunspot number
-         \param *GaussVar    gaussian variation (output)
+    /**
+     * @brief The K0 parameter is evaluated using the smoothed sunspot number as a proxy.
+     * 
+     * @param p Solar polarity of HMF
+     * @param SolarPhase Indicates the phase of the solar activity cycle (0=rising / 1=Declining)
+     * @param ssn Smoothed sunspot number
+     * @param GaussVar Gaussian variation (output)
+     * @return K0 parameter
+     * 
      */
     float k0;
     if (p > 0.) {
-        if (SolarPhase == 0)/*Rising*/ {
+        if (SolarPhase == 0) {
             k0 = 0.0002743f - 2.11e-6f * ssn + 1.486e-8f * sq(ssn) - 3.863e-11f * sq(ssn) * ssn;
             *GaussVar = 0.1122;
-        } else /*Declining*/ {
+        } else {
             k0 = 0.0002787f - 1.66e-6f * ssn + 4.658e-9f * sq(ssn) - 6.673e-12f * sq(ssn) * ssn;
             *GaussVar = 0.1324f;
         }
     } else {
-        if (SolarPhase == 0)/*Rising*/ {
+        if (SolarPhase == 0) {
             k0 = 0.0003059f - 2.51e-6f * ssn + 1.284e-8f * sq(ssn) - 2.838e-11f * sq(ssn) * ssn;
             *GaussVar = 0.1097;
-        } else /*Declining*/ {
+        } else {
             k0 = 0.0002876f - 3.715e-6f * ssn + 2.534e-8f * sq(ssn) - 5.689e-11f * sq(ssn) * ssn;
             *GaussVar = 0.14;
         }
@@ -61,26 +67,33 @@ float K0Fit_ssn(const int p, const int SolarPhase, const float ssn, float *Gauss
 }
 
 float K0Fit_NMC(const float NMC, float *GaussVar) {
-    /*Authors: 2015 GLV*/
-    /* * description: K0 evaluated using Mc Murdo NM counts as a proxy
-                      only for High Activity, defined as Tilt L >48deg
-       \param NMC          Neutron monitor counting rate from Mc Murdo
-       \param *GaussVar    gaussian variation (output)
-    */
+    /**
+     * @brief The K0 parameter is evaluated using the McMurdo neutron monitor counting rate as a proxy.
+     * 
+     * @param NMC Neutron monitor counting rate from McMurdo
+     * @param GaussVar Gaussian variation (output)
+     * @return K0 parameter
+     */
     *GaussVar = 0.1045;
     return expf(-10.83f - 0.0041f * NMC + 4.52e-5f * sq(NMC));
 }
 
 float K0CorrFactor(const int p, const int q, const int SolarPhase, const float tilt) {
-    /*Authors: 2017 Stefano */
-    /* * description: Correction factor to K0 for the Kparallel. This correction is introduced
-                      to account for the fact that K0 is evaluated with a model not including particle drift.
-                      Thus, the value need a correction once to be used in present model
-        \param p            solar polarity of HMF
-        \param q            signum of particle charge
-        \param SolarPhase   0=rising / 1=Declining phase of solar activity cycle
-        \param tilt         Tilt angle of neutral sheet (in degree)
-    */
+    /**
+     * @brief Correction factor to K0 for the Kparallel. 
+     * This correction is introduced to account for the fact that K0 is evaluated 
+     * with a model not including particle drift. 
+     * Thus, the value need a correction once to be used in present model.
+     * 
+     * @param p Solar polarity of HMF
+     * @param q Signum of particle charge
+     * @param SolarPhase Indicates the phase of the solar activity cycle (0=rising / 1=Declining)
+     * @param tilt Tilt angle of neutral sheet (in degree)
+     * @return float The correction factor
+     */
+
+
+// TODO: Spostare le costanti in un file di configurazione
 #ifndef K0Corr_maxv
 #define K0Corr_maxv 1.5f
 #endif
@@ -147,25 +160,26 @@ float K0CorrFactor(const int p, const int q, const int SolarPhase, const float t
 
 
 float3 EvalK0(const bool IsHighActivityPeriod, const int p, const int q, const int SolarPhase, const float tilt,
-              const float NMC, const float ssn,
-              const unsigned char verbose = 0) {
-    /*Authors: 2022 Stefano */
-    /* * description: Evaluate diffusion parameter from fitting procedures.
-        \param p            solar polarity of HMF
-        \param q            signum of particle charge
-        \param SolarPhase   0=rising / 1=Declining phase of solar activity cycle
-        \param tilt         Tilt angle of neutral sheet (in degree)
-        \return x = k0_paral
-                y = k0_perp
-                z = GaussVar
-    */
+              const float NMC, const float ssn, const unsigned char verbose = 0) {
+
+    /**
+     * @brief Evaluate diffusion parameter from fitting procedures.
+     * @param IsHighActivityPeriod Flag to indicate if the period is of high solar activity
+     * @param p Solar polarity of HMF
+     * @param q Signum of particle charge
+     * @param SolarPhase Indicates the phase of the solar activity cycle (0=rising / 1=Declining)
+     * @param tilt Tilt angle of neutral sheet (in degree)
+     * @param NMC Neutron monitor counting rate from McMurdo
+     * @param ssn Smoothed sunspot number
+     * @param verbose Verbosity level
+     * @return output x = k0_paral (parallel k0), y = k0_perp (perpendicular k0), z = GaussVar (Gaussian variation)
+     * k0_paral is corrected by a correction factor
+     */
     float3 output;
-    output.x = K0CorrFactor(p, q, SolarPhase, tilt); // k0_paral is corrected by a correction factor
-    ////////////////////////////////////////////////
+    output.x = K0CorrFactor(p, q, SolarPhase, tilt); 
     // printf("-- p: %d q: %d phase: %d tilt: %e ssn: %e NMC: %e \n",p,q,SolarPhase,tilt,ssn,NMC);
     // printf("-- K0CorrF: %e \n",output.x);
     // printf("-- IsHighActivityPeriod %d \n",IsHighActivityPeriod);
-    ////////////////////////////////////////////////
     if (IsHighActivityPeriod && NMC > 0) {
         output.y = K0Fit_NMC(NMC, &output.z);
         output.x *= output.y;
@@ -178,20 +192,21 @@ float3 EvalK0(const bool IsHighActivityPeriod, const int p, const int q, const i
         output.y = K0Fit_ssn(p, SolarPhase, ssn, &output.z);
         output.x *= output.y;
     }
-    ////////////////////////////////////////////////
     // printf("-- K0 paral: %e \n",output.x);
     // printf("-- K0 perp : %e \n",output.y);
-    ////////////////////////////////////////////////
     return output;
 }
 
 float g_low(const int SolarPhase, const int Polarity, const float tilt) {
-    /*Authors: 2022 Stefano - update 2023 GLV*/
-    /* * description: evaluate g_low parameter (for Kparallel).
-        \param SolarPhase   0=rising / 1=Declining phase of solar activity cycle
-        \param tilt         Tilt angle of neutral sheet (in degree)
-        \return g_low
-    */
+    /**
+     * @brief Evaluation of g_low parameter (for K0 parallel).
+     * @param SolarPhase Indicates the phase of the solar activity cycle (0=rising / 1=Declining)
+     * @param Polarity Solar polarity of HMF
+     * @param tilt Tilt angle of neutral sheet (in degree)
+     * @return g_low
+     */
+
+// TODO: Spostare le costanti in un file di configurazione
 #ifndef MaxValueOf_g_low_pos
 #define MaxValueOf_g_low_pos 0.6f
 #endif
@@ -247,12 +262,15 @@ float g_low(const int SolarPhase, const int Polarity, const float tilt) {
 }
 
 float rconst(const int SolarPhase, const int Polarity, const float tilt) {
-    /*Authors: 2022 Stefano - update 2023 GLV*/
-    /* * description: evaluate rconst parameter (for Kparallel).
-        \param SolarPhase   0=rising / 1=Declining phase of solar activity cycle
-        \param tilt         Tilt angle of neutral sheet (in degree)
-        \return rconst
-    */
+    /**
+     * @brief Evalutation of rconst parameter (for K0 parallel).
+     * @param SolarPhase Indicates the phase of the solar activity cycle (0=rising / 1=Declining)
+     * @param Polarity Solar polarity of HMF
+     * @param tilt Tilt angle of neutral sheet (in degree)
+     * @return rconst parameter
+     */
+
+// TODO: Spostare le costanti in un file di configurazione
 #ifndef MaxValueOf_rconst
 #define MaxValueOf_rconst 4
 #endif
@@ -305,18 +323,21 @@ float rconst(const int SolarPhase, const int Polarity, const float tilt) {
 __device__ float3 Diffusion_Tensor_In_HMF_Frame(const unsigned int InitZone, const signed int HZone, const float r,
                                                 const float theta, const float beta, const float P,
                                                 const float GaussRndNumber, float3 &dK_dr) {
-    /*Authors: 2022 Stefano */
-    /* * description: evaluate the diffusion tensor in the HMF frame, i.e. Kparallel & Kperpendicular.
-        \param HZone   Zone in the Heliosphere
-        \param r      solar distance
-        \param theta  solar colatitude
-        \param beta   v/c
-        \param P      Particle rigidity
-        \param GaussRndNumber Random number with normal distribution
-        \return x Kparallel
-                y Kperp_1
-                z Kperp_2
-    */
+    /**
+     * @brief Evaluation of the diffusion tensor in the HMF frame, i.e. k0 parallel and k0 perpendicular.
+     * @param InitZone Initial zone in the heliosphere
+     * @param HZone Zone in the heliosphere
+     * @param r Solar distance
+     * @param theta Solar colatitude
+     * @param beta v/c
+     * @param P Particle rigidity
+     * @param GaussRndNumber Random number with normal distribution
+     * @param dK_dr Output parameter for the derivative of K with respect to r
+     * @return x Kparallel
+     * @return y Kperp_1
+     * @return z Kperp_2
+     */
+
     float3 Ktensor;
     // HeliosphereZoneProperties_t ThisZone=LIM[HZone+InitZone];
 
@@ -332,6 +353,7 @@ __device__ float3 Diffusion_Tensor_In_HMF_Frame(const unsigned int InitZone, con
     dK_dr.x = (k0_paral + GaussRndNumber * GaussVar * k0_paral) * beta / 3.f * (P + g_low);
     Ktensor.x = dK_dr.x * (rconst + r);
 
+// TODO: Spostare le costanti in un file di configurazione
 #ifndef rho_1
 #define rho_1 0.065f // Kpar/Kperp (ex Kp0)
 #endif
@@ -352,18 +374,23 @@ __device__ float3 Diffusion_Tensor_In_HMF_Frame(const unsigned int InitZone, con
 
 __device__ float Diffusion_Coeff_heliosheat(const unsigned int HZone, const float r, const float th, const float phi,
                                             const float beta, const float P, float &dK_dr) {
-    /*Authors: 2022 Stefano */
-    /* * description: evaluate the diffusion tensor in the HMF frame, i.e. Kparallel & Kperpendicular.
-        \param HZone   Zone in the Heliosphere
-        \param r      solar distance
-        \param beta   v/c
-        \param P      Particle rigidity
-        \return x diffusion coeff
-    */
+    /**
+     * @brief Evaluation of the diffusion tensor in the HMF frame, i.e. K0 parallel and K0 perpendicular.
+     * @param HZone Zone in the Heliosphere
+     * @param r Solar distance
+     * @param th Solar colatitude
+     * @param phi Solar longitude
+     * @param beta v/c
+     * @param P Particle rigidity
+     * @param dK_dr Output parameter for the derivative of K with respect to r
+     * @return x Diffusion coefficient
+     */
+
     dK_dr = 0.;
     // if around 5 AU from Heliopause, apply diffusion barrier
     const float RhpDirection = Boundary(th, phi, Heliosphere.RadBoundary_effe[HZone].Rhp_nose,
                                         Heliosphere.RadBoundary_effe[HZone].Rhp_tail);
+// TODO: Spostare le costanti in un file di configurazione
 #ifndef HPB_SupK
 #define HPB_SupK 50 // suppressive factor at barrier
 #endif
@@ -373,6 +400,7 @@ __device__ float Diffusion_Coeff_heliosheat(const unsigned int HZone, const floa
 #ifndef HP_SupSmooth
 #define HP_SupSmooth 3e-2 // smoothness of suppressive factor at barrier
 #endif
+
     if (r > RhpDirection - 5) {
         return HS[HZone].k0 * beta * P * SmoothTransition(1, 1. / HPB_SupK, RhpDirection - HP_width / 2.f,
                                                           HP_SupSmooth, r);
