@@ -1,4 +1,5 @@
 #File generated on 2024-10-08
+RandomSeed: 42
 OutputFilename: Proton_TKO_20110509_20131121_r00100_lat00000
 # particle to be simulated
 Particle_NucleonRestMass: 0.938272

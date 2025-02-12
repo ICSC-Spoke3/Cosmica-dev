@@ -182,6 +182,8 @@ int LoadConfigFile(int argc, char *argv[], SimParameters_t &SimParameters, int v
         try {
             auto [key, value] = splitKeyValue(line);
             switch (hash(key)) {
+                case "RandomSeed"_:
+                    SimParameters.RandomSeed = std::stol(value);
                 case "OutputFilename"_:
                     strncpy(SimParameters.output_file_name, value.c_str(), struct_string_lengh);
                     break;

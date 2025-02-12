@@ -328,7 +328,9 @@ int main(int argc, char *argv[]) {
         // .. Initialize random generator
         curandStatePhilox4_32_10_t *dev_RndStates;
         HANDLE_ERROR(cudaMalloc((void **)&dev_RndStates, prop_launch_param.Npart*sizeof(curandStatePhilox4_32_10_t)));
-        unsigned long Rnd_seed = getpid() + time(nullptr) + gpu_id;
+        unsigned long Rnd_seed = SimParameters.RandomSeed == 0
+                                     ? getpid() + time(nullptr) + gpu_id
+                                     : SimParameters.RandomSeed;
         init_rdmgenerator<<<prop_launch_param.blocks, prop_launch_param.threads>>>(dev_RndStates, Rnd_seed);
         cudaDeviceSynchronize();
 

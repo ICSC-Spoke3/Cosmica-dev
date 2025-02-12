@@ -15,6 +15,8 @@ __global__ void HeliosphericProp(const int Npart_PerKernel, const float Min_dt, 
                                  curandStatePhilox4_32_10_t *CudaState, float *RMaxs) {
     const int id = threadIdx.x + blockIdx.x * blockDim.x;
 
+    curandStatePhilox4_32_10_t randState = CudaState[id];
+
     // Deine the external unique share memory array
     extern __shared__ float smem[];
 
@@ -64,9 +66,10 @@ __global__ void HeliosphericProp(const int Npart_PerKernel, const float Min_dt, 
 
         // Stocasti propagation cycle until quasi-particle exit heliosphere or it reaches the fly timeout
         while (smem[threadIdx.x + 5 * blockDim.x] >= 0 && smem[threadIdx.x + 4 * blockDim.x] <= TimeOut) {
-            float4 RandNum = curand_normal4(&CudaState[id]); // x,y,z used for SDE, w used for K0 random oscillation
+            // x,y,z used for SDE, w used for K0 random oscillation
+            const auto [rand_x, rand_y, rand_z, rand_w] = curand_normal4(&randState);
 
-            // Initialization of the propagation terms
+            // Initi    alization of the propagation terms
             DiffusionTensor_t KSym;
             Tensor3D_t Ddif;
             vect3D_t AdvTerm;
@@ -95,7 +98,7 @@ __global__ void HeliosphericProp(const int Npart_PerKernel, const float Min_dt, 
             // Evaluate the convective-diffusive tensor and its decomposition
             KSym = DiffusionTensor_symmetric(PeriodIndexes[id], smem[threadIdx.x + 5 * blockDim.x], smem[threadIdx.x],
                                              smem[threadIdx.x + blockDim.x], smem[threadIdx.x + 2 * blockDim.x],
-                                             smem[threadIdx.x + 3 * blockDim.x], pt, RandNum.w);
+                                             smem[threadIdx.x + 3 * blockDim.x], pt, rand_w);
 
             int res = 0;
             Ddif = SquareRoot_DiffusionTerm(smem[threadIdx.x + 5 * blockDim.x], KSym, smem[threadIdx.x],
@@ -134,16 +137,16 @@ __global__ void HeliosphericProp(const int Npart_PerKernel, const float Min_dt, 
             const float prev_r = smem[threadIdx.x];
 
             // Stochastic integration using the coefficients computed above and energy loss term
-            smem[threadIdx.x] += AdvTerm.r * dt + RandNum.x * Ddif.rr * sqrtf(dt);
+            smem[threadIdx.x] += AdvTerm.r * dt + rand_x * Ddif.rr * sqrtf(dt);
 
             // Reflect out the particle (use previous propagation step) if is closer to the sun than 0.3 AU
             if (smem[threadIdx.x] < Heliosphere.Rmirror) {
                 smem[threadIdx.x] = prev_r;
             } else {
-                smem[threadIdx.x + blockDim.x] += AdvTerm.th * dt + (RandNum.x * Ddif.tr + RandNum.y * Ddif.tt) *
+                smem[threadIdx.x + blockDim.x] += AdvTerm.th * dt + (rand_x * Ddif.tr + rand_y * Ddif.tt) *
                         sqrtf(dt);
                 smem[threadIdx.x + 2 * blockDim.x] += AdvTerm.phi * dt + (
-                    RandNum.x * Ddif.pr + RandNum.y * Ddif.pt + RandNum.z * Ddif.pp) * sqrtf(dt);
+                    rand_x * Ddif.pr + rand_y * Ddif.pt + rand_z * Ddif.pp) * sqrtf(dt);
                 smem[threadIdx.x + 3 * blockDim.x] += en_loss * dt;
                 smem[threadIdx.x + 4 * blockDim.x] += dt;
                 // smem[threadIdx.x + 5*blockDim.x] += loss_term*dt;
