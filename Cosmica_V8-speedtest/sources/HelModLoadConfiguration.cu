@@ -132,15 +132,17 @@ std::pair<string, string> splitKeyValue(const string &line) {
     return {key, value};
 }
 
+#ifndef UNIFIED_COMPILE
 constexpr unsigned long hash(const std::string_view &str) {
-    unsigned long hash = 0;
-    for (const auto &e: str) hash = hash * 131 + e;
-    return hash;
+     unsigned long hash = 0;
+     for (const auto &e: str) hash = hash * 131 + e;
+     return hash;
 }
 
 consteval unsigned long operator""_(const char *str, const size_t len) {
-    return hash(std::string_view(str, len));
+     return hash(std::string_view(str, len));
 }
+#endif
 
 int LoadConfigFile(int argc, char *argv[], SimParameters_t &SimParameters, int verbose) {
     auto options = ParseCLIArguments(argc, argv);

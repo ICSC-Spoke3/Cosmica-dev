@@ -124,13 +124,13 @@ __global__ void GridMax(const int Nmax, const float *indata, float *outdata) {
 
 __global__ void Rhistogram_atomic(const float *R_in, const float LogBin0_lowEdge, const float DeltaLogR, const int Nbin,
                                   const unsigned int Npart, float *R_out) {
-    extern __shared__ unsigned int smem[];
+    extern __shared__ unsigned int smem2[];
 
     const unsigned int id = threadIdx.x + blockIdx.x * blockDim.x;
     const unsigned int block_shift = blockIdx.x * Nbin;
 
     // initialize the shared memory empty histogram
-    if (threadIdx.x < Nbin) smem[threadIdx.x] = 0;
+    if (threadIdx.x < Nbin) smem2[threadIdx.x] = 0;
 
     __syncthreads();
 
@@ -138,12 +138,12 @@ __global__ void Rhistogram_atomic(const float *R_in, const float LogBin0_lowEdge
         if (log10f(R_in[id]) > LogBin0_lowEdge) {
             // evalaute the bin where put event and add atomically
             const int dest_bin = static_cast<int>(floorf((log10f(R_in[id]) - LogBin0_lowEdge) / DeltaLogR));
-            atomicAdd(&smem[dest_bin], 1);
+            atomicAdd(&smem2[dest_bin], 1);
         }
     }
 
     // write partial histogram to global memory
-    if (threadIdx.x < Nbin) R_out[threadIdx.x + block_shift] = static_cast<float>(smem[threadIdx.x]);
+    if (threadIdx.x < Nbin) R_out[threadIdx.x + block_shift] = static_cast<float>(smem2[threadIdx.x]);
 }
 
 // Unroll the last steps when reduction dimension < warp dimension

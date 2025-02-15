@@ -8,6 +8,9 @@
 
 
 
+#include <HeliosphericPropagation.cuh>
+
+
 #include <iostream>
 
 
@@ -76,12 +79,28 @@ LaunchParam_t RoundNpart(const int NPart, cudaDeviceProp GPUprop, const bool ver
         exit(EXIT_FAILURE);
     }
 
+// #define EXPERIMENTAL_GRID
+#ifdef EXPERIMENTAL_GRID
+    int gridSize, minGridSize, blockSize = 32;
+    int maxActiveBlocks = 0;
+    // cudaOccupancyMaxActiveBlocksPerMultiprocessor(&maxActiveBlocks, HeliosphericProp, blockSize, 0);
+    // gridSize = GPUprop.multiProcessorCount * maxActiveBlocks;
+    // cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, HeliosphericProp, 0, 65536 / 86);
+    // blockSize = (blockSize + GPUprop.warpSize - 1) / GPUprop.warpSize * GPUprop.warpSize;
+    gridSize = (NPart + blockSize - 1) / blockSize;
+
+    launch_param.blocks = gridSize;
+    launch_param.threads = blockSize;
+    launch_param.smem = static_cast<int>(svars * launch_param.threads * sizeof(float));
+#endif
+
     if (verbose) {
         printf("------- propagation Kernel -----------------\n");
         printf("-- Number of particle which will be simulated: %d\n", launch_param.Npart);
         printf("-- Number of Warp in a Block       : %d \n", WarpPerBlock);
         printf("-- Number of blocks                : %d \n", launch_param.blocks);
         printf("-- Number of threadsPerBlock       : %d \n", launch_param.threads);
+        printf("-- Shared Memory                   : %d \n", launch_param.smem);
         printf("-- \n\n");
     }
 

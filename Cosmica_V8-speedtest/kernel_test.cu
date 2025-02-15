@@ -20,6 +20,8 @@
 
 // .. project specific
 #include "VariableStructure.cuh"
+
+#ifndef UNIFIED_COMPILE
 #include "LoadConfiguration.cuh"
 #include "HeliosphericPropagation.cuh"
 #include "GenComputation.cuh"
@@ -31,6 +33,9 @@
 #include "HelModVariableStructure.cuh"
 #include "HelModLoadConfiguration.cuh"
 #include "DiffusionModel.cuh"
+#endif
+#include "HelModVariableStructure.cuh"
+
 
 // Track the errors
 #define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
@@ -52,6 +57,7 @@
 #define MIN_DT 0.01                                       // min allowed value of time step
 #endif
 #define TIMEOUT std::numeric_limits<float>::infinity()
+// #define TIMEOUT 2000
 #define NPOS 10
 #define RBINS 100
 
@@ -81,9 +87,24 @@ __constant__ HeliosheatProperties_t HS[NMaxRegions]; // heliosheat
 // __constant__ float max_dt;
 // __constant__ float timeout;
 
+#ifdef UNIFIED_COMPILE
+#include "sources/DiffusionModel.cu"
+#include "sources/GenComputation.cu"
+#include "sources/GPUManage.cu"
+#include "sources/HeliosphereModel.cu"
+#include "sources/HeliosphericPropagation.cu"
+#include "sources/HelModLoadConfiguration.cu"
+#include "sources/HistoComputation.cu"
+#include "sources/Histogram.cu"
+#include "sources/LoadConfiguration.cu"
+#include "sources/MagneticDrift.cu"
+#include "sources/SDECoeffs.cu"
+#include "sources/SolarWind.cu"
+#endif
 
 // Main Code
 int main(int argc, char *argv[]) {
+    // cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
     ////////////////////////////////////////////////////////////////
     //..... Print Start time  ...................................
     // This part is for debug and performances tests

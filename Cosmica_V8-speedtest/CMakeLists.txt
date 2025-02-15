@@ -5,6 +5,8 @@ project(Cosmica LANGUAGES CUDA CXX)
 
 # Optionally, locate OpenMP (if your host code uses OpenMP)
 find_package(OpenMP REQUIRED)
+find_package(Threads REQUIRED)
+
 if(OpenMP_FOUND)
     message(STATUS "Found OpenMP: ${OpenMP_CXX_FLAGS}")
 endif()
@@ -15,6 +17,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_STANDARD 20)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
+add_definitions(-DUNIFIED_COMPILE)
+
+# Add the include directory (from the -I flag).
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/headers)
+
 # Define the source files.
 set(SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/kernel_test.cu
@@ -24,7 +31,6 @@ set(SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/HeliosphereModel.cu
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/HeliosphericPropagation.cu
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/HelModLoadConfiguration.cu
-        ${CMAKE_CURRENT_SOURCE_DIR}/sources/HelModLoadConfiguration2.cu
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/HistoComputation.cu
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/Histogram.cu
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/LoadConfiguration.cu
@@ -32,9 +38,6 @@ set(SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/SDECoeffs.cu
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/SolarWind.cu
 )
-
-# Add the include directory (from the -I flag).
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/headers)
 
 # Create the executable target.
 add_executable(Cosmica ${SOURCES})
