@@ -26,6 +26,11 @@ __device__ __host__ __forceinline__ float sq(const float val) {
     return val * val;
 }
 
+__device__ __host__ __forceinline__ float clamp(const float f, const float a, const float b)
+{
+   return fmaxf(a, fminf(f, b));
+}
+
 __host__ __device__ float SmoothTransition(float, float, float, float, float);
 
 /* Smooth transition between  InitialVal to FinalVal centered at CenterOfTransition as function of x if smoothness== 0 use a sharp transition
