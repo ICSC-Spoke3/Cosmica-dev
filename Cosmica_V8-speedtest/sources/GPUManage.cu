@@ -60,7 +60,8 @@ LaunchParam_t RoundNpart(const int NPart, cudaDeviceProp GPUprop, const bool ver
     LaunchParam_t launch_param;
 
     // Computation of the number of blocks, warp per blocks, threads per block and shared memory bits
-    launch_param.Npart = ceil_int(NPart, GPUprop.warpSize) * GPUprop.warpSize;
+    // launch_param.Npart = ceil_int(NPart, GPUprop.warpSize) * GPUprop.warpSize;
+    launch_param.Npart = NPart;
     int WarpPerBlock = WpB <= 0 ? BestWarpPerBlock(GPUprop.name, verbose) : WpB;
     launch_param.threads = WarpPerBlock * GPUprop.warpSize;
     launch_param.blocks = ceil_int(launch_param.Npart, launch_param.threads);
@@ -79,18 +80,19 @@ LaunchParam_t RoundNpart(const int NPart, cudaDeviceProp GPUprop, const bool ver
         exit(EXIT_FAILURE);
     }
 
-// #define EXPERIMENTAL_GRID
+#define EXPERIMENTAL_GRID
 #ifdef EXPERIMENTAL_GRID
-    int gridSize, minGridSize, blockSize = 32;
-    int maxActiveBlocks = 0;
+    // int gridSize, minGridSize, blockSize = 32;
+    // int maxActiveBlocks = 0;
     // cudaOccupancyMaxActiveBlocksPerMultiprocessor(&maxActiveBlocks, HeliosphericProp, blockSize, 0);
     // gridSize = GPUprop.multiProcessorCount * maxActiveBlocks;
     // cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, HeliosphericProp, 0, 65536 / 86);
     // blockSize = (blockSize + GPUprop.warpSize - 1) / GPUprop.warpSize * GPUprop.warpSize;
-    gridSize = (NPart + blockSize - 1) / blockSize;
+    // gridSize = (NPart + blockSize - 1) / blockSize;
 
-    launch_param.blocks = gridSize;
-    launch_param.threads = blockSize;
+    // launch_param.threads = (768 + GPUprop.warpSize - 1) / GPUprop.warpSize * GPUprop.warpSize;
+    launch_param.threads = 48;
+    launch_param.blocks = (launch_param.Npart + launch_param.threads - 1) / launch_param.threads;
     launch_param.smem = static_cast<int>(svars * launch_param.threads * sizeof(float));
 #endif
 

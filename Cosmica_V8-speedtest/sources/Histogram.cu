@@ -82,7 +82,7 @@ __device__ void WarpMax(volatile float *sdata, const unsigned int tid) {
 
 __device__ void BlockMax(float *sdata, float *outdata) {
     // thread index taking into account the shift imposed by the rigidity positions in shared memory array
-    const unsigned int sdata_id = threadIdx.x + 3 * blockDim.x;
+    const unsigned int sdata_id = threadIdx.x;
 
     // first max search steps with sub-array larger than warp dimension
     for (unsigned int s = blockDim.x / 2; s > 32; s >>= 1) {
