@@ -22,7 +22,7 @@ __host__ __device__ float Boundary(const float theta, const float phi, const flo
 }
 
 
-__device__ int RadialZone(const int InitZone, const float r, const float th, const float phi) {
+__device__ int RadialZone(const unsigned int InitZone, const float r, const float th, const float phi) {
     /* Author: SDT - Feb 2022
        * description: find in which zone the particle is.
        *              This function assume that, inside the Termination Shock, the heliosphere is divided in
