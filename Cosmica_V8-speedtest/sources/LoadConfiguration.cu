@@ -1,41 +1,57 @@
 #include <cstdio>          // Supplies FILE, stdin, stdout, stderr, and the fprint() family of functions
 #include "LoadConfiguration.cuh"
+
+#include <memory>
+
 #include "VariableStructure.cuh"
 
-QuasiParticle_t InitQuasiPart_mem(const int Npart, const int hardware, const bool verbose) {
-    // initialize the QuasiPArticle struct fields
-    QuasiParticle_t empty_QuasiPart;
+template<typename T>
+T *AllocateManaged(const size_t size) {
+    T *ptr;
+    HANDLE_ERROR(cudaMallocManaged(&ptr, size * sizeof(T)));
+    return ptr;
+}
 
-    if (hardware == 0) {
-        // Allocate the needed memory for the variables arrays with custom dimension on the host
-        empty_QuasiPart.r = new float[Npart];
-        empty_QuasiPart.th = new float[Npart];
-        empty_QuasiPart.phi = new float[Npart];
-        empty_QuasiPart.R = new float[Npart];
-        empty_QuasiPart.t_fly = new float[Npart];
-        // empty_QuasiPart.alphapath = (float*)malloc(Npart*sizeof(float));
+template<typename T>
+auto AllocateManagedSafe(const size_t size) {
+    auto deleter = [](T* ptr) { cudaFree(ptr); };
+    return std::unique_ptr<T[], decltype(deleter)>(AllocateManaged<T>(size), deleter);
+}
 
-        if (verbose) {
-            printf("Corrected initialized quasi particle empty array in the host\n");
-        }
-    } else if (hardware == 1) {
-        // Allocate the needed memory for the variables arrays with custom dimension on the device
-        cudaMalloc(reinterpret_cast<void **>(&empty_QuasiPart.r), Npart * sizeof(float));
-        cudaMalloc(reinterpret_cast<void **>(&empty_QuasiPart.th), Npart * sizeof(float));
-        cudaMalloc(reinterpret_cast<void **>(&empty_QuasiPart.phi), Npart * sizeof(float));
-        cudaMalloc(reinterpret_cast<void **>(&empty_QuasiPart.R), Npart * sizeof(float));
-        cudaMalloc(reinterpret_cast<void **>(&empty_QuasiPart.t_fly), Npart * sizeof(float));
-        // cudaMalloc((void**)&empty_QuasiPart.alphapath, Npart*sizeof(float));
+template<typename T>
+T *AllocateManaged(const size_t size, const int v) {
+    T *ptr = AllocateManaged<T>(size);
+    HANDLE_ERROR(cudaMemset(ptr, v, size*sizeof(T)));
+    return ptr;
+}
 
-        if (verbose) {
-            printf("Corrected initialized quasi particle empty array in the device\n");
-        }
-    } else {
-        printf("Insert hardware variable to choose if the memeory must be allocated in the host or device\n");
-    }
+template<typename T>
+auto AllocateManagedSafe(const size_t size, const int v) {
+    auto deleter = [](T* ptr) { cudaFree(ptr); };
+    return std::unique_ptr<T[], decltype(deleter)>(AllocateManaged<T>(size, v), deleter);
+}
 
+QuasiParticle_t AllocateQuasiParticles(const int NPart) {
+    return {
+        AllocateManaged<float>(NPart),
+        AllocateManaged<float>(NPart),
+        AllocateManaged<float>(NPart),
+        AllocateManaged<float>(NPart),
+        AllocateManaged<float>(NPart),
+    };
+}
 
-    return empty_QuasiPart;
+template<typename T>
+void CopyToConstant(const T &symbol, const T *src) {
+    HANDLE_ERROR(cudaMemcpyToSymbol(symbol, src, sizeof(T)));
+}
+
+Indexes_t AllocateIndex(const int NPart) {
+    return {
+        AllocateManaged<unsigned int>(NPart),
+        AllocateManaged<unsigned int>(NPart),
+        AllocateManaged<unsigned int>(NPart),
+    };
 }
 
 InitialPositions_t LoadInitPos(int Npos, const bool verbose) {

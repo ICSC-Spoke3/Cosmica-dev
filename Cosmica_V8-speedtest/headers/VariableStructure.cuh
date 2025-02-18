@@ -49,6 +49,10 @@ typedef struct QuasiParticle_t {
     // float* alphapath; // Montecarlo statistical weight - exponent of c factor
 } QuasiParticle_t;
 
+typedef struct Indexes_t {
+    unsigned int *simulation, *period, *particle;
+} Indexes_t;
+
 // SEE IF WE CAN USE THE MATRIX CUDA UPTIMIZED LIBRARIES
 // Struct with the structure of square root decomposition of symmetric difusion tensor
 typedef struct Tensor3D_t {

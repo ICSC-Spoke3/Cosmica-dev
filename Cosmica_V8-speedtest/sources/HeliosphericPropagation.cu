@@ -10,7 +10,7 @@
 #include "Histogram.cuh"
 
 __global__ void HeliosphericProp(const int Npart_PerKernel, const float Min_dt, float Max_dt, const float TimeOut,
-                                 QuasiParticle_t QuasiParts_out, const int *PeriodIndexes,
+                                 QuasiParticle_t QuasiParts_out, const Indexes_t indexes,
                                  const PartDescription_t particle, curandStatePhilox4_32_10_t *const CudaState,
                                  float *RMaxs) {
     const int id = threadIdx.x + blockIdx.x * blockDim.x;
@@ -24,13 +24,14 @@ __global__ void HeliosphericProp(const int Npart_PerKernel, const float Min_dt, 
     float phi = QuasiParts_out.phi[id];
     float R = QuasiParts_out.R[id];
     float t_fly = QuasiParts_out.t_fly[id];
-    int rad_zone = RadialZone(PeriodIndexes[id], r, th, phi);
+    const unsigned int init_zone = indexes.period[id];
+    int rad_zone = RadialZone(indexes.period[id], r, th, phi);
 
 
     while (rad_zone >= 0 && t_fly <= TimeOut) {
         const auto [rand_x, rand_y, rand_z, rand_w] = curand_normal4(&randState);
 
-        auto KSym = DiffusionTensor_symmetric(PeriodIndexes[id], rad_zone, r, th, phi, R, particle, rand_w);
+        auto KSym = DiffusionTensor_symmetric(init_zone, rad_zone, r, th, phi, R, particle, rand_w);
 
         int res = 0;
         const auto [rr, tr, tt, pr, pt, pp] = SquareRoot_DiffusionTerm(rad_zone, KSym, r, th, &res);
@@ -43,9 +44,9 @@ __global__ void HeliosphericProp(const int Npart_PerKernel, const float Min_dt, 
         }
 
 
-        const auto [adv_r, adv_th, adv_phi] = AdvectiveTerm(PeriodIndexes[id], rad_zone, KSym, r, th, phi, R, particle);
+        const auto [adv_r, adv_th, adv_phi] = AdvectiveTerm(init_zone, rad_zone, KSym, r, th, phi, R, particle);
 
-        const float en_loss = EnergyLoss(PeriodIndexes[id], rad_zone, r, th, phi, R);
+        const float en_loss = EnergyLoss(init_zone, rad_zone, r, th, phi, R);
 
         const float dt = fmaxf(Min_dt, fminf(fminf(Max_dt,
                                                    Min_dt * (rr * rr) / (adv_r * adv_r)),
@@ -67,7 +68,7 @@ __global__ void HeliosphericProp(const int Npart_PerKernel, const float Min_dt, 
         phi = fmodf(phi, 2 * Pi);
         phi = fmodf(2 * Pi + phi, 2 * Pi);
 
-        rad_zone = RadialZone(PeriodIndexes[id], r, th, phi);
+        rad_zone = RadialZone(init_zone, r, th, phi);
     }
 
     QuasiParts_out.r[id] = r;

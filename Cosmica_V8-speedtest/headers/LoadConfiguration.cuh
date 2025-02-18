@@ -1,8 +1,25 @@
 #ifndef LoadConfigiguration
 #define LoadConfigiguration
 
+template<typename T>
+T *AllocateManaged(size_t size);
+
+template<typename T>
+auto AllocateManagedSafe(size_t size);
+
+template<typename T>
+T *AllocateManaged(size_t size, int v);
+
+template<typename T>
+auto AllocateManagedSafe(size_t size, int v);
+
 //Allocate the memory needed for an empty QuasiPArticle struct of N particle and return it
-struct QuasiParticle_t InitQuasiPart_mem(int, int, bool);
+QuasiParticle_t AllocateQuasiParticles(int);
+
+template<typename T>
+void CopyToConstant(const T &, const T *);
+
+Indexes_t AllocateIndex(int);
 
 // Load the initial position and rapidity of the quasi particle from configuration file
 struct InitialPositions_t LoadInitPos(int, bool);

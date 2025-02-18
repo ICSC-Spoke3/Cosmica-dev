@@ -70,7 +70,6 @@
 #define INITSAVE 0
 #define FINALSAVE 0
 #define TRIVIAL 0
-#define NVIDIA_HIST 0
 
 // Datas variables
 #define MaxCharinFileName   90
@@ -185,6 +184,25 @@ int main(int argc, char *argv[]) {
     NParts = static_cast<int>(SimParameters.Npart);
     InitialPositions = LoadInitPos(NParts, VERBOSE_LOAD);
     pt = SimParameters.IonToBeSimulated;
+
+    // Indexes_t indexes;
+    // HANDLE_ERROR(cudaMallocManaged(&indexes.simulation, tot_particles));
+    // HANDLE_ERROR(cudaMallocManaged(&host_PeriodIndexes, tot_particles));
+    // HANDLE_ERROR(cudaMallocManaged(&indexes.particle, tot_particles));
+    // unsigned int ns = SimParameters.Nparams, ni = SimParameters.NInitialPositions, np = SimParameters.
+    //         HeliosphereToBeSimulated.Nisotopes, nx = SimParameters.Npart;
+    // for (unsigned int s = 0; s < ns; ++s) {
+    //     for (unsigned int i = 0; i < ni; ++i) {
+    //         for (unsigned int p = 0; p < np; ++p) {
+    //             for (unsigned int x = 0; x < nx; ++x) {
+    //                 unsigned int idx = x + ns * (p + np * (i + ni * s));
+    //                 indexes.simulation[idx] = s;
+    //                 host_PeriodIndexes[idx] = i;
+    //                 indexes.particle[idx] = p;
+    //             }
+    //         }
+    //     }
+    // }
 
     ////////////////////////////////////////////////////////////////
     //..... Rescale Heliosphere to an effective one  ...............
@@ -320,7 +338,7 @@ int main(int argc, char *argv[]) {
         cudaDeviceProp device_prop = GPUs_profile[gpu_id];
 
         // Rounding the number of particle and calculating threads, blocks and share memory to acheive the maximum usage of the GPUs
-        LaunchParam_t prop_launch_param = RoundNpart(NParts, device_prop, VERBOSE_2, SetWarpPerBlock, 6);
+        LaunchParam_t prop_launch_param = RoundNpart(NParts, device_prop, VERBOSE_2, SetWarpPerBlock, 1);
 
         ////////////////////////////////////////////////////////////////
         //..... capture the start time of GPU part .....................
@@ -347,12 +365,12 @@ int main(int argc, char *argv[]) {
 
 
         // .. Initialize random generator
-        curandStatePhilox4_32_10_t *dev_RndStates;
-        HANDLE_ERROR(cudaMalloc((void **)&dev_RndStates, prop_launch_param.Npart*sizeof(curandStatePhilox4_32_10_t)));
+        auto RandStates = AllocateManagedSafe<curandStatePhilox4_32_10_t>(prop_launch_param.Npart);
         unsigned long Rnd_seed = SimParameters.RandomSeed == 0
                                      ? getpid() + time(nullptr) + gpu_id
                                      : SimParameters.RandomSeed;
-        init_rdmgenerator<<<prop_launch_param.blocks, prop_launch_param.threads>>>(dev_RndStates, Rnd_seed);
+        cudaDeviceSynchronize();
+        init_rdmgenerator<<<prop_launch_param.blocks, prop_launch_param.threads>>>(RandStates.get(), Rnd_seed);
         cudaDeviceSynchronize();
 
         if constexpr (VERBOSE) {
@@ -365,49 +383,23 @@ int main(int argc, char *argv[]) {
         }
 
         // .. copy heliosphere parameters to Device Constant Memory
-        HANDLE_ERROR(
-            cudaMemcpyToSymbol(Heliosphere, &SimParameters.HeliosphereToBeSimulated, sizeof(SimulatedHeliosphere_t)));
-        HANDLE_ERROR(
-            cudaMemcpyToSymbol(LIM, &SimParameters.prop_medium , NMaxRegions*sizeof(HeliosphereZoneProperties_t)));
-        HANDLE_ERROR(
-            cudaMemcpyToSymbol(HS, &SimParameters.prop_Heliosheat, NMaxRegions*sizeof(HeliosheatProperties_t)));
-        // cudaMemcpyToSymbol(dev_Npart, &prop_launch_param.Npart, sizeof(float));
-        // cudaMemcpyToSymbol(min_dt, &MIN_DT, sizeof(float));
-        // cudaMemcpyToSymbol(max_dt, &MAX_DT, sizeof(float));
-        // cudaMemcpyToSymbol(timeout, &TIMEOUT, sizeof(float));
-
-        // allocate on host
-        QuasiParticle_t host_QuasiParts = InitQuasiPart_mem(prop_launch_param.Npart, 0, VERBOSE_2);
-        // host initial state of propagation kernel
+        CopyToConstant(Heliosphere, &SimParameters.HeliosphereToBeSimulated);
+        CopyToConstant(LIM, &SimParameters.prop_medium);
+        CopyToConstant(HS, &SimParameters.prop_Heliosheat);
 
         // Allocate the initial variables and allocate on device
-        QuasiParticle_t dev_QuasiParts = InitQuasiPart_mem(prop_launch_param.Npart, 1, VERBOSE_2);
-        // device input/output of propagation kernel
+        QuasiParticle_t QuasiParts = AllocateQuasiParticles(prop_launch_param.Npart);
 
         // Period along which CR are integrated and the corresponding period indecies
-        int *dev_PeriodIndexes;
-        HANDLE_ERROR(cudaMalloc((void**)&dev_PeriodIndexes, prop_launch_param.Npart*sizeof(int)));
-        cudaDeviceSynchronize();
-
-        int *host_PeriodIndexes = static_cast<int *>(malloc(prop_launch_param.Npart * sizeof(int)));
+        Indexes_t indexes = AllocateIndex(prop_launch_param.Npart);
 
         // initialize the host array
         // The particle simulated in the kernel are distributed between the initial positions using the period index
         for (int iPart = 0; iPart < prop_launch_param.Npart; iPart++) {
             int PeriodIndex = floor_int(iPart * NInitPos, prop_launch_param.Npart);
-            host_PeriodIndexes[iPart] = PeriodIndex;
-            host_QuasiParts.r[iPart] = InitialPositions.r[PeriodIndex];
-            host_QuasiParts.th[iPart] = InitialPositions.th[PeriodIndex];
-            host_QuasiParts.phi[iPart] = InitialPositions.phi[PeriodIndex];
-            // host_QuasiParts.R[iPart]     = InitialRigidities[floor_int(iPart*NInitRig, prop_launch_param.Npart)];
-            host_QuasiParts.t_fly[iPart] = 0;
-            // host_QuasiParts.alphapath[iPart] = 0;
+            indexes.period[iPart] = PeriodIndex;
         }
 
-        // copy host_PeriodIndexes to dev_PeriodIndexes and free memory
-        HANDLE_ERROR(
-            cudaMemcpy(dev_PeriodIndexes, host_PeriodIndexes, prop_launch_param.Npart*sizeof(int),
-                cudaMemcpyHostToDevice));
 
         // Recording the setting memory execution time
         if constexpr (VERBOSE) {
@@ -449,42 +441,16 @@ int main(int argc, char *argv[]) {
 
             // Initialize the particle starting rigidities
             for (int iPart = 0; iPart < prop_launch_param.Npart; iPart++) {
-                host_QuasiParts.R[iPart] = InitialRigidities[iR];
+                QuasiParts.r[iPart] = InitialPositions.r[indexes.period[iPart]];
+                QuasiParts.th[iPart] = InitialPositions.th[indexes.period[iPart]];
+                QuasiParts.phi[iPart] = InitialPositions.phi[indexes.period[iPart]];
+                QuasiParts.R[iPart] = InitialRigidities[iR];
+                QuasiParts.t_fly[iPart] = 0;
             }
 
-            // copy host initial propagation states to device quasi particle states
-            HANDLE_ERROR(
-                cudaMemcpy(dev_QuasiParts.r, host_QuasiParts.r, prop_launch_param.Npart*sizeof(float),
-                    cudaMemcpyHostToDevice));
-            HANDLE_ERROR(
-                cudaMemcpy(dev_QuasiParts.th, host_QuasiParts.th, prop_launch_param.Npart*sizeof(float),
-                    cudaMemcpyHostToDevice));
-            HANDLE_ERROR(
-                cudaMemcpy(dev_QuasiParts.phi, host_QuasiParts.phi, prop_launch_param.Npart*sizeof(float),
-                    cudaMemcpyHostToDevice));
-            HANDLE_ERROR(
-                cudaMemcpy(dev_QuasiParts.R, host_QuasiParts.R, prop_launch_param.Npart*sizeof(float),
-                    cudaMemcpyHostToDevice));
-            HANDLE_ERROR(
-                cudaMemcpy(dev_QuasiParts.t_fly, host_QuasiParts.t_fly, prop_launch_param.Npart*sizeof(float),
-                    cudaMemcpyHostToDevice));
-            // HANDLE_ERROR(cudaMemcpy(dev_QuasiParts.alphapath, host_QuasiParts.alphapath, prop_launch_param.Npart*sizeof(float), cudaMemcpyHostToDevice));
 
             // Allocate the array for the partial rigidities maxima and final maximum
-            float *dev_maxs;
-            HANDLE_ERROR(cudaMalloc((void **) &dev_maxs, prop_launch_param.blocks*sizeof(float)));
-
-#if NVIDIA_HIST
-                float* dev_Rmax;
-                HANDLE_ERROR(cudaMalloc((void **) &dev_Rmax, 2*sizeof(float)));
-                host_Rmax = (float*)malloc(2*sizeof(float));
-                cudaDeviceSynchronize();
-
-#else
-            float *host_Rmax;
-            host_Rmax = static_cast<float *>(malloc(prop_launch_param.blocks * sizeof(float)));
-            cudaDeviceSynchronize();
-#endif
+            auto Maxs = AllocateManagedSafe<float>(prop_launch_param.blocks);
 
 
             if constexpr (VERBOSE) {
@@ -494,7 +460,7 @@ int main(int argc, char *argv[]) {
 
             // Saving the initial particles parameters into a txt file for debugging
             if constexpr (INITSAVE) {
-                SaveTxt_part(init_filename, prop_launch_param.Npart, host_QuasiParts, host_Rmax[0], VERBOSE_2);
+                SaveTxt_part(init_filename, prop_launch_param.Npart, QuasiParts, Maxs[0], VERBOSE_2);
             }
 
             if constexpr (VERBOSE) {
@@ -505,34 +471,10 @@ int main(int argc, char *argv[]) {
 
             // Heliosphere propagation kernel
             // and local max rigidity search inside the block
+            cudaDeviceSynchronize();
             HeliosphericProp<<<prop_launch_param.blocks, prop_launch_param.threads, prop_launch_param.smem>>>
-            (prop_launch_param.Npart, MIN_DT, MAX_DT, TIMEOUT, dev_QuasiParts, dev_PeriodIndexes, pt,
-             dev_RndStates, dev_maxs);
-
-            // (taking into account the different possible block dimension template of BlockMax execution)
-            /* switch (prop_launch_param.threads) {
-                case 512:
-                HeliosphericProp<512><<<prop_launch_param.blocks, prop_launch_param.threads, prop_launch_param.smem>>>
-                (prop_launch_param.Npart, MAX_DT, TIMEOUT, dev_QuasiParts, dev_RndStates, dev_maxs);
-                break;
-                case 256:
-                HeliosphericProp<256><<<prop_launch_param.blocks, prop_launch_param.threads, prop_launch_param.smem>>>
-                (prop_launch_param.Npart, MAX_DT, TIMEOUT, dev_QuasiParts, dev_RndStates, dev_maxs);
-                break;
-                case 128:
-                HeliosphericProp<128><<<prop_launch_param.blocks, prop_launch_param.threads, prop_launch_param.smem>>>
-                (prop_launch_param.Npart, MAX_DT, TIMEOUT, dev_QuasiParts, dev_RndStates, dev_maxs);
-                break;
-                case 64:
-                HeliosphericProp< 64><<<prop_launch_param.blocks, prop_launch_param.threads, prop_launch_param.smem>>>
-                (prop_launch_param.Npart, MAX_DT, TIMEOUT, dev_QuasiParts, dev_RndStates, dev_maxs);
-                break;
-                case 32:
-                HeliosphericProp< 32><<<prop_launch_param.blocks, prop_launch_param.threads, prop_launch_param.smem>>>
-                (prop_launch_param.Npart, MAX_DT, TIMEOUT, dev_QuasiParts, dev_RndStates, dev_maxs);
-                break;
-            } */
-
+            (prop_launch_param.Npart, MIN_DT, MAX_DT, TIMEOUT, QuasiParts, indexes, pt,
+             RandStates.get(), Maxs.get());
             cudaDeviceSynchronize();
 
             if constexpr (VERBOSE) {
@@ -540,67 +482,27 @@ int main(int argc, char *argv[]) {
                 HANDLE_ERROR(cudaEventSynchronize( Cycle_step0 ));
             }
 
-#if NVIDIA_HIST
-                // Global max rigidity search from partial maxima
-                unsigned int GridMax_threads = ceil_int(prop_launch_param.blocks/2, (device_prop.warpSize))*(device_prop.warpSize);
-                GridMax<<<2, 2*GridMax_threads, GridMax_threads*sizeof(float)>>>(prop_launch_param.blocks, dev_maxs, dev_Rmax);
-
-                // (taking into account the different possible block dimension template of GridMax execution)
-                /* switch (prop_launch_param.blocks) {
-                    case 512:
-                        GridMax<512><<<1, prop_launch_param.blocks, prop_launch_param.blocks*sizeof(float)>>>(dev_maxs, dev_Rmax);
-                        break;
-                    case 256:
-                        GridMax<256><<<1, prop_launch_param.blocks, prop_launch_param.blocks*sizeof(float)>>>(dev_maxs, dev_Rmax);
-                        break;
-                    case 128:
-                        GridMax<128><<<1, prop_launch_param.blocks, prop_launch_param.blocks*sizeof(float)>>>(dev_maxs, dev_Rmax);
-                        break;
-                    case 64:
-                        GridMax< 64><<<1, prop_launch_param.blocks, prop_launch_param.blocks*sizeof(float)>>>(dev_maxs, dev_Rmax);
-                        break;
-                    case 32:
-                        GridMax< 32><<<1, prop_launch_param.blocks, prop_launch_param.blocks*sizeof(float)>>>(dev_maxs, dev_Rmax);
-                        break;
-                } */
-
-                // Copy the final maximum rigidity to host and free partial maxima array memory
-                HANDLE_ERROR(cudaMemcpy(host_Rmax, dev_Rmax, 2*sizeof(float), cudaMemcpyDeviceToHost));
-                cudaFree(dev_Rmax);
-
-                // Finalization of the maximum rigidity search on CPU
-                if (host_Rmax[0]<host_Rmax[1]) host_Rmax[0] = host_Rmax[1];
-
-#else
-
-            HANDLE_ERROR(
-                cudaMemcpy(host_Rmax, dev_maxs, prop_launch_param.blocks*sizeof(float), cudaMemcpyDeviceToHost));
-            cudaDeviceSynchronize();
-
             if constexpr (VERBOSE_2) {
                 fprintf(stdout, "--- Max values: ");
                 for (int itemp = 0; itemp < prop_launch_param.blocks; itemp++) {
-                    fprintf(stdout, "%.2f ", host_Rmax[itemp]);
+                    fprintf(stdout, "%.2f ", Maxs[itemp]);
                 }
             }
 
             // ->then finalize on CPU
             for (int itemp = 1; itemp < prop_launch_param.blocks; itemp++) {
-                if (host_Rmax[0] < host_Rmax[itemp]) {
-                    host_Rmax[0] = host_Rmax[itemp];
+                if (Maxs[0] < Maxs[itemp]) {
+                    Maxs[0] = Maxs[itemp];
                 }
             }
             if constexpr (VERBOSE_2)
                 fprintf(stdout, "\n--- RMin = %.3f Rmax = %.3f \n", InitialRigidities[iR],
-                        host_Rmax[0]);
+                        Maxs[0]);
 
-            if (host_Rmax[0] < SimParameters.Tcentr[iR]) {
+            if (Maxs[0] < SimParameters.Tcentr[iR]) {
                 printf("PROBLEMA: the max exiting rigidity is smaller than initial one\n");
                 continue;
             }
-#endif
-
-            cudaFree(dev_maxs);
 
             if constexpr (VERBOSE) {
                 HANDLE_ERROR(cudaEventRecord( Cycle_step1, nullptr ));
@@ -609,28 +511,9 @@ int main(int argc, char *argv[]) {
 
             if constexpr (FINALSAVE) {
                 // host final states for specific energy
-                QuasiParticle_t host_final_QuasiParts = InitQuasiPart_mem(prop_launch_param.Npart, 0, VERBOSE_2);
+                QuasiParticle_t host_final_QuasiParts = AllocateQuasiParticles(prop_launch_param.Npart);
 
-                // copy device final propagation states to host quasi particle states
-                HANDLE_ERROR(
-                    cudaMemcpy(host_final_QuasiParts.r, dev_QuasiParts.r, prop_launch_param.Npart*sizeof(float),
-                        cudaMemcpyDeviceToHost));
-                HANDLE_ERROR(
-                    cudaMemcpy(host_final_QuasiParts.th, dev_QuasiParts.th, prop_launch_param.Npart*sizeof(float),
-                        cudaMemcpyDeviceToHost));
-                HANDLE_ERROR(
-                    cudaMemcpy(host_final_QuasiParts.phi, dev_QuasiParts.phi, prop_launch_param.Npart*sizeof(float),
-                        cudaMemcpyDeviceToHost));
-                HANDLE_ERROR(
-                    cudaMemcpy(host_final_QuasiParts.R, dev_QuasiParts.R, prop_launch_param.Npart*sizeof(float),
-                        cudaMemcpyDeviceToHost));
-                HANDLE_ERROR(
-                    cudaMemcpy(host_final_QuasiParts.t_fly, dev_QuasiParts.t_fly, prop_launch_param.Npart*sizeof(float),
-                        cudaMemcpyDeviceToHost));
-                // HANDLE_ERROR(cudaMemcpy(host_final_QuasiParts.alphapath, dev_QuasiParts.alphapath, prop_launch_param.Npart*sizeof(float), cudaMemcpyDeviceToHost));
-
-                // Saving the propagation output into a txt file
-                SaveTxt_part(final_filename, prop_launch_param.Npart, host_final_QuasiParts, host_Rmax[0], VERBOSE_2);
+                SaveTxt_part(final_filename, prop_launch_param.Npart, host_final_QuasiParts, Maxs[0], VERBOSE_2);
 
                 // Free the host particle variable for the energy on which the cycle is running
                 free(host_final_QuasiParts.r);
@@ -651,79 +534,42 @@ int main(int argc, char *argv[]) {
             float LogBin0_lowEdge = log10f(InitialRigidities[iR]) - DeltaLogR / 2.f;
             float Bin0_lowEdge = powf(10, LogBin0_lowEdge); // first LowEdge Bin
 
-            Results[iR].Nbins = ceil(log10(host_Rmax[0] / Bin0_lowEdge) / DeltaLogR);
+            Results[iR].Nbins = ceil(log10(Maxs[0] / Bin0_lowEdge) / DeltaLogR);
             Results[iR].LogBin0_lowEdge = LogBin0_lowEdge;
             Results[iR].DeltaLogR = DeltaLogR;
 
-            free(host_Rmax);
-
             // .. save to histogram ..........................................
             // Partial block histogram allocation
-            float *dev_partialHistos; //TODO: why float?
-            HANDLE_ERROR(
-                cudaMalloc(reinterpret_cast<void **>(&dev_partialHistos), Results[iR].Nbins*prop_launch_param.blocks*
-                    sizeof(float)));
+            auto PartialHistos = AllocateManagedSafe<float>(Results[iR].Nbins * prop_launch_param.blocks);
 
             // Final merged histogram allocation
-            Results[iR].BoundaryDistribution = static_cast<float *>(malloc(Results[iR].Nbins * sizeof(float)));
-            float *dev_Histo;
-            HANDLE_ERROR(cudaMalloc(reinterpret_cast<void **>(&dev_Histo), Results[iR].Nbins*sizeof(float)));
+            Results[iR].BoundaryDistribution = AllocateManaged<float>(Results[iR].Nbins);
 
-#if NVIDIA_HIST
-
-                // Partial histogram atomoic sum (exploiting the shared memory)
-                Rhistogram_atomic<<<prop_launch_param.blocks, prop_launch_param.threads, Results[iR].Nbins*sizeof(int)>>>(dev_QuasiParts.R, LogBin0_lowEdge, DeltaLogR , Results[iR].Nbins, prop_launch_param.Npart,  dev_partialHistos);
-
-                /* int* host_partialHistos = (int*)malloc(Results[iR].Nbins*prop_launch_param.blocks*sizeof(int));
-                HANDLE_ERROR(cudaMemcpy(host_partialHistos, dev_partialHistos, Results[iR].Nbins*prop_launch_param.blocks*sizeof(int), cudaMemcpyDeviceToHost));
-                printf("dev_partialHistos: \n");
-                for (int i=0; i<Results[iR].Nbins*prop_launch_param.blocks; i++) {
-                    printf("%d ", host_partialHistos[i]);
-                } */
-
-                cudaDeviceSynchronize();
-
-                // Merge of the partial histograms and copy to the host
-                TotalHisto<<<Results[iR].Nbins, prop_launch_param.blocks/2, (prop_launch_param.blocks/2)*sizeof(int)>>>(dev_partialHistos, Results[iR].Nbins, prop_launch_param.blocks, dev_Histo);
-                HANDLE_ERROR(cudaMemcpy(Results[iR].BoundaryDistribution, dev_Histo, Results[iR].Nbins*sizeof(float),cudaMemcpyDeviceToHost));
-
-#else
-
-            int *dev_Nfailed;
-            HANDLE_ERROR(cudaMalloc(reinterpret_cast<void **>(&dev_Nfailed), sizeof(int)));
-            HANDLE_ERROR(cudaMemset(dev_Nfailed, 0, sizeof(int)));
+            auto Nfailed = AllocateManagedSafe<int>(1, 0);
 
             // Partial histogram atomoic sum on GPU
+            cudaDeviceSynchronize();
             histogram_atomic<<<prop_launch_param.blocks, prop_launch_param.threads>>>(
-                dev_QuasiParts.R, LogBin0_lowEdge, DeltaLogR, Results[iR].Nbins, prop_launch_param.Npart,
-                dev_partialHistos, dev_Nfailed);
+                QuasiParts.R, LogBin0_lowEdge, DeltaLogR, Results[iR].Nbins, prop_launch_param.Npart,
+                PartialHistos.get(), Nfailed.get());
+            cudaDeviceSynchronize();
 
             // Failed quasi-particle propagation count
-            int Nfailed = 0;
-            HANDLE_ERROR(cudaMemcpy(&Nfailed, dev_Nfailed, sizeof(int),cudaMemcpyDeviceToHost));
-            Results[iR].Nregistered = prop_launch_param.Npart - Nfailed;
+            Results[iR].Nregistered = prop_launch_param.Npart - Nfailed[0];
 
             if constexpr (VERBOSE_2) {
                 fprintf(stdout, "-- Eventi computati : %d \n", prop_launch_param.Npart);
-                fprintf(stdout, "-- Eventi falliti   : %d \n", Nfailed);
+                fprintf(stdout, "-- Eventi falliti   : %d \n", Nfailed[0]);
                 fprintf(stdout, "-- Eventi registrati: %lu \n", Results[iR].Nregistered);
             }
-            cudaDeviceSynchronize();
 
             int histo_Nblocchi = ceil_int(Results[iR].Nbins, prop_launch_param.threads);
 
             // Merge of the partial histograms and copy to the host
+            cudaDeviceSynchronize();
             histogram_accum<<<histo_Nblocchi, prop_launch_param.threads>>>(
-                dev_partialHistos, Results[iR].Nbins, prop_launch_param.blocks, dev_Histo);
-            HANDLE_ERROR(
-                cudaMemcpy(Results[iR].BoundaryDistribution, dev_Histo, Results[iR].Nbins*sizeof(float),
-                    cudaMemcpyDeviceToHost));
-
-            cudaFree(dev_Nfailed);
-#endif
-
-            cudaFree(dev_partialHistos);
-            cudaFree(dev_Histo);
+                PartialHistos.get(), Results[iR].Nbins, prop_launch_param.blocks, Results[iR].BoundaryDistribution);
+            cudaDeviceSynchronize();
 
 
             // ANNOTATION THE ONLY MEMCOPY NEEDED FROM DEVICE TO HOST ARE THE FINAL RESULTS (ALIAS THE ENERGY FINAL HISTOGRAM AND PARTICLE EXIT RESULTS)
@@ -779,26 +625,6 @@ int main(int argc, char *argv[]) {
             printf("Time to create Rnd:  %3.1f ms (delta = %3.1f)\n", firstStep, firstStep - memset);
             printf("Time to execute   :  %3.1f ms (delta = %3.1f)\n", elapsedTime, elapsedTime - firstStep);
         }
-
-        // Free the host and device memory
-        cudaFree(dev_PeriodIndexes);
-
-        free(host_QuasiParts.r);
-        free(host_QuasiParts.th);
-        free(host_QuasiParts.phi);
-        free(host_QuasiParts.R);
-        free(host_QuasiParts.t_fly);
-        // free(host_QuasiParts.alphapath);
-
-        cudaFree(dev_RndStates);
-        cudaFree(dev_QuasiParts.r);
-        cudaFree(dev_QuasiParts.th);
-        cudaFree(dev_QuasiParts.phi);
-        cudaFree(dev_QuasiParts.R);
-        cudaFree(dev_QuasiParts.t_fly);
-        // cudaFree(dev_QuasiParts.alphapath);
-
-        free(host_PeriodIndexes);
 
         if constexpr (VERBOSE) {
             HANDLE_ERROR(cudaEventDestroy( start ));
@@ -861,7 +687,6 @@ int main(int argc, char *argv[]) {
             fprintf(pFile_Matrix, "%e ", Results[itemp].BoundaryDistribution[itNB]);
         }
 
-        cudaFree(Results[itemp].BoundaryDistribution);
 
         fprintf(pFile_Matrix, "\n");
         fprintf(pFile_Matrix, "#\n"); // <--- dummy line to separate results
@@ -891,5 +716,5 @@ int main(int argc, char *argv[]) {
     }
 
 
-    return EXIT_SUCCESS;
+    return cudaDeviceReset();
 }
