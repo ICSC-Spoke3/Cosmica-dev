@@ -86,7 +86,9 @@ __device__ vect3D_t Drift_PM89(const unsigned int InitZone, const signed int HZo
     Vsw = SolarWindSpeed(InitZone, HZone, r, th, phi); // solar wind evaluated
     // .. drift velocity
 
-    const float E = delta_m * delta_m * r * r * Vsw * Vsw + Omega * Omega * rhelio * rhelio * (r - rhelio) * (
+    const float dm = IsPolarRegion ? delta_m : 0;
+
+    const float E = dm * dm * r * r * Vsw * Vsw + Omega * Omega * rhelio * rhelio * (r - rhelio) * (
                         r - rhelio)
                     * sinf(th) * sinf(th) * sinf(th) * sinf(th) + rhelio * rhelio * Vsw * Vsw * sinf(th) * sinf(th);
     float C = fth * sinf(th) * Ka * r * rhelio / (Asun * E * E);
@@ -94,19 +96,19 @@ __device__ vect3D_t Drift_PM89(const unsigned int InitZone, const signed int HZo
     /* drift reduction factor. <------------------------------ */
     //reg drift
     v.r = -C * Omega * rhelio * 2 * (r - rhelio) * sinf(th) * (
-              (2 * delta_m * delta_m * r * r + rhelio * rhelio * sinf(th) * sinf(th)) * Vsw * Vsw * Vsw * cosf(th) -
-              .5f * (delta_m * delta_m * r * r * Vsw * Vsw - Omega * Omega * rhelio * rhelio * (r - rhelio) * (
+              (2 * dm * dm * r * r + rhelio * rhelio * sinf(th) * sinf(th)) * Vsw * Vsw * Vsw * cosf(th) -
+              .5f * (dm * dm * r * r * Vsw * Vsw - Omega * Omega * rhelio * rhelio * (r - rhelio) * (
                          r - rhelio) * sinf(th) * sinf(th) * sinf(th) * sinf(th) + rhelio * rhelio * Vsw * Vsw *
                      sinf(th)
                      * sinf(th)) * sinf(th) * dV_dth);
     v.th = -C * Omega * rhelio * Vsw * sinf(th) * sinf(th) * (
                2 * r * (r - rhelio) * (
-                   delta_m * delta_m * r * Vsw * Vsw + Omega * Omega * rhelio * rhelio * (r - rhelio) * sinf(th) *
+                   dm * dm * r * Vsw * Vsw + Omega * Omega * rhelio * rhelio * (r - rhelio) * sinf(th) *
                    sinf(th) * sinf(th) * sinf(th)) - (4 * r - 3 * rhelio) * E);
-    v.phi = 2 * C * Vsw * (-delta_m * delta_m * r * r * (delta_m * r + rhelio * cosf(th)) * Vsw * Vsw * Vsw + 2 *
-                           delta_m * r * E * Vsw - Omega * Omega * rhelio * rhelio * (r - rhelio) * sinf(th) *
+    v.phi = 2 * C * Vsw * (-dm * dm * r * r * (dm * r + rhelio * cosf(th)) * Vsw * Vsw * Vsw + 2 *
+                           dm * r * E * Vsw - Omega * Omega * rhelio * rhelio * (r - rhelio) * sinf(th) *
                            sinf(th) * sinf(th) * sinf(th) * (
-                               delta_m * r * r * Vsw - rhelio * (r - rhelio) * Vsw * cosf(th) + rhelio * (
+                               dm * r * r * Vsw - rhelio * (r - rhelio) * Vsw * cosf(th) + rhelio * (
                                    r - rhelio)
                                * sinf(th) * dV_dth));
     //ns drift
