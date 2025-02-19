@@ -326,13 +326,14 @@ float rconst(const int SolarPhase, const int Polarity, const float tilt) {
  * @param P Particle rigidity
  * @param GaussRndNumber Random number with normal distribution
  * @param dK_dr Output parameter for the derivative of K with respect to r
+ * @param LIM
  * @return x Kparallel
  * @return y Kperp_1
  * @return z Kperp_2
  */
 __device__ float3 Diffusion_Tensor_In_HMF_Frame(const unsigned int InitZone, const signed int HZone, const float r,
                                                 const float theta, const float beta, const float P,
-                                                const float GaussRndNumber, float3 &dK_dr) {
+                                                const float GaussRndNumber, float3 &dK_dr, const HeliosphereZoneProperties_t *LIM) {
     float3 Ktensor;
     // HeliosphereZoneProperties_t ThisZone=LIM[HZone+InitZone];
 
@@ -397,7 +398,7 @@ __device__ float Diffusion_Coeff_heliosheat(const unsigned int HZone, const floa
 #endif
 
     if (r > RhpDirection - 5) {
-        return HS[HZone].k0 * beta * P * SmoothTransition(1, 1. / HPB_SupK, RhpDirection - HP_width / 2.f,
+        return HS[HZone].k0 * beta * P * SmoothTransition(1, 1.f / HPB_SupK, RhpDirection - HP_width / 2.f,
                                                           HP_SupSmooth, r);
     }
     return HS[HZone].k0 * beta * P;

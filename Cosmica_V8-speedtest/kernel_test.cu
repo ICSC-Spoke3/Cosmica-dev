@@ -69,7 +69,6 @@
 #define HELMOD_LOAD 1
 #define INITSAVE 0
 #define FINALSAVE 0
-#define TRIVIAL 0
 
 // Datas variables
 #define MaxCharinFileName   90
@@ -79,7 +78,7 @@
 // -----------------------------------------------------------------
 __constant__ SimulatedHeliosphere_t Heliosphere;
 // Heliosphere properties include Local Interplanetary medium parameters
-__constant__ HeliosphereZoneProperties_t LIM[NMaxRegions]; // inner heliosphere
+// __constant__ HeliosphereZoneProperties_t LIM[NMaxRegions]; // inner heliosphere
 __constant__ HeliosheatProperties_t HS[NMaxRegions]; // heliosheat
 // __constant__ float dev_Npart;
 // __constant__ float min_dt;
@@ -163,7 +162,7 @@ int main(int argc, char *argv[]) {
 
     // Allocate simulation global parameters
     int NInitPos = 0;
-    int NParts = 0;
+    unsigned int NParts = 0;
     int NInitRig = 0;
     float RelativeBinAmplitude = 0;
     SimParameters_t SimParameters;
@@ -181,28 +180,9 @@ int main(int argc, char *argv[]) {
 
     // Initialize the needed parameters for the new cosmica code
     NInitPos = static_cast<int>(SimParameters.NInitialPositions);
-    NParts = static_cast<int>(SimParameters.Npart);
+    NParts = SimParameters.NInitialPositions * SimParameters.Npart;
     InitialPositions = LoadInitPos(NParts, VERBOSE_LOAD);
     pt = SimParameters.IonToBeSimulated;
-
-    // Indexes_t indexes;
-    // HANDLE_ERROR(cudaMallocManaged(&indexes.simulation, tot_particles));
-    // HANDLE_ERROR(cudaMallocManaged(&host_PeriodIndexes, tot_particles));
-    // HANDLE_ERROR(cudaMallocManaged(&indexes.particle, tot_particles));
-    // unsigned int ns = SimParameters.Nparams, ni = SimParameters.NInitialPositions, np = SimParameters.
-    //         HeliosphereToBeSimulated.Nisotopes, nx = SimParameters.Npart;
-    // for (unsigned int s = 0; s < ns; ++s) {
-    //     for (unsigned int i = 0; i < ni; ++i) {
-    //         for (unsigned int p = 0; p < np; ++p) {
-    //             for (unsigned int x = 0; x < nx; ++x) {
-    //                 unsigned int idx = x + ns * (p + np * (i + ni * s));
-    //                 indexes.simulation[idx] = s;
-    //                 host_PeriodIndexes[idx] = i;
-    //                 indexes.particle[idx] = p;
-    //             }
-    //         }
-    //     }
-    // }
 
     ////////////////////////////////////////////////////////////////
     //..... Rescale Heliosphere to an effective one  ...............
@@ -284,11 +264,7 @@ int main(int argc, char *argv[]) {
 
     // Initial and final results files
     char file_trivial[8];
-#if TRIVIAL
-        sprintf(file_trivial, "trivial_");
-#else
     sprintf(file_trivial, "");
-#endif
 
     char init_filename[20];
     sprintf(init_filename, "%sprop_in.txt", file_trivial);
@@ -365,7 +341,7 @@ int main(int argc, char *argv[]) {
 
 
         // .. Initialize random generator
-        auto RandStates = AllocateManagedSafe<curandStatePhilox4_32_10_t>(prop_launch_param.Npart);
+        auto RandStates = AllocateManagedSafe<curandStatePhilox4_32_10_t>(NParts);
         unsigned long Rnd_seed = SimParameters.RandomSeed == 0
                                      ? getpid() + time(nullptr) + gpu_id
                                      : SimParameters.RandomSeed;
@@ -384,20 +360,33 @@ int main(int argc, char *argv[]) {
 
         // .. copy heliosphere parameters to Device Constant Memory
         CopyToConstant(Heliosphere, &SimParameters.HeliosphereToBeSimulated);
-        CopyToConstant(LIM, &SimParameters.prop_medium);
+        // CopyToConstant(LIM, &SimParameters.prop_medium);
         CopyToConstant(HS, &SimParameters.prop_Heliosheat);
 
+
+        // HeliosphereZoneProperties_t LIM[NMaxRegions];
+        auto LIM = AllocateManagedSafe<HeliosphereZoneProperties_t>(NMaxRegions);
+        cudaMemcpy(LIM.get(), &SimParameters.prop_medium, sizeof(SimParameters.prop_medium), cudaMemcpyDefault);
+
+
         // Allocate the initial variables and allocate on device
-        QuasiParticle_t QuasiParts = AllocateQuasiParticles(prop_launch_param.Npart);
+        QuasiParticle_t QuasiParts = AllocateQuasiParticles(NParts);
 
         // Period along which CR are integrated and the corresponding period indecies
-        Indexes_t indexes = AllocateIndex(prop_launch_param.Npart);
-
-        // initialize the host array
-        // The particle simulated in the kernel are distributed between the initial positions using the period index
-        for (int iPart = 0; iPart < prop_launch_param.Npart; iPart++) {
-            int PeriodIndex = floor_int(iPart * NInitPos, prop_launch_param.Npart);
-            indexes.period[iPart] = PeriodIndex;
+        Indexes_t indexes = AllocateIndex(NParts);
+        unsigned int ns = 1, ni = SimParameters.NInitialPositions, np = 1, nx = SimParameters.Npart;
+        //TODO: check ordering for adjacency in warp
+        for (unsigned int s = 0; s < ns; ++s) {
+            for (unsigned int i = 0; i < ni; ++i) {
+                for (unsigned int p = 0; p < np; ++p) {
+                    for (unsigned int x = 0; x < nx; ++x) {
+                        unsigned int idx = x + nx * (p + np * (i + ni * s));
+                        indexes.simulation[idx] = s;
+                        indexes.period[idx] = i;
+                        indexes.particle[idx] = p;
+                    }
+                }
+            }
         }
 
 
@@ -433,14 +422,14 @@ int main(int argc, char *argv[]) {
             if constexpr (VERBOSE_2) {
                 printf("\n-- Cycle on rigidity[%d]: %.2f \n", iR, InitialRigidities[iR]);
                 printf("Quasi-particles propagation kernel launched\n");
-                printf("Number of quasi-particles: %d\n", prop_launch_param.Npart);
+                printf("Number of quasi-particles: %d\n", NParts);
                 printf("Number of blocks: %d\n", prop_launch_param.blocks);
                 printf("Number of threads per block: %d\n", prop_launch_param.threads);
                 printf("Number of shared memory bytes per block: %d\n", prop_launch_param.smem);
             }
 
             // Initialize the particle starting rigidities
-            for (int iPart = 0; iPart < prop_launch_param.Npart; iPart++) {
+            for (int iPart = 0; iPart < NParts; iPart++) {
                 QuasiParts.r[iPart] = InitialPositions.r[indexes.period[iPart]];
                 QuasiParts.th[iPart] = InitialPositions.th[indexes.period[iPart]];
                 QuasiParts.phi[iPart] = InitialPositions.phi[indexes.period[iPart]];
@@ -460,7 +449,7 @@ int main(int argc, char *argv[]) {
 
             // Saving the initial particles parameters into a txt file for debugging
             if constexpr (INITSAVE) {
-                SaveTxt_part(init_filename, prop_launch_param.Npart, QuasiParts, Maxs[0], VERBOSE_2);
+                SaveTxt_part(init_filename, NParts, QuasiParts, Maxs[0], VERBOSE_2);
             }
 
             if constexpr (VERBOSE) {
@@ -473,7 +462,7 @@ int main(int argc, char *argv[]) {
             // and local max rigidity search inside the block
             cudaDeviceSynchronize();
             HeliosphericProp<<<prop_launch_param.blocks, prop_launch_param.threads, prop_launch_param.smem>>>
-            (prop_launch_param.Npart, MIN_DT, MAX_DT, TIMEOUT, QuasiParts, indexes, pt,
+            (NParts, MIN_DT, MAX_DT, TIMEOUT, QuasiParts, indexes, LIM.get(), pt,
              RandStates.get(), Maxs.get());
             cudaDeviceSynchronize();
 
@@ -511,9 +500,9 @@ int main(int argc, char *argv[]) {
 
             if constexpr (FINALSAVE) {
                 // host final states for specific energy
-                QuasiParticle_t host_final_QuasiParts = AllocateQuasiParticles(prop_launch_param.Npart);
+                QuasiParticle_t host_final_QuasiParts = AllocateQuasiParticles(NParts);
 
-                SaveTxt_part(final_filename, prop_launch_param.Npart, host_final_QuasiParts, Maxs[0], VERBOSE_2);
+                SaveTxt_part(final_filename, NParts, host_final_QuasiParts, Maxs[0], VERBOSE_2);
 
                 // Free the host particle variable for the energy on which the cycle is running
                 free(host_final_QuasiParts.r);
@@ -550,15 +539,15 @@ int main(int argc, char *argv[]) {
             // Partial histogram atomoic sum on GPU
             cudaDeviceSynchronize();
             histogram_atomic<<<prop_launch_param.blocks, prop_launch_param.threads>>>(
-                QuasiParts.R, LogBin0_lowEdge, DeltaLogR, Results[iR].Nbins, prop_launch_param.Npart,
+                QuasiParts.R, LogBin0_lowEdge, DeltaLogR, Results[iR].Nbins, NParts,
                 PartialHistos.get(), Nfailed.get());
             cudaDeviceSynchronize();
 
             // Failed quasi-particle propagation count
-            Results[iR].Nregistered = prop_launch_param.Npart - Nfailed[0];
+            Results[iR].Nregistered = NParts - Nfailed[0];
 
             if constexpr (VERBOSE_2) {
-                fprintf(stdout, "-- Eventi computati : %d \n", prop_launch_param.Npart);
+                fprintf(stdout, "-- Eventi computati : %d \n", NParts);
                 fprintf(stdout, "-- Eventi falliti   : %d \n", Nfailed[0]);
                 fprintf(stdout, "-- Eventi registrati: %lu \n", Results[iR].Nregistered);
             }
@@ -675,7 +664,7 @@ int main(int argc, char *argv[]) {
                     "# Egen, Npart Gen., Npart Registered, Nbin output, log10(lower edge bin 0), Bin amplitude (in log scale)\n");
         }
 
-        fprintf(pFile_Matrix, "%f %lu %lu %d %f %f \n", SimParameters.Tcentr[itemp],
+        fprintf(pFile_Matrix, "%f %u %lu %d %f %f \n", SimParameters.Tcentr[itemp],
                 SimParameters.Npart,
                 Results[itemp].Nregistered,
                 Results[itemp].Nbins,

@@ -107,7 +107,7 @@ typedef struct SimParameters_t {
     // Place here all simulation variables
     char output_file_name[struct_string_lengh] = "SimTest";
     unsigned long RandomSeed = 0;
-    unsigned long Npart = 5000; // number of event to be simulated
+    unsigned int Npart = 5000; // number of event to be simulated
     unsigned int NT; // number of bins of energies to be simulated
     unsigned int NInitialPositions = 0;
     // number of initial positions -> this number represent also the number of Carrington rotation that

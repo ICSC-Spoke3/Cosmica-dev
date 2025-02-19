@@ -19,11 +19,12 @@
  * @param R R
  * @param pt Particle rest mass, atomic number, and mass number
  * @param GaussRndNumber Gaussian random number
+ * @param LIM
  * @return Symmetric component of the diffusion tensor
  */
 __device__ DiffusionTensor_t DiffusionTensor_symmetric(const unsigned int InitZone, const signed int HZone,
                                                        const float r, const float th, const float phi, const float R,
-                                                       const PartDescription_t pt, const float GaussRndNumber) {
+                                                       const PartDescription_t pt, const float GaussRndNumber, const HeliosphereZoneProperties_t *LIM) {
     DiffusionTensor_t KK;
     if (HZone < Heliosphere.Nregions) {
         /*  NOTE about HMF
@@ -41,16 +42,16 @@ __device__ DiffusionTensor_t DiffusionTensor_symmetric(const unsigned int InitZo
         // Kp2  = Kperp2    dKp2_dr  = dK_dr.z
         float3 dK_dr;
         const auto [Kpar, Kperp1, Kperp2] =
-                Diffusion_Tensor_In_HMF_Frame(InitZone, HZone, r, th, beta_R(R, pt), R, GaussRndNumber, dK_dr);
+                Diffusion_Tensor_In_HMF_Frame(InitZone, HZone, r, th, beta_R(R, pt), R, GaussRndNumber, dK_dr, LIM);
 
 
         // ....... Define the HMF Model
         // The implemented model is the Parker’s IMF with Jokipii and Kota (1989) modification in polar regions
         // if (fmod(fabs(th)-M_PI, M_PI)<1e-6) th = 1e-6;   // Correction for divergent Bth in polar regions
 
-        const float PolSign = th - Pi / 2. > 0 ? -1. : +1.;
-        const float DelDirac = th == Pi / 2. ? 1. : 0.;
-        const float V_SW = SolarWindSpeed(InitZone, HZone, r, th, phi);
+        const float PolSign = th - Pi / 2.f > 0 ? -1.f : +1.f;
+        const float DelDirac = th == Pi / 2.f ? 1.f : 0.f;
+        const float V_SW = SolarWindSpeed(InitZone, HZone, r, th, phi, LIM);
 
         const float Br = PolSign; // divided by A/r^2
         const float Bth = IsPolarRegion ? r * delta_m / (rhelio * sinf(th)) : 0.f; // divided by A/r^2
@@ -65,7 +66,7 @@ __device__ DiffusionTensor_t DiffusionTensor_symmetric(const unsigned int InitZo
         const float dBph_dr = PolSign * (r - 2.f * rhelio) * (Omega * sinf(th)) / (r * V_SW);
         const float dBph_dth = -(r - rhelio) * Omega * (
                                    -PolSign * (cosf(th) * V_SW - sinf(th) *
-                                               DerivativeOfSolarWindSpeed_dtheta(InitZone, HZone, r, th, phi)) + 2.f *
+                                               DerivativeOfSolarWindSpeed_dtheta(InitZone, HZone, r, th, phi, LIM)) + 2.f *
                                    sinf(th) * V_SW * DelDirac) / (V_SW * V_SW);
 
         const float HMF_Mag2 = 1 + Bth * Bth + Bph * Bph;
@@ -260,11 +261,12 @@ __device__ Tensor3D_t SquareRoot_DiffusionTerm(const signed int HZone, Diffusion
  * @param phi phi
  * @param R R
  * @param pt Particle rest mass, atomic number, and mass number
+ * @param LIM
  * @return Advective term
  */
 __device__ vect3D_t AdvectiveTerm(const unsigned int InitZone, const signed int HZone, const DiffusionTensor_t &K,
                                   const float r, const float th, const float phi, const float R,
-                                  const PartDescription_t pt) {
+                                  const PartDescription_t pt, const HeliosphereZoneProperties_t *LIM) {
     vect3D_t AdvTerm = {2.f * K.rr / r + K.DKrr_dr, 0, 0};
 
     if (HZone < Heliosphere.Nregions) {
@@ -275,14 +277,14 @@ __device__ vect3D_t AdvectiveTerm(const unsigned int InitZone, const signed int 
 
         AdvTerm.phi += K.pr / (sq(r) * sinf(th)) + K.DKrp_dr / (r * sinf(th)) + K.DKtp_dt / (sq(r) * sinf(th));
         // drift component
-        const auto [drift_r, drift_th, drift_phi] = Drift_PM89(InitZone, HZone, r, th, phi, R, pt);
+        const auto [drift_r, drift_th, drift_phi] = Drift_PM89(InitZone, HZone, r, th, phi, R, pt, LIM);
         AdvTerm.r -= drift_r;
         AdvTerm.th -= drift_th / r;
         AdvTerm.phi -= drift_phi / (r * sinf(th));
     }
 
     // convective part related to solar wind
-    AdvTerm.r -= SolarWindSpeed(InitZone, HZone, r, th, phi);
+    AdvTerm.r -= SolarWindSpeed(InitZone, HZone, r, th, phi, LIM);
 
     return AdvTerm;
 }
@@ -296,13 +298,14 @@ __device__ vect3D_t AdvectiveTerm(const unsigned int InitZone, const signed int 
  * @param th th
  * @param phi phi
  * @param R R
+ * @param LIM
  * @return Energy loss term
  */
 __device__ float EnergyLoss(const unsigned int InitZone, const signed int HZone, const float r, const float th,
-                            const float phi, const float R) {
+                            const float phi, const float R, const HeliosphereZoneProperties_t *LIM) {
     if (HZone < Heliosphere.Nregions) {
         // inner Heliosphere .........................
-        return 2.f / 3.f * SolarWindSpeed(InitZone, HZone, r, th, phi) / r * R;
+        return 2.f / 3.f * SolarWindSpeed(InitZone, HZone, r, th, phi, LIM) / r * R;
         // (Ek + 2.*T0)/(Ek + T0) * Ek = pt.Z*pt.Z/(pt.A*pt.A)*sq(R)/(sqrt(pt.Z*pt.Z/(pt.A*pt.A)*sq(R) + pt.T0*pt.T0))
     }
     // heliosheat ...............................

@@ -18,7 +18,7 @@ __device__ float delta_Bfield(const float r, const float th) {
 }
 
 __device__ vect3D_t Drift_PM89(const unsigned int InitZone, const signed int HZone, const float r, const float th,
-                               const float phi, const float R, const PartDescription_t pt) {
+                               const float phi, const float R, const PartDescription_t pt, const HeliosphereZoneProperties_t *LIM) {
     /*Authors: 2022 Stefano */
     /* * description: Evalaute drift velocity vector, including Neutral sheetdrift. This drift is based on Potgieter e Mooral Model (1989), this model was modified to include a theta-component in Bfield.
      *  Imporant warning: the model born as 2D model for Pure Parker Field, originally this not include theta-component in Bfield.
@@ -38,16 +38,16 @@ __device__ vect3D_t Drift_PM89(const unsigned int InitZone, const signed int HZo
     /* sign(Z)*beta*P/3 constant part of antisymmetric diffusion coefficient */
     // pt.A*sqrt(Ek*(Ek+2*pt.T0))/pt.Z
     const float Asun = LIM[HZone + InitZone].Asun; /* Magnetic Field Amplitude constant / aum^2*/
-    const float dV_dth = DerivativeOfSolarWindSpeed_dtheta(InitZone, HZone, r, th, phi);
+    const float dV_dth = DerivativeOfSolarWindSpeed_dtheta(InitZone, HZone, r, th, phi, LIM);
     const float TiltAngle = LIM[HZone + InitZone].TiltAngle;
     // float P = R;
     // .. Scaling factor of drift in 2D approximation.  to account Neutral sheet
     float fth = 0; /* scaling function of drift vel */
     float Dftheta_dtheta = 0;
     const float TiltPos_r = r;
-    const float TiltPos_th = Pi / 2. - TiltAngle;
+    const float TiltPos_th = Pi / 2.f - TiltAngle;
     const float TiltPos_phi = phi;
-    float Vsw = SolarWindSpeed(InitZone, HZone, TiltPos_r, TiltPos_th, TiltPos_phi);
+    float Vsw = SolarWindSpeed(InitZone, HZone, TiltPos_r, TiltPos_th, TiltPos_phi, LIM);
     // const float dthetans = fabsf(GeV / (c * aum) * (2. * r * R) / (Asun * sqrtf(
     //                                                                    1 + Gamma_Bfield(r, TiltPos_th, Vsw) *
     //                                                                    Gamma_Bfield(r, TiltPos_th, Vsw) + (
@@ -67,9 +67,9 @@ __device__ vect3D_t Drift_PM89(const unsigned int InitZone, const signed int HZo
     //       dthetans = fabs((GeV/(c*aum))*(2.*       (MassNumber*sqrt(T*(T+2*T0))         ))/(Z*r*sqrt(B2_mag_alfa)));  /*dTheta_ns = 2*R_larmor/r*/
 
 
-    if (const float theta_mez = Pi / 2. - 0.5 * sinf(fminf(TiltAngle + dthetans, Pi / 2.));
-        theta_mez < Pi / .2) {
-        const float a_f = acosf(Pi / (2. * theta_mez) - 1);
+    if (const float theta_mez = Pi / 2.f - 0.5f * sinf(fminf(TiltAngle + dthetans, Pi / 2.f));
+        theta_mez < Pi / .2f) {
+        const float a_f = acosf(Pi / (2.f * theta_mez) - 1);
         fth = 1.f / a_f * atanf((1.f - 2.f * th / Pi) * tanf(a_f));
         Dftheta_dtheta = -2.f * tanf(a_f) / (a_f * Pi * (
                                                  1.f + (1 - 2.f * th / Pi) * (1 - 2.f * th / Pi) * tanf(a_f) *
@@ -83,7 +83,7 @@ __device__ vect3D_t Drift_PM89(const unsigned int InitZone, const signed int HZo
     //             Asun,r*r, Gamma_Bfield(r,TiltPos_th,Vsw), ((IsPolarRegion)?delta_Bfield(r,TiltPos_th)*delta_Bfield(r,TiltPos_th):0));
     //    printf("KA %f\tdthetans=%e\tftheta=%e\tDftheta_dtheta=%e\n", Ka, dthetans,fth,Dftheta_dtheta);
     // }
-    Vsw = SolarWindSpeed(InitZone, HZone, r, th, phi); // solar wind evaluated
+    Vsw = SolarWindSpeed(InitZone, HZone, r, th, phi, LIM); // solar wind evaluated
     // .. drift velocity
 
     const float dm = IsPolarRegion ? delta_m : 0;

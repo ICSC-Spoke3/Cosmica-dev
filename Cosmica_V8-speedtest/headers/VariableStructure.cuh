@@ -3,7 +3,6 @@
 
 // Struct with threads, blocks and share memory with which launch a cuda function
 typedef struct LaunchParam_t {
-    int Npart = 0;
     int threads = 0;
     int blocks = 0;
     int smem = 0;

@@ -61,10 +61,9 @@ LaunchParam_t RoundNpart(const int NPart, cudaDeviceProp GPUprop, const bool ver
 
     // Computation of the number of blocks, warp per blocks, threads per block and shared memory bits
     // launch_param.Npart = ceil_int(NPart, GPUprop.warpSize) * GPUprop.warpSize;
-    launch_param.Npart = NPart;
     int WarpPerBlock = WpB <= 0 ? BestWarpPerBlock(GPUprop.name, verbose) : WpB;
     launch_param.threads = WarpPerBlock * GPUprop.warpSize;
-    launch_param.blocks = ceil_int(launch_param.Npart, launch_param.threads);
+    launch_param.blocks = ceil_int(NPart, launch_param.threads);
     // Use a minimum of 2 blocks per Single Multiprocessor (cuda prescription)
     if (launch_param.blocks < 2) launch_param.blocks = 2;
 
@@ -92,13 +91,13 @@ LaunchParam_t RoundNpart(const int NPart, cudaDeviceProp GPUprop, const bool ver
 
     // launch_param.threads = (768 + GPUprop.warpSize - 1) / GPUprop.warpSize * GPUprop.warpSize;
     launch_param.threads = 48;
-    launch_param.blocks = (launch_param.Npart + launch_param.threads - 1) / launch_param.threads;
+    launch_param.blocks = (NPart + launch_param.threads - 1) / launch_param.threads;
     launch_param.smem = static_cast<int>(svars * launch_param.threads * sizeof(float));
 #endif
 
     if (verbose) {
         printf("------- propagation Kernel -----------------\n");
-        printf("-- Number of particle which will be simulated: %d\n", launch_param.Npart);
+        printf("-- Number of particle which will be simulated: %d\n", NPart);
         printf("-- Number of Warp in a Block       : %d \n", WarpPerBlock);
         printf("-- Number of blocks                : %d \n", launch_param.blocks);
         printf("-- Number of threadsPerBlock       : %d \n", launch_param.threads);

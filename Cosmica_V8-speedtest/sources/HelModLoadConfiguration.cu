@@ -308,6 +308,8 @@ int LoadConfigFile(int argc, char *argv[], SimParameters_t &SimParameters, int v
 
     SimParameters.Results = new MonteCarloResult_t[SimParameters.NT];
 
+    SimParameters.Npart = ceil_int(SimParameters.Npart, SimParameters.NInitialPositions);
+
     if (verbose >= VERBOSE_med) {
         fprintf(stderr, "----- Recap of Simulation parameters ----\n");
         fprintf(stderr, "NucleonRestMass         : %.3f Gev/n \n", SimParameters.IonToBeSimulated.T0);
@@ -327,7 +329,7 @@ int LoadConfigFile(int argc, char *argv[], SimParameters_t &SimParameters, int v
             fprintf(stderr, "%.2f ", SimParameters.Tcentr[i]);
         }
         fprintf(stderr, "\n");
-        fprintf(stderr, "Events to be generated  : %lu \n", SimParameters.Npart);
+        fprintf(stderr, "Events to be generated  : %u \n", SimParameters.Npart);
         //fprintf(stderr,"Warp per Block          : %d \n",WarpPerBlock);
 
         fprintf(stderr, "\n");
