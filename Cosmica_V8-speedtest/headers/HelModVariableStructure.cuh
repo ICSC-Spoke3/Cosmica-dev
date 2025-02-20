@@ -46,6 +46,7 @@
 // Solar param constant
 #define Omega  3.03008e-6f  // solar angular velocity
 #define rhelio 0.004633333f  // solar radius in AU
+#define r_mirror 0.3
 
 
 typedef struct options_t {
@@ -97,7 +98,7 @@ typedef struct HeliosheatProperties_t {
 
 typedef struct SimulatedHeliosphere_t {
     // properties related to heliosphere like dimension, coefficients
-    float Rmirror = 0.3; // [AU] Internal heliosphere bounduary - mirror radius.
+    // float Rmirror = 0.3; // [AU] Internal heliosphere bounduary - mirror radius.
 
     unsigned int NIsotopes = 0;
     PartDescription_t Isotopes[NMaxIsotopes];

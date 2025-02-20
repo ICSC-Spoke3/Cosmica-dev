@@ -58,7 +58,7 @@ __global__ void HeliosphericProp(const unsigned int Npart_PerKernel, const float
                                              Min_dt * (tr + tt) * (tr + tt) / (adv_th * adv_th)));
 
 
-        if (const float update_r = r + adv_r * dt + rand_x * rr * sqrtf(dt); update_r >= Heliosphere.Rmirror) {
+        if (const float update_r = r + adv_r * dt + rand_x * rr * sqrtf(dt); update_r >= r_mirror) {
             r = update_r;
             th += adv_th * dt + (rand_x * tr + rand_y * tt) * sqrtf(dt);
             phi += adv_phi * dt + (rand_x * pr + rand_y * pt + rand_z * pp) * sqrtf(dt);

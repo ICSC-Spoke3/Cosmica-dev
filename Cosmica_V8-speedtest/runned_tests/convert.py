@@ -102,7 +102,7 @@ def convert_txt_to_yml(txt):
         if key == "RandomSeed":
             new_data["random_seed"] = int(value)
         elif key == "OutputFilename":
-            new_data["output_path"] = ".../" + value
+            new_data["output_path"] = value
         elif key == "Particle_NucleonRestMass":
             particles["nucleon_rest_mass"] = float(value)
         elif key == "Particle_MassNumber":
@@ -115,7 +115,7 @@ def convert_txt_to_yml(txt):
                 [float(x.strip()) for x in value.split(",") if x.strip()]
             )
         elif key == "SourcePos_theta":
-            sources["theta"] = InlineList(
+            sources["th"] = InlineList(
                 [float(x.strip()) for x in value.split(",") if x.strip()]
             )
         elif key == "SourcePos_phi":
@@ -143,8 +143,9 @@ def convert_txt_to_yml(txt):
             continue
 
     # Assemble particle and source information.
-    new_data["particles"] = [particles]
+    new_data["isotopes"] = [particles]
     new_data["sources"] = sources
+    new_data["relative_bin_amplitude"] = 0.00855
 
     # Process HeliosphericParameters.
     if heliospheric_params:

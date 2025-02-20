@@ -146,6 +146,9 @@ consteval unsigned long operator""_(const char *str, const size_t len) {
 
 int LoadConfigFile(int argc, char *argv[], SimParameters_t &SimParameters, int verbose) {
     auto options = ParseCLIArguments(argc, argv);
+
+    if (options["i"].ends_with(".yaml")) return LoadConfigYaml(argc, argv, SimParameters, verbose);
+
     if (options.contains("v")) verbose += 1;
     else if (options.contains("vv")) verbose += 2;
     else if (options.contains("vvv")) verbose += 3;
@@ -279,7 +282,7 @@ int LoadConfigFile(int argc, char *argv[], SimParameters_t &SimParameters, int v
             auto [kxh, kyh,kzh] = EvalK0(true, // isHighActivity
                                          IHP[i].Polarity, SimParameters.HeliosphereToBeSimulated.Isotopes[0].Z,
                                          IHP[i].SolarPhase, IHP[i].SmoothTilt, IHP[i].NMCR, IHP[i].ssn, verbose);
-            auto [kxl, kyl,kzl] = EvalK0(true, // isHighActivity
+            auto [kxl, kyl,kzl] = EvalK0(false, // isHighActivity
                                          IHP[i].Polarity, SimParameters.HeliosphereToBeSimulated.Isotopes[0].Z,
                                          IHP[i].SolarPhase, IHP[i].SmoothTilt, IHP[i].NMCR, IHP[i].ssn, verbose);
             SimParameters.prop_medium[i].k0_paral[0] = kxh;
@@ -385,6 +388,111 @@ int LoadConfigFile(int argc, char *argv[], SimParameters_t &SimParameters, int v
     return EXIT_SUCCESS;
 }
 
+void from_node(const fkyaml::node &node, PartDescription_t &particle) {
+    particle.T0 = node["nucleon_rest_mass"].get_value<float>();
+    particle.A = node["mass_number"].get_value<float>();
+    particle.Z = node["charge"].get_value<float>();
+}
+
+template<typename T>
+T node_to_value(const fkyaml::node &node) {
+    return node.get_value<T>();
+}
+
+template<typename T>
+std::vector<T> node_to_vector(const fkyaml::node &node) {
+    vector<T> ret;
+    std::ranges::transform(node, std::back_inserter(ret),
+                           [](const auto &p) { return p.template get_value<T>(); });
+    return ret;
+}
+
+unsigned int check_sources_count(const vector<float> &r, const vector<float> &th, const vector<float> &phi) {
+    if (r.size() != th.size() || th.size() != phi.size()) {
+        printf("Misaligned source coordinates (%lu, %lu, %lu)", r.size(), th.size(), phi.size());
+        exit(EXIT_FAILURE);
+    }
+    return r.size();
+}
+
+std::tuple<vector<HeliosphereZoneProperties_t>, vector<bool>, vector<HeliosphereBoundRadius_t> >
+node_to_heliosphere(const fkyaml::node &node, const unsigned int n_sources, const unsigned int n_regions, const int z) {
+    const auto &static_node = node["static"]["heliosphere"], &dynamic_node = node["dynamic"]["heliosphere"];
+    vector<HeliosphereZoneProperties_t> hps;
+    vector<bool> high_activity;
+    vector<HeliosphereBoundRadius_t> boundary;
+    for (unsigned int i = 0; i < n_sources + n_regions - 1; ++i) {
+        const InputHeliosphericParameters_t ihp{
+            node_to_value<float>(dynamic_node["k0"][0][i]),
+            node_to_value<float>(static_node["ssn"][i]),
+            node_to_value<float>(static_node["v0"][i]),
+            node_to_value<float>(static_node["tilt_angle"][i]),
+            node_to_value<float>(static_node["smooth_tilt"][i]),
+            node_to_value<float>(static_node["b_field"][i]),
+            node_to_value<int>(static_node["polarity"][i]),
+            node_to_value<int>(static_node["solar_phase"][i]),
+            node_to_value<float>(static_node["nmcr"][i]),
+            node_to_value<float>(static_node["ts_nose"][i]),
+            node_to_value<float>(static_node["ts_tail"][i]),
+            node_to_value<float>(static_node["hp_nose"][i]),
+            node_to_value<float>(static_node["hp_tail"][i]),
+        };
+        HeliosphereZoneProperties_t hp;
+        hp.V0 = ihp.V0 / aukm;
+        if (ihp.k0 > 0) {
+            hp.k0_paral[0] = ihp.k0;
+            hp.k0_paral[1] = ihp.k0;
+            hp.k0_perp[0] = ihp.k0;
+            hp.k0_perp[1] = ihp.k0;
+            hp.GaussVar[0] = 0;
+            hp.GaussVar[1] = 0;
+        } else {
+            auto [kxh, kyh,kzh] = EvalK0(true, ihp.Polarity, z, ihp.SolarPhase, ihp.SmoothTilt, ihp.NMCR, ihp.ssn, 0);
+            auto [kxl, kyl,kzl] = EvalK0(false, ihp.Polarity, z, ihp.SolarPhase, ihp.SmoothTilt, ihp.NMCR, ihp.ssn, 0);
+            hp.k0_paral[0] = kxh;
+            hp.k0_perp[0] = kyh;
+            hp.GaussVar[0] = kzh;
+            hp.k0_paral[1] = kxl;
+            hp.k0_perp[1] = kyl;
+            hp.GaussVar[1] = kzl;
+        }
+        hp.g_low = g_low(ihp.SolarPhase, ihp.Polarity, ihp.SmoothTilt);
+        hp.rconst = rconst(ihp.SolarPhase, ihp.Polarity, ihp.SmoothTilt);
+        hp.TiltAngle = ihp.TiltAngle * Pi / 180.f; // conversion to radian
+        hp.Asun = static_cast<float>(ihp.Polarity) * sq(aum) * ihp.BEarth * 1e-9f / sqrtf(
+                      1.f + Omega * (1 - rhelio) / (ihp.V0 / aukm) * (Omega * (1 - rhelio) / (ihp.V0 / aukm)));
+        hp.P0d = EvalP0DriftSuppressionFactor(0, ihp.SolarPhase, ihp.TiltAngle, 0);
+        hp.P0dNS = EvalP0DriftSuppressionFactor(
+            1, ihp.SolarPhase, ihp.TiltAngle, ihp.ssn);
+        hp.plateau = EvalHighRigidityDriftSuppression_plateau(
+            ihp.SolarPhase, ihp.TiltAngle);
+        hps.push_back(hp);
+
+        if (i < n_sources) {
+            float mean_tilt = 0;
+            for (size_t j = i; j < n_regions + i; ++j) mean_tilt += node_to_value<float>(static_node["tilt_angle"][j]);
+            mean_tilt /= static_cast<float>(n_regions);
+
+            high_activity.push_back(mean_tilt >= TiltL_MaxActivity_threshold);
+            boundary.push_back({ihp.Rts_nose, ihp.Rhp_nose, ihp.Rts_tail, ihp.Rhp_tail});
+        }
+    }
+    return {hps, high_activity, boundary};
+}
+
+vector<HeliosheatProperties_t>
+node_to_heliosheat(const fkyaml::node &node, const unsigned int size) {
+    const auto &static_node = node["static"]["heliosheat"];
+    vector<HeliosheatProperties_t> hps;
+    for (unsigned int i = 0; i < size; ++i) {
+        hps.push_back({
+            node_to_value<float>(static_node["v0"][i]) / aukm,
+            node_to_value<float>(static_node["k0"][i]),
+        });
+    }
+    return hps;
+}
+
 int LoadConfigYaml(int argc, char *argv[], SimParameters_t &SimParameters, int verbose) {
     auto options = ParseCLIArguments(argc, argv);
     if (options.contains("v")) verbose += 1;
@@ -417,7 +525,110 @@ int LoadConfigYaml(int argc, char *argv[], SimParameters_t &SimParameters, int v
 
     auto node = fkyaml::node::deserialize(file);
 
-    // ryml::substr st{buffer.data(), buffer.size()};
-    // auto tree = ryml::parse_in_place(st);
-    return 1;
+    auto random_seed = node_to_value<unsigned long>(node["random_seed"]);
+    auto output_path = node_to_value<std::string>(node["output_path"]);
+    auto rigidities = node_to_vector<float>(node["rigidities"]);
+    auto n_particles = node_to_value<unsigned int>(node["n_particles"]);
+    auto n_regions = node_to_value<unsigned int>(node["n_regions"]);
+    auto isotopes = node_to_vector<PartDescription_t>(node["isotopes"]);
+    auto source_r = node_to_vector<float>(node["sources"]["r"]);
+    auto source_th = node_to_vector<float>(node["sources"]["th"]);
+    auto source_phi = node_to_vector<float>(node["sources"]["phi"]);
+    auto n_sources = check_sources_count(source_r, source_th, source_phi);
+    auto [heliosphere, high_activity, boundary] = node_to_heliosphere(node, n_sources, n_regions,
+                                                                      static_cast<int>(isotopes[0].Z));
+    auto heliosheat = node_to_heliosheat(node, n_sources);
+    auto relative_bin_amplitude = node_to_value<float>(node["relative_bin_amplitude"]);
+
+    strncpy(SimParameters.output_file_name, output_path.c_str(), struct_string_lengh);
+    SimParameters.RandomSeed = random_seed;
+    SimParameters.Npart = n_particles;
+    std::ranges::copy(rigidities, SimParameters.Tcentr = new float[SimParameters.NT = rigidities.size()]);
+    SimParameters.InitialPosition = new vect3D_t[SimParameters.NInitialPositions = n_sources];
+    for (size_t i = 0; i < SimParameters.NInitialPositions; ++i) {
+        SimParameters.InitialPosition[i] = {source_r[i], source_th[i], source_phi[i]};
+    }
+    SimParameters.Results = new MonteCarloResult_t[SimParameters.NT];
+    SimParameters.RelativeBinAmplitude = relative_bin_amplitude;
+
+    SimParameters.HeliosphereToBeSimulated.NIsotopes = isotopes.size();
+    std::ranges::copy(isotopes, SimParameters.HeliosphereToBeSimulated.Isotopes);
+    SimParameters.HeliosphereToBeSimulated.Nregions = n_regions;
+    std::ranges::copy(high_activity, SimParameters.HeliosphereToBeSimulated.IsHighActivityPeriod);
+    std::ranges::copy(boundary, SimParameters.HeliosphereToBeSimulated.RadBoundary_real);
+
+    std::ranges::copy(heliosphere, SimParameters.prop_medium);
+    std::ranges::copy(heliosheat, SimParameters.prop_Heliosheat);
+
+    SimParameters.Npart = ceil_int(SimParameters.Npart, SimParameters.NInitialPositions);
+
+    if (verbose >= VERBOSE_med) {
+        fprintf(stderr, "----- Recap of Simulation parameters ----\n");
+        fprintf(stderr, "NucleonRestMass         : %.3f Gev/n \n",
+                SimParameters.HeliosphereToBeSimulated.Isotopes[0].T0);
+        fprintf(stderr, "MassNumber              : %.1f \n", SimParameters.HeliosphereToBeSimulated.Isotopes[0].A);
+        fprintf(stderr, "Charge                  : %.1f \n", SimParameters.HeliosphereToBeSimulated.Isotopes[0].Z);
+        fprintf(stderr, "Number of sources       : %hhu \n", SimParameters.NInitialPositions);
+        for (int i = 0; i < SimParameters.NInitialPositions; i++) {
+            fprintf(stderr, "position              :%d \n", i);
+            fprintf(stderr, "  Init Pos (real) - r     : %.2f \n", SimParameters.InitialPosition[i].r);
+            fprintf(stderr, "  Init Pos (real) - theta : %.2f \n", SimParameters.InitialPosition[i].th);
+            fprintf(stderr, "  Init Pos (real) - phi   : %.2f \n", SimParameters.InitialPosition[i].phi);
+        }
+        fprintf(stderr, "output_file_name        : %s \n", SimParameters.output_file_name);
+        fprintf(stderr, "number of input energies: %d \n", SimParameters.NT);
+        fprintf(stderr, "input energies          : ");
+        for (int i = 0; i < SimParameters.NT; i++) {
+            fprintf(stderr, "%.2f ", SimParameters.Tcentr[i]);
+        }
+        fprintf(stderr, "\n");
+        fprintf(stderr, "Events to be generated  : %u \n", SimParameters.Npart);
+        //fprintf(stderr,"Warp per Block          : %d \n",WarpPerBlock);
+
+        fprintf(stderr, "\n");
+        fprintf(stderr, "for each simulated periods:\n");
+        for (int i = 0; i < SimParameters.NInitialPositions; i++) {
+            fprintf(stderr, "position              :%d \n", i);
+            fprintf(stderr, "  IsHighActivityPeriod    : %s \n",
+                    SimParameters.HeliosphereToBeSimulated.IsHighActivityPeriod[i] ? "true" : "false");
+            fprintf(stderr, "  Rts nose direction      : %.2f AU\n",
+                    SimParameters.HeliosphereToBeSimulated.RadBoundary_real[i].Rts_nose);
+            fprintf(stderr, "  Rts tail direction      : %.2f AU\n",
+                    SimParameters.HeliosphereToBeSimulated.RadBoundary_real[i].Rts_tail);
+            fprintf(stderr, "  Rhp nose direction      : %.2f AU\n",
+                    SimParameters.HeliosphereToBeSimulated.RadBoundary_real[i].Rhp_nose);
+            fprintf(stderr, "  Rhp tail direction      : %.2f AU\n",
+                    SimParameters.HeliosphereToBeSimulated.RadBoundary_real[i].Rhp_tail);
+        }
+        fprintf(stderr, "Heliopshere Parameters ( %d regions ): \n", SimParameters.HeliosphereToBeSimulated.Nregions);
+
+        for (int i = 0; i < SimParameters.HeliosphereToBeSimulated.Nregions + SimParameters.
+                        NInitialPositions - 1; i++) {
+            fprintf(stderr, "- Region %d \n", i);
+            fprintf(stderr, "-- V0         %e AU/s\n", SimParameters.prop_medium[i].V0);
+            fprintf(stderr, "-- k0_paral   [%e,%e] \n", SimParameters.prop_medium[i].k0_paral[0],
+                    SimParameters.prop_medium[i].k0_paral[1]);
+            fprintf(stderr, "-- k0_perp    [%e,%e] \n", SimParameters.prop_medium[i].k0_perp[0],
+                    SimParameters.prop_medium[i].k0_perp[1]);
+            fprintf(stderr, "-- GaussVar   [%.4f,%.4f] \n", SimParameters.prop_medium[i].GaussVar[0],
+                    SimParameters.prop_medium[i].GaussVar[1]);
+            fprintf(stderr, "-- g_low      %.4f \n", SimParameters.prop_medium[i].g_low);
+            fprintf(stderr, "-- rconst     %.3f \n", SimParameters.prop_medium[i].rconst);
+            fprintf(stderr, "-- tilt angle %.3f rad\n", SimParameters.prop_medium[i].TiltAngle);
+            fprintf(stderr, "-- Asun       %e \n", SimParameters.prop_medium[i].Asun);
+            fprintf(stderr, "-- P0d        %e GV \n", SimParameters.prop_medium[i].P0d);
+            fprintf(stderr, "-- P0dNS      %e GV \n", SimParameters.prop_medium[i].P0dNS);
+
+
+            // XXXXXXX
+        }
+        fprintf(stderr, "Heliosheat parameters ( %d periods ): \n", SimParameters.NInitialPositions);
+        for (int ipos = 0; ipos < SimParameters.NInitialPositions; ipos++) {
+            fprintf(stderr, "-period              :%d \n", ipos);
+            fprintf(stderr, "-- V0 %e AU/s\n", SimParameters.prop_Heliosheat[ipos].V0);
+            fprintf(stderr, "-- k0 %e \n", SimParameters.prop_Heliosheat[ipos].k0);
+        }
+        fprintf(stderr, "----------------------------------------\n");
+    }
+    return EXIT_SUCCESS;
 }
