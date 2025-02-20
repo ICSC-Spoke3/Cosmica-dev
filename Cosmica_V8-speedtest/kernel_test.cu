@@ -170,10 +170,10 @@ int main(int argc, char *argv[]) {
 #if HELMOD_LOAD
 
     // NOTE: USING OLD STABLE 4_CoreCode_MultiGPU_MultiYear VERSION
-    if (LoadConfigYaml(argc, argv, SimParameters, VERBOSE_LOAD) != EXIT_SUCCESS) {
-        printf("Error while loading simulation parameters\n");
-        exit(EXIT_FAILURE);
-    }
+    // if (LoadConfigYaml(argc, argv, SimParameters, VERBOSE_LOAD) != EXIT_SUCCESS) {
+    //     printf("Error while loading simulation parameters\n");
+    //     exit(EXIT_FAILURE);
+    // }
 
 
     if (LoadConfigFile(argc, argv, SimParameters, VERBOSE_LOAD) != EXIT_SUCCESS) {
