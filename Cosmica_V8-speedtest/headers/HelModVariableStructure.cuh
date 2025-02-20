@@ -93,9 +93,15 @@ typedef struct HeliosheatProperties_t {
     float k0 = 0; // Diffusion parameter for parallel term of diffusion tensor
 } HeliosheatProperties_t;
 
+#define NMaxIsotopes 10
+
 typedef struct SimulatedHeliosphere_t {
     // properties related to heliosphere like dimension, coefficients
     float Rmirror = 0.3; // [AU] Internal heliosphere bounduary - mirror radius.
+
+    unsigned int NIsotopes = 0;
+    PartDescription_t Isotopes[NMaxIsotopes];
+
     unsigned int Nregions = 0; // Number of Inner Heliosphere region (15 inner region + 1 Heliosheat)
     HeliosphereBoundRadius_t RadBoundary_effe[NMaxRegions] = {0}; // boundaries in effective heliosphere
     HeliosphereBoundRadius_t RadBoundary_real[NMaxRegions] = {0}; // real boundaries heliosphere
@@ -113,7 +119,6 @@ typedef struct SimParameters_t {
     // number of initial positions -> this number represent also the number of Carrington rotation that
     float *Tcentr; // array of energies to be simulated
     vect3D_t *InitialPosition; // initial position
-    PartDescription_t IonToBeSimulated; // Ion to be simulated
     MonteCarloResult_t *Results; // output of the code
     float RelativeBinAmplitude = 0.00855;
     // relative (respect 1.) amplitude of Energy bin used as X axis in BoundaryDistribution  --> delta T = T*RelativeBinAmplitude

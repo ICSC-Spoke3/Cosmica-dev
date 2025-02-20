@@ -11,11 +11,11 @@
 
 __global__ void HeliosphericProp(const unsigned int Npart_PerKernel, const float Min_dt, float Max_dt,
                                  const float TimeOut,
-                                 QuasiParticle_t QuasiParts_out, const Indexes_t indexes,
+                                 QuasiParticle_t QuasiParts_out, const ThreadIndexes indexes,
                                  const HeliosphereZoneProperties_t *__restrict__ LIM,
-                                 const PartDescription_t particle, curandStatePhilox4_32_10_t *const CudaState,
+                                 curandStatePhilox4_32_10_t *const CudaState,
                                  float *RMaxs) {
-    const int id = threadIdx.x + blockIdx.x * blockDim.x;
+    const unsigned int id = threadIdx.x + blockIdx.x * blockDim.x;
     if (id >= Npart_PerKernel) return;
 
     extern __shared__ float smem[];
@@ -26,17 +26,19 @@ __global__ void HeliosphericProp(const unsigned int Npart_PerKernel, const float
     float phi = QuasiParts_out.phi[id];
     float R = QuasiParts_out.R[id];
     float t_fly = QuasiParts_out.t_fly[id];
-    const unsigned int init_zone = indexes.period[id];
-    int rad_zone = RadialZone(indexes.period[id], r, th, phi);
+
+    auto index = indexes.get(id);
+    index.update(r, th, phi);
 
 
-    while (rad_zone >= 0 && t_fly <= TimeOut) {
+    while (index.radial >= 0 && t_fly <= TimeOut) {
         const auto [rand_x, rand_y, rand_z, rand_w] = curand_normal4(&randState);
 
-        auto KSym = DiffusionTensor_symmetric(init_zone, rad_zone, r, th, phi, R, particle, rand_w, LIM);
+        auto KSym = DiffusionTensor_symmetric(index, r, th, phi, R, Heliosphere.Isotopes[index.particle],
+                                              rand_w, LIM);
 
         int res = 0;
-        const auto [rr, tr, tt, pr, pt, pp] = SquareRoot_DiffusionTerm(rad_zone, KSym, r, th, &res);
+        const auto [rr, tr, tt, pr, pt, pp] = SquareRoot_DiffusionTerm(index, KSym, r, th, &res);
 
         if (res > 0) {
             // SDE diffusion matrix is not positive definite; in this case propagation should be stopped and a new event generated
@@ -46,9 +48,10 @@ __global__ void HeliosphericProp(const unsigned int Npart_PerKernel, const float
         }
 
 
-        const auto [adv_r, adv_th, adv_phi] = AdvectiveTerm(init_zone, rad_zone, KSym, r, th, phi, R, particle, LIM);
+        const auto [adv_r, adv_th, adv_phi] = AdvectiveTerm(index, KSym, r, th, phi, R, Heliosphere.Isotopes[index.particle],
+                                                            LIM);
 
-        const float en_loss = EnergyLoss(init_zone, rad_zone, r, th, phi, R, LIM);
+        const float en_loss = EnergyLoss(index, r, th, phi, R, LIM);
 
         const float dt = fmaxf(Min_dt, fminf(fminf(Max_dt,
                                                    Min_dt * (rr * rr) / (adv_r * adv_r)),
@@ -70,7 +73,7 @@ __global__ void HeliosphericProp(const unsigned int Npart_PerKernel, const float
         phi = fmodf(phi, 2 * Pi);
         phi = fmodf(2 * Pi + phi, 2 * Pi);
 
-        rad_zone = RadialZone(init_zone, r, th, phi);
+        index.update(r, th, phi);
     }
 
     QuasiParts_out.r[id] = r;

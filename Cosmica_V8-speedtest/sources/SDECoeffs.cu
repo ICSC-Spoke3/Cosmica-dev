@@ -11,8 +11,7 @@
 /**
  * @brief Evaluation of the symmetric component of the diffusion tensor in heliocentric coordinates, and its derivative
  *
- * @param InitZone Initial Zone in the heliosphere (in the list of parameters)
- * @param HZone Zone in the Heliosphere
+ * @param index
  * @param r Radial distance
  * @param th th
  * @param phi phi
@@ -22,11 +21,14 @@
  * @param LIM
  * @return Symmetric component of the diffusion tensor
  */
-__device__ DiffusionTensor_t DiffusionTensor_symmetric(const unsigned int InitZone, const signed int HZone,
-                                                       const float r, const float th, const float phi, const float R,
-                                                       const PartDescription_t pt, const float GaussRndNumber, const HeliosphereZoneProperties_t *LIM) {
+__device__ DiffusionTensor_t DiffusionTensor_symmetric(const Index_t &index,
+                                                       const float r, const float th,
+                                                       const float phi,
+                                                       const float R, const PartDescription_t pt,
+                                                       const float GaussRndNumber,
+                                                       const HeliosphereZoneProperties_t *LIM) {
     DiffusionTensor_t KK;
-    if (HZone < Heliosphere.Nregions) {
+    if (index.radial < Heliosphere.Nregions) {
         /*  NOTE about HMF
          *  In the equatorial region, we used the Parker’s IMF (B Par ) in the parametrization of Hattingh and Burger (1995),
          *  while in the polar regions we used a modiﬁed IMF (B Pol ) that includes a latitudinal component,
@@ -35,14 +37,14 @@ __device__ DiffusionTensor_t DiffusionTensor_symmetric(const unsigned int InitZo
          *  Note that since in equatorial region the theta component of HMF is zero we implemented two cases to avoid 0calculations.
          */
         const bool IsPolarRegion = fabsf(cosf(th)) > CosPolarZone;
-        const float SignAsun = LIM[HZone + InitZone].Asun > 0 ? +1. : -1.;
+        const float SignAsun = LIM[index.combined()].Asun > 0 ? +1. : -1.;
         // ....... Get Diffusion tensor in HMF frame
         // Kpar = Kh.x    dKpar_dr = dK_dr.x
         // Kp1  = Kperp    dKp1_dr  = dK_dr.y
         // Kp2  = Kperp2    dKp2_dr  = dK_dr.z
         float3 dK_dr;
         const auto [Kpar, Kperp1, Kperp2] =
-                Diffusion_Tensor_In_HMF_Frame(InitZone, HZone, r, th, beta_R(R, pt), R, GaussRndNumber, dK_dr, LIM);
+                Diffusion_Tensor_In_HMF_Frame(index, r, th, beta_R(R, pt), R, GaussRndNumber, dK_dr, LIM);
 
 
         // ....... Define the HMF Model
@@ -51,7 +53,7 @@ __device__ DiffusionTensor_t DiffusionTensor_symmetric(const unsigned int InitZo
 
         const float PolSign = th - Pi / 2.f > 0 ? -1.f : +1.f;
         const float DelDirac = th == Pi / 2.f ? 1.f : 0.f;
-        const float V_SW = SolarWindSpeed(InitZone, HZone, r, th, phi, LIM);
+        const float V_SW = SolarWindSpeed(index, r, th, phi, LIM);
 
         const float Br = PolSign; // divided by A/r^2
         const float Bth = IsPolarRegion ? r * delta_m / (rhelio * sinf(th)) : 0.f; // divided by A/r^2
@@ -66,7 +68,8 @@ __device__ DiffusionTensor_t DiffusionTensor_symmetric(const unsigned int InitZo
         const float dBph_dr = PolSign * (r - 2.f * rhelio) * (Omega * sinf(th)) / (r * V_SW);
         const float dBph_dth = -(r - rhelio) * Omega * (
                                    -PolSign * (cosf(th) * V_SW - sinf(th) *
-                                               DerivativeOfSolarWindSpeed_dtheta(InitZone, HZone, r, th, phi, LIM)) + 2.f *
+                                               DerivativeOfSolarWindSpeed_dtheta(
+                                                   index, r, th, phi, LIM)) + 2.f *
                                    sinf(th) * V_SW * DelDirac) / (V_SW * V_SW);
 
         const float HMF_Mag2 = 1 + Bth * Bth + Bph * Bph;
@@ -173,7 +176,7 @@ __device__ DiffusionTensor_t DiffusionTensor_symmetric(const unsigned int InitZo
         // KK.DKpt_dp = 0. ;
     } else {
         // heliosheat ...............................
-        KK.rr = Diffusion_Coeff_heliosheat(InitZone, r, th, phi, beta_R(R, pt), R, KK.DKrr_dr);
+        KK.rr = Diffusion_Coeff_heliosheat(index, r, th, phi, beta_R(R, pt), R, KK.DKrr_dr);
     }
     return KK;
 }
@@ -190,7 +193,7 @@ __device__ DiffusionTensor_t DiffusionTensor_symmetric(const unsigned int InitZo
 /**
  * @brief Solving the square root of diffusion tensor in heliocentric spherical coordinates
  *
- * @param HZone Zone in the Heliosphere
+ * @param index
  * @param K Diffusion tensor
  * @param r Radial distance
  * @param th th
@@ -198,14 +201,14 @@ __device__ DiffusionTensor_t DiffusionTensor_symmetric(const unsigned int InitZo
  * @return Square root of the diffusion tensor
  * @note This function is not implemented for the outer heliosphere: HZone >= Heliosphere.Nregions
  */
-__device__ Tensor3D_t SquareRoot_DiffusionTerm(const signed int HZone, DiffusionTensor_t K, const float r,
-                                               const float th, int *res) {
+__device__ Tensor3D_t SquareRoot_DiffusionTerm(const Index_t &index, DiffusionTensor_t K,
+                                               const float r, const float th, int *res) {
     // Create diffusion matrix of FPE from diffusion tensor
     Tensor3D_t D;
 
     K.rr = 2.f * K.rr;
     D.rr = sqrtf(K.rr); // g = sqrt(a)
-    if (HZone < Heliosphere.Nregions) {
+    if (index.radial < Heliosphere.Nregions) {
         //K.rt=2.*K.rt/r;                       K.rp=2.*K.rp/(r*sinf(th));
         K.tr = 2.f * K.tr / r;
         K.tt = 2.f * K.tt / (r * r); //K.tp=2.*K.tp/(sq(r)*sinf(th));
@@ -253,8 +256,7 @@ __device__ Tensor3D_t SquareRoot_DiffusionTerm(const signed int HZone, Diffusion
 /**
  * @brief Advective term of the SDE in heliocentric spherical coordinates
  *
- * @param InitZone Initial Zone in the heliosphere (in the list of parameters)
- * @param HZone Zone in the Heliosphere
+ * @param index
  * @param K Diffusion tensor
  * @param r Radial distance
  * @param th th
@@ -264,12 +266,12 @@ __device__ Tensor3D_t SquareRoot_DiffusionTerm(const signed int HZone, Diffusion
  * @param LIM
  * @return Advective term
  */
-__device__ vect3D_t AdvectiveTerm(const unsigned int InitZone, const signed int HZone, const DiffusionTensor_t &K,
-                                  const float r, const float th, const float phi, const float R,
-                                  const PartDescription_t pt, const HeliosphereZoneProperties_t *LIM) {
+__device__ vect3D_t AdvectiveTerm(const Index_t &index,
+                                  const DiffusionTensor_t &K, const float r, const float th, const float phi,
+                                  const float R, const PartDescription_t pt, const HeliosphereZoneProperties_t *LIM) {
     vect3D_t AdvTerm = {2.f * K.rr / r + K.DKrr_dr, 0, 0};
 
-    if (HZone < Heliosphere.Nregions) {
+    if (index.radial < Heliosphere.Nregions) {
         // inner Heliosphere .........................
         // advective part related to diffision tensor
         AdvTerm.r += K.tr / (r * tanf(th)) + K.DKtr_dt / r;
@@ -277,14 +279,14 @@ __device__ vect3D_t AdvectiveTerm(const unsigned int InitZone, const signed int 
 
         AdvTerm.phi += K.pr / (sq(r) * sinf(th)) + K.DKrp_dr / (r * sinf(th)) + K.DKtp_dt / (sq(r) * sinf(th));
         // drift component
-        const auto [drift_r, drift_th, drift_phi] = Drift_PM89(InitZone, HZone, r, th, phi, R, pt, LIM);
+        const auto [drift_r, drift_th, drift_phi] = Drift_PM89(index, r, th, phi, R, pt, LIM);
         AdvTerm.r -= drift_r;
         AdvTerm.th -= drift_th / r;
         AdvTerm.phi -= drift_phi / (r * sinf(th));
     }
 
     // convective part related to solar wind
-    AdvTerm.r -= SolarWindSpeed(InitZone, HZone, r, th, phi, LIM);
+    AdvTerm.r -= SolarWindSpeed(index, r, th, phi, LIM);
 
     return AdvTerm;
 }
@@ -292,8 +294,7 @@ __device__ vect3D_t AdvectiveTerm(const unsigned int InitZone, const signed int 
 /**
  * @brief Calculation of the energy loss term in heliocentric spherical coordinates
  *
- * @param InitZone Initial Zone in the heliosphere (in the list of parameters)
- * @param HZone Zone in the Heliosphere
+ * @param index
  * @param r Radial distance
  * @param th th
  * @param phi phi
@@ -301,11 +302,11 @@ __device__ vect3D_t AdvectiveTerm(const unsigned int InitZone, const signed int 
  * @param LIM
  * @return Energy loss term
  */
-__device__ float EnergyLoss(const unsigned int InitZone, const signed int HZone, const float r, const float th,
-                            const float phi, const float R, const HeliosphereZoneProperties_t *LIM) {
-    if (HZone < Heliosphere.Nregions) {
+__device__ float EnergyLoss(const Index_t &index, const float r,
+                            const float th, const float phi, const float R, const HeliosphereZoneProperties_t *LIM) {
+    if (index.radial < Heliosphere.Nregions) {
         // inner Heliosphere .........................
-        return 2.f / 3.f * SolarWindSpeed(InitZone, HZone, r, th, phi, LIM) / r * R;
+        return 2.f / 3.f * SolarWindSpeed(index, r, th, phi, LIM) / r * R;
         // (Ek + 2.*T0)/(Ek + T0) * Ek = pt.Z*pt.Z/(pt.A*pt.A)*sq(R)/(sqrt(pt.Z*pt.Z/(pt.A*pt.A)*sq(R) + pt.T0*pt.T0))
     }
     // heliosheat ...............................

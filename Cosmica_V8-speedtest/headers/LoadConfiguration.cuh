@@ -19,7 +19,7 @@ QuasiParticle_t AllocateQuasiParticles(int);
 template<typename T>
 void CopyToConstant(const T &, const T *);
 
-Indexes_t AllocateIndex(int);
+ThreadIndexes AllocateIndex(int);
 
 // Load the initial position and rapidity of the quasi particle from configuration file
 struct InitialPositions_t LoadInitPos(unsigned int, bool);

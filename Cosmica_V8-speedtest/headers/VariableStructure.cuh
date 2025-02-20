@@ -1,5 +1,6 @@
 #ifndef VariableStructure
 #define VariableStructure
+#include <HeliosphereModel.cuh>
 
 // Struct with threads, blocks and share memory with which launch a cuda function
 typedef struct LaunchParam_t {
@@ -48,9 +49,25 @@ typedef struct QuasiParticle_t {
     // float* alphapath; // Montecarlo statistical weight - exponent of c factor
 } QuasiParticle_t;
 
-typedef struct Indexes_t {
+typedef struct Index_t {
+    const unsigned int simulation, period, particle;
+    int radial = 0;
+
+    __forceinline__ __device__ void update(const float r, const float th, const float phi) {
+        radial = RadialZone(period, r, th, phi);
+    }
+
+    __forceinline__ __device__ unsigned int combined() const {
+        return period + radial;
+    }
+} Index_t;
+
+typedef struct ThreadIndexes_t {
     unsigned int *simulation, *period, *particle;
-} Indexes_t;
+    __forceinline__ __host__ __device__ Index_t get(const unsigned int id) const {
+        return {simulation[id], period[id], particle[id]};
+    }
+} ThreadIndexes;
 
 // SEE IF WE CAN USE THE MATRIX CUDA UPTIMIZED LIBRARIES
 // Struct with the structure of square root decomposition of symmetric difusion tensor

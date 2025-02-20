@@ -166,7 +166,6 @@ int main(int argc, char *argv[]) {
     int NInitRig = 0;
     float RelativeBinAmplitude = 0;
     SimParameters_t SimParameters;
-    PartDescription_t pt;
 
 #if HELMOD_LOAD
 
@@ -182,7 +181,6 @@ int main(int argc, char *argv[]) {
     NInitPos = static_cast<int>(SimParameters.NInitialPositions);
     NParts = SimParameters.NInitialPositions * SimParameters.Npart;
     InitialPositions = LoadInitPos(NParts, VERBOSE_LOAD);
-    pt = SimParameters.IonToBeSimulated;
 
     ////////////////////////////////////////////////////////////////
     //..... Rescale Heliosphere to an effective one  ...............
@@ -373,7 +371,7 @@ int main(int argc, char *argv[]) {
         QuasiParticle_t QuasiParts = AllocateQuasiParticles(NParts);
 
         // Period along which CR are integrated and the corresponding period indecies
-        Indexes_t indexes = AllocateIndex(NParts);
+        ThreadIndexes indexes = AllocateIndex(NParts);
         unsigned int ns = 1, ni = SimParameters.NInitialPositions, np = 1, nx = SimParameters.Npart;
         //TODO: check ordering for adjacency in warp
         for (unsigned int s = 0; s < ns; ++s) {
@@ -462,8 +460,8 @@ int main(int argc, char *argv[]) {
             // and local max rigidity search inside the block
             cudaDeviceSynchronize();
             HeliosphericProp<<<prop_launch_param.blocks, prop_launch_param.threads, prop_launch_param.smem>>>
-            (NParts, MIN_DT, MAX_DT, TIMEOUT, QuasiParts, indexes, LIM.get(), pt,
-             RandStates.get(), Maxs.get());
+            (NParts, MIN_DT, MAX_DT, TIMEOUT, QuasiParts, indexes, LIM.get(), RandStates.get(),
+             Maxs.get());
             cudaDeviceSynchronize();
 
             if constexpr (VERBOSE) {

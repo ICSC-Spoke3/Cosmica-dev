@@ -17,8 +17,8 @@ __device__ float delta_Bfield(const float r, const float th) {
     return r / rhelio * delta_m / sinf(th);;
 }
 
-__device__ vect3D_t Drift_PM89(const unsigned int InitZone, const signed int HZone, const float r, const float th,
-                               const float phi, const float R, const PartDescription_t pt, const HeliosphereZoneProperties_t *LIM) {
+__device__ vect3D_t Drift_PM89(const Index_t &index, const float r,
+                               const float th, const float phi, const float R, const PartDescription_t pt, const HeliosphereZoneProperties_t *LIM) {
     /*Authors: 2022 Stefano */
     /* * description: Evalaute drift velocity vector, including Neutral sheetdrift. This drift is based on Potgieter e Mooral Model (1989), this model was modified to include a theta-component in Bfield.
      *  Imporant warning: the model born as 2D model for Pure Parker Field, originally this not include theta-component in Bfield.
@@ -37,9 +37,9 @@ __device__ vect3D_t Drift_PM89(const unsigned int InitZone, const signed int HZo
     const float Ka = safeSign(pt.Z) * GeV * beta_R(R, pt) * R / 3;
     /* sign(Z)*beta*P/3 constant part of antisymmetric diffusion coefficient */
     // pt.A*sqrt(Ek*(Ek+2*pt.T0))/pt.Z
-    const float Asun = LIM[HZone + InitZone].Asun; /* Magnetic Field Amplitude constant / aum^2*/
-    const float dV_dth = DerivativeOfSolarWindSpeed_dtheta(InitZone, HZone, r, th, phi, LIM);
-    const float TiltAngle = LIM[HZone + InitZone].TiltAngle;
+    const float Asun = LIM[index.combined()].Asun; /* Magnetic Field Amplitude constant / aum^2*/
+    const float dV_dth = DerivativeOfSolarWindSpeed_dtheta(index, r, th, phi, LIM);
+    const float TiltAngle = LIM[index.combined()].TiltAngle;
     // float P = R;
     // .. Scaling factor of drift in 2D approximation.  to account Neutral sheet
     float fth = 0; /* scaling function of drift vel */
@@ -47,7 +47,7 @@ __device__ vect3D_t Drift_PM89(const unsigned int InitZone, const signed int HZo
     const float TiltPos_r = r;
     const float TiltPos_th = Pi / 2.f - TiltAngle;
     const float TiltPos_phi = phi;
-    float Vsw = SolarWindSpeed(InitZone, HZone, TiltPos_r, TiltPos_th, TiltPos_phi, LIM);
+    float Vsw = SolarWindSpeed(index, TiltPos_r, TiltPos_th, TiltPos_phi, LIM);
     // const float dthetans = fabsf(GeV / (c * aum) * (2. * r * R) / (Asun * sqrtf(
     //                                                                    1 + Gamma_Bfield(r, TiltPos_th, Vsw) *
     //                                                                    Gamma_Bfield(r, TiltPos_th, Vsw) + (
@@ -83,7 +83,7 @@ __device__ vect3D_t Drift_PM89(const unsigned int InitZone, const signed int HZo
     //             Asun,r*r, Gamma_Bfield(r,TiltPos_th,Vsw), ((IsPolarRegion)?delta_Bfield(r,TiltPos_th)*delta_Bfield(r,TiltPos_th):0));
     //    printf("KA %f\tdthetans=%e\tftheta=%e\tDftheta_dtheta=%e\n", Ka, dthetans,fth,Dftheta_dtheta);
     // }
-    Vsw = SolarWindSpeed(InitZone, HZone, r, th, phi, LIM); // solar wind evaluated
+    Vsw = SolarWindSpeed(index, r, th, phi, LIM); // solar wind evaluated
     // .. drift velocity
 
     const float dm = IsPolarRegion ? delta_m : 0;
@@ -92,7 +92,7 @@ __device__ vect3D_t Drift_PM89(const unsigned int InitZone, const signed int HZo
                         r - rhelio)
                     * sinf(th) * sinf(th) * sinf(th) * sinf(th) + rhelio * rhelio * Vsw * Vsw * sinf(th) * sinf(th);
     float C = fth * sinf(th) * Ka * r * rhelio / (Asun * E * E);
-    C *= R * R / (R * R + LIM[HZone + InitZone].P0d * LIM[HZone + InitZone].P0d);
+    C *= R * R / (R * R + LIM[index.combined()].P0d * LIM[index.combined()].P0d);
     /* drift reduction factor. <------------------------------ */
     //reg drift
     v.r = -C * Omega * rhelio * 2 * (r - rhelio) * sinf(th) * (
@@ -113,14 +113,14 @@ __device__ vect3D_t Drift_PM89(const unsigned int InitZone, const signed int HZo
                                * sinf(th) * dV_dth));
     //ns drift
     C = Vsw * Dftheta_dtheta * sinf(th) * sinf(th) * Ka * r * rhelio * rhelio / (Asun * E);
-    C *= R * R / (R * R + LIM[HZone + InitZone].P0dNS * LIM[HZone + InitZone].P0dNS);
+    C *= R * R / (R * R + LIM[index.combined()].P0dNS * LIM[index.combined()].P0dNS);
     /* drift reduction factor.  <------------------------------ */
     v.r += -C * Omega * sinf(th) * (r - rhelio);
     //v.th += 0;
     v.phi += -C * Vsw;
 
     // Suppression rigidity dependence: logistic function (~1 at low energy ---> ~0 at high energy)
-    const float HighRigiSupp = LIM[HZone + InitZone].plateau + (1.f - LIM[HZone + InitZone].plateau) / (
+    const float HighRigiSupp = LIM[index.combined()].plateau + (1.f - LIM[index.combined()].plateau) / (
                                    1.f + expf(HighRigiSupp_smoothness * (R - HighRigiSupp_TransPoint)));
     v.r *= HighRigiSupp;
     v.th *= HighRigiSupp;

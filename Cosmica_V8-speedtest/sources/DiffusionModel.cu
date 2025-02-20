@@ -318,8 +318,7 @@ float rconst(const int SolarPhase, const int Polarity, const float tilt) {
 /**
  * @brief Evaluation of the diffusion tensor in the HMF frame, i.e. k0 parallel and k0 perpendicular.
  *
- * @param InitZone Initial zone in the heliosphere
- * @param HZone Zone in the heliosphere
+ * @param index Initial zone in the heliosphere
  * @param r Solar distance
  * @param theta Solar colatitude
  * @param beta v/c
@@ -331,18 +330,18 @@ float rconst(const int SolarPhase, const int Polarity, const float tilt) {
  * @return y Kperp_1
  * @return z Kperp_2
  */
-__device__ float3 Diffusion_Tensor_In_HMF_Frame(const unsigned int InitZone, const signed int HZone, const float r,
-                                                const float theta, const float beta, const float P,
-                                                const float GaussRndNumber, float3 &dK_dr, const HeliosphereZoneProperties_t *LIM) {
+__device__ float3 Diffusion_Tensor_In_HMF_Frame(const Index_t &index,
+                                                const float r, const float theta, const float beta,
+                                                const float P, const float GaussRndNumber, float3 &dK_dr, const HeliosphereZoneProperties_t *LIM) {
     float3 Ktensor;
     // HeliosphereZoneProperties_t ThisZone=LIM[HZone+InitZone];
 
-    const int high_activity = Heliosphere.IsHighActivityPeriod[InitZone] ? 0 : 1;
-    const float k0_paral = LIM[HZone + InitZone].k0_paral[high_activity];
-    const float k0_perp = LIM[HZone + InitZone].k0_perp[high_activity];
-    const float GaussVar = LIM[HZone + InitZone].GaussVar[high_activity];
-    const float g_low = LIM[HZone + InitZone].g_low;
-    const float rconst = LIM[HZone + InitZone].rconst;
+    const int high_activity = Heliosphere.IsHighActivityPeriod[index.period] ? 0 : 1;
+    const float k0_paral = LIM[index.combined()].k0_paral[high_activity];
+    const float k0_perp = LIM[index.combined()].k0_perp[high_activity];
+    const float GaussVar = LIM[index.combined()].GaussVar[high_activity];
+    const float g_low = LIM[index.combined()].g_low;
+    const float rconst = LIM[index.combined()].rconst;
 
 
     // Kpar = k0 * beta/3 * (P/1GV + glow)*( Rconst+r/1AU) with k0 gaussian distributed
@@ -371,7 +370,8 @@ __device__ float3 Diffusion_Tensor_In_HMF_Frame(const unsigned int InitZone, con
 /**
  * @brief Evaluation of the diffusion tensor in the HMF frame, i.e. K0 parallel and K0 perpendicular.
  *
- * @param HZone Zone in the Heliosphere
+ * @param
+ * @param index
  * @param r Solar distance
  * @param th Solar colatitude
  * @param phi Solar longitude
@@ -380,12 +380,12 @@ __device__ float3 Diffusion_Tensor_In_HMF_Frame(const unsigned int InitZone, con
  * @param dK_dr Output parameter for the derivative of K with respect to r
  * @return x Diffusion coefficient
  */
-__device__ float Diffusion_Coeff_heliosheat(const unsigned int HZone, const float r, const float th, const float phi,
-                                            const float beta, const float P, float &dK_dr) {
+__device__ float Diffusion_Coeff_heliosheat(const Index_t &index, const float r, const float th,
+                                            const float phi, const float beta, const float P, float &dK_dr) {
     dK_dr = 0.;
     // if around 5 AU from Heliopause, apply diffusion barrier
-    const float RhpDirection = Boundary(th, phi, Heliosphere.RadBoundary_effe[HZone].Rhp_nose,
-                                        Heliosphere.RadBoundary_effe[HZone].Rhp_tail);
+    const float RhpDirection = Boundary(th, phi, Heliosphere.RadBoundary_effe[index.period].Rhp_nose,
+                                        Heliosphere.RadBoundary_effe[index.period].Rhp_tail);
     // TODO: Spostare le costanti in un file di configurazione
 #ifndef HPB_SupK
 #define HPB_SupK 50 // suppressive factor at barrier
@@ -398,8 +398,8 @@ __device__ float Diffusion_Coeff_heliosheat(const unsigned int HZone, const floa
 #endif
 
     if (r > RhpDirection - 5) {
-        return HS[HZone].k0 * beta * P * SmoothTransition(1, 1.f / HPB_SupK, RhpDirection - HP_width / 2.f,
+        return HS[index.period].k0 * beta * P * SmoothTransition(1, 1.f / HPB_SupK, RhpDirection - HP_width / 2.f,
                                                           HP_SupSmooth, r);
     }
-    return HS[HZone].k0 * beta * P;
+    return HS[index.period].k0 * beta * P;
 }

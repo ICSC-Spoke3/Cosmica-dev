@@ -208,13 +208,16 @@ int LoadConfigFile(int argc, char *argv[], SimParameters_t &SimParameters, int v
                     SPphi = SplitCSV(value);
                     break;
                 case "Particle_NucleonRestMass"_:
-                    SimParameters.IonToBeSimulated.T0 = std::stof(value);
+                    SimParameters.HeliosphereToBeSimulated.NIsotopes = 1;
+                    SimParameters.HeliosphereToBeSimulated.Isotopes[0].T0 = std::stof(value);
                     break;
                 case "Particle_MassNumber"_:
-                    SimParameters.IonToBeSimulated.A = std::stof(value);
+                    SimParameters.HeliosphereToBeSimulated.NIsotopes = 1;
+                    SimParameters.HeliosphereToBeSimulated.Isotopes[0].A = std::stof(value);
                     break;
                 case "Particle_Charge"_:
-                    SimParameters.IonToBeSimulated.Z = std::stof(value);
+                    SimParameters.HeliosphereToBeSimulated.NIsotopes = 1;
+                    SimParameters.HeliosphereToBeSimulated.Isotopes[0].Z = std::stof(value);
                     break;
                 case "Nregions"_:
                     SimParameters.HeliosphereToBeSimulated.Nregions = std::stoi(value);
@@ -274,11 +277,11 @@ int LoadConfigFile(int argc, char *argv[], SimParameters_t &SimParameters, int v
             SimParameters.prop_medium[i].GaussVar[1] = 0;
         } else {
             auto [kxh, kyh,kzh] = EvalK0(true, // isHighActivity
-                                         IHP[i].Polarity, SimParameters.IonToBeSimulated.Z, IHP[i].SolarPhase,
-                                         IHP[i].SmoothTilt, IHP[i].NMCR, IHP[i].ssn, verbose);
+                                         IHP[i].Polarity, SimParameters.HeliosphereToBeSimulated.Isotopes[0].Z,
+                                         IHP[i].SolarPhase, IHP[i].SmoothTilt, IHP[i].NMCR, IHP[i].ssn, verbose);
             auto [kxl, kyl,kzl] = EvalK0(true, // isHighActivity
-                                         IHP[i].Polarity, SimParameters.IonToBeSimulated.Z, IHP[i].SolarPhase,
-                                         IHP[i].SmoothTilt, IHP[i].NMCR, IHP[i].ssn, verbose);
+                                         IHP[i].Polarity, SimParameters.HeliosphereToBeSimulated.Isotopes[0].Z,
+                                         IHP[i].SolarPhase, IHP[i].SmoothTilt, IHP[i].NMCR, IHP[i].ssn, verbose);
             SimParameters.prop_medium[i].k0_paral[0] = kxh;
             SimParameters.prop_medium[i].k0_perp[0] = kyh;
             SimParameters.prop_medium[i].GaussVar[0] = kzh;
@@ -312,9 +315,10 @@ int LoadConfigFile(int argc, char *argv[], SimParameters_t &SimParameters, int v
 
     if (verbose >= VERBOSE_med) {
         fprintf(stderr, "----- Recap of Simulation parameters ----\n");
-        fprintf(stderr, "NucleonRestMass         : %.3f Gev/n \n", SimParameters.IonToBeSimulated.T0);
-        fprintf(stderr, "MassNumber              : %.1f \n", SimParameters.IonToBeSimulated.A);
-        fprintf(stderr, "Charge                  : %.1f \n", SimParameters.IonToBeSimulated.Z);
+        fprintf(stderr, "NucleonRestMass         : %.3f Gev/n \n",
+                SimParameters.HeliosphereToBeSimulated.Isotopes[0].T0);
+        fprintf(stderr, "MassNumber              : %.1f \n", SimParameters.HeliosphereToBeSimulated.Isotopes[0].A);
+        fprintf(stderr, "Charge                  : %.1f \n", SimParameters.HeliosphereToBeSimulated.Isotopes[0].Z);
         fprintf(stderr, "Number of sources       : %hhu \n", SimParameters.NInitialPositions);
         for (int i = 0; i < SimParameters.NInitialPositions; i++) {
             fprintf(stderr, "position              :%d \n", i);

@@ -46,7 +46,7 @@ void CopyToConstant(const T &symbol, const T *src) {
     HANDLE_ERROR(cudaMemcpyToSymbol(symbol, src, sizeof(T)));
 }
 
-Indexes_t AllocateIndex(const unsigned int NPart) {
+ThreadIndexes AllocateIndex(const unsigned int NPart) {
     return {
         AllocateManaged<unsigned int>(NPart),
         AllocateManaged<unsigned int>(NPart),

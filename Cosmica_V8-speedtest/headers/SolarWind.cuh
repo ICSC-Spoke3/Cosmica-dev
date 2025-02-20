@@ -14,9 +14,9 @@
 #define Vhigh 760.f/aukm
 #endif
 // ------------------------------------------
-__device__ float SolarWindSpeed(unsigned int, signed int, float, float, float, const HeliosphereZoneProperties_t *LIM);
+__device__ float SolarWindSpeed(const Index_t &, float, float, float, const HeliosphereZoneProperties_t *LIM);
 
-__device__ float DerivativeOfSolarWindSpeed_dtheta(unsigned int, signed int, float, float, float, const HeliosphereZoneProperties_t *LIM);
+__device__ float DerivativeOfSolarWindSpeed_dtheta(const Index_t &, float, float, float, const HeliosphereZoneProperties_t *LIM);
 
 // ------------------------------------------
 #endif
