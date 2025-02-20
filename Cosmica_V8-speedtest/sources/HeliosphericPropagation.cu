@@ -11,7 +11,7 @@
 
 __global__ void HeliosphericProp(const unsigned int Npart_PerKernel, const float Min_dt, float Max_dt,
                                  const float TimeOut,
-                                 QuasiParticle_t QuasiParts_out, const ThreadIndexes indexes,
+                                 ThreadQuasiParticles_t QuasiParts_out, const ThreadIndexes indexes,
                                  const HeliosphereZoneProperties_t *__restrict__ LIM,
                                  curandStatePhilox4_32_10_t *const CudaState,
                                  float *RMaxs) {

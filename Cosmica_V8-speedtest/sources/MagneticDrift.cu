@@ -56,7 +56,7 @@ __device__ vect3D_t Drift_PM89(const Index_t &index, const float r,
     //                                                                                delta_Bfield(
     //                                                                                    r, TiltPos_th)
     //                                                                            : 0)))); /*dTheta_ns = 2*R_larmor/r*/
-    const float dthetans = fabsf(GeV / (c * aum) * (2.f * r * R) / (Asun * sqrtf(
+    const float dthetans = fabsf(GeV / (SoL * aum) * (2.f * r * R) / (Asun * sqrtf(
                                                                         1 + sq(Gamma_Bfield(r, TiltPos_th, Vsw)) +
                                                                         IsPolarRegion * sq(
                                                                             delta_Bfield(r, TiltPos_th)))));

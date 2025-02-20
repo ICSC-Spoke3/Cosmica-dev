@@ -21,6 +21,8 @@ int PrintError(const char *, char *, int);
 // int LoadConfigFile(int, char **, struct SimParameters_t &, int);
 int LoadConfigFile(int argc, char *argv[], SimParameters_t &SimParameters, int verbose);
 
+int LoadConfigYaml(int argc, char *argv[], SimParameters_t &SimParameters, int verbose);
+
 /* Load the simulation global parameters from the configuration file
     NOTE: USING OLD STABLE 4_CoreCode_MultiGPU_MultiYear VERSION 
     */

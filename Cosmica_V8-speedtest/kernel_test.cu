@@ -170,6 +170,10 @@ int main(int argc, char *argv[]) {
 #if HELMOD_LOAD
 
     // NOTE: USING OLD STABLE 4_CoreCode_MultiGPU_MultiYear VERSION
+    if (LoadConfigYaml(argc, argv, SimParameters, VERBOSE_LOAD) != EXIT_SUCCESS) {
+        printf("Error while loading simulation parameters\n");
+        exit(EXIT_FAILURE);
+    }
 
 
     if (LoadConfigFile(argc, argv, SimParameters, VERBOSE_LOAD) != EXIT_SUCCESS) {
@@ -368,7 +372,7 @@ int main(int argc, char *argv[]) {
 
 
         // Allocate the initial variables and allocate on device
-        QuasiParticle_t QuasiParts = AllocateQuasiParticles(NParts);
+        ThreadQuasiParticles_t QuasiParts = AllocateQuasiParticles(NParts);
 
         // Period along which CR are integrated and the corresponding period indecies
         ThreadIndexes indexes = AllocateIndex(NParts);
@@ -498,7 +502,7 @@ int main(int argc, char *argv[]) {
 
             if constexpr (FINALSAVE) {
                 // host final states for specific energy
-                QuasiParticle_t host_final_QuasiParts = AllocateQuasiParticles(NParts);
+                ThreadQuasiParticles_t host_final_QuasiParts = AllocateQuasiParticles(NParts);
 
                 SaveTxt_part(final_filename, NParts, host_final_QuasiParts, Maxs[0], VERBOSE_2);
 

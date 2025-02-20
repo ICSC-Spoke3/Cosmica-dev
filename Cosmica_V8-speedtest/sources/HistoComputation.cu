@@ -8,7 +8,7 @@
 //  
 ////////////////////////////////////////////////////////////////
 
-__global__ void kernel_max(const QuasiParticle_t *a, float *d, const int Npart, const int tpb) {
+__global__ void kernel_max(const ThreadQuasiParticles_t *a, float *d, const int Npart, const int tpb) {
     extern __shared__ float sdata[]; //"static" shared memory
 
     const unsigned int tid = threadIdx.x;

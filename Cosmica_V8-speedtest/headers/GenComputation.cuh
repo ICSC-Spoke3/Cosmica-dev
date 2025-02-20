@@ -1,7 +1,7 @@
 #ifndef GenComputation
 #define GenComputation
 // #define sq(x) ((x)*(x))
-#define cb(x) ((x)*(x)*(x))
+// #define cb(x) ((x)*(x)*(x))
 
 // ------------------------------------------
 int ceil_int(int, int);

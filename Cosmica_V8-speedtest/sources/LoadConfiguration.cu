@@ -31,7 +31,7 @@ auto AllocateManagedSafe(const size_t size, const int v) {
     return std::unique_ptr<T[], decltype(deleter)>(AllocateManaged<T>(size, v), deleter);
 }
 
-QuasiParticle_t AllocateQuasiParticles(const unsigned int NPart) {
+ThreadQuasiParticles_t AllocateQuasiParticles(const unsigned int NPart) {
     return {
         AllocateManaged<float>(NPart),
         AllocateManaged<float>(NPart),
@@ -87,7 +87,7 @@ float *LoadInitRigidities(const int RBins, const bool verbose) {
     return rigidities;
 }
 
-void SaveTxt_part(const char *filename, const int Npart, const QuasiParticle_t &Out_QuasiParts, const float RMax,
+void SaveTxt_part(const char *filename, const int Npart, const ThreadQuasiParticles_t &Out_QuasiParts, const float RMax,
                   const bool verbose) {
     FILE *file = fopen(filename, "ab");
     if (file == nullptr) {

@@ -14,7 +14,7 @@ template<typename T>
 auto AllocateManagedSafe(size_t size, int v);
 
 //Allocate the memory needed for an empty QuasiPArticle struct of N particle and return it
-QuasiParticle_t AllocateQuasiParticles(int);
+ThreadQuasiParticles_t AllocateQuasiParticles(int);
 
 template<typename T>
 void CopyToConstant(const T &, const T *);
@@ -28,7 +28,7 @@ struct InitialPositions_t LoadInitPos(unsigned int, bool);
 float *LoadInitRigidities(int, bool);
 
 // Save propagation initial and final particle parameters to txt file
-void SaveTxt_part(const char *, int, const struct QuasiParticle_t &, float, bool);
+void SaveTxt_part(const char *, int, const struct ThreadQuasiParticles_t &, float, bool);
 
 // Save the rigidities final histogram
 void SaveTxt_histo(const char *, int, const struct MonteCarloResult_t &, bool);

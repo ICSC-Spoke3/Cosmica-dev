@@ -13,7 +13,7 @@
 #include "VariableStructure.cuh"
 #include "DiffusionModel.cuh"
 #include "MagneticDrift.cuh"
-
+#include <fkYAML.hpp>
 // Define load function parameteres
 #define ERR_Load_Configuration_File "Error while loading simulation parameters \n"
 #define LOAD_CONF_FILE_SiFile "Configuration file loaded \n"
@@ -383,4 +383,41 @@ int LoadConfigFile(int argc, char *argv[], SimParameters_t &SimParameters, int v
     }
 
     return EXIT_SUCCESS;
+}
+
+int LoadConfigYaml(int argc, char *argv[], SimParameters_t &SimParameters, int verbose) {
+    auto options = ParseCLIArguments(argc, argv);
+    if (options.contains("v")) verbose += 1;
+    else if (options.contains("vv")) verbose += 2;
+    else if (options.contains("vvv")) verbose += 3;
+    std::ifstream file(options["i"]);
+
+    if (verbose) {
+        printf(WELCOME);
+        switch (verbose) {
+            case VERBOSE_low:
+                printf("Verbose level: low\n");
+                break;
+            case VERBOSE_med:
+                printf("Verbose level: medium\n");
+                break;
+            case VERBOSE_hig:
+                printf("Verbose level: high\n");
+                break;
+            default:
+                printf("Verbose level: crazy\n");
+                break;
+        }
+        if (verbose >= VERBOSE_med) {
+            fprintf(stderr, "-- --- Init ---\n");
+            fprintf(stderr, "-- you entered %d arguments:\n", argc);
+            for (int i = 0; i < argc; i++) { fprintf(stderr, "-->  %s \n", argv[i]); }
+        }
+    }
+
+    auto node = fkyaml::node::deserialize(file);
+
+    // ryml::substr st{buffer.data(), buffer.size()};
+    // auto tree = ryml::parse_in_place(st);
+    return 1;
 }

@@ -14,7 +14,7 @@
 #define aucm    14959787069100.f        // 1 AU in m precise is 149.597.870.691.00  cm  = 1e13 m
 #define MeV     1e6f                    // MeV->eV                               eV
 #define GeV     1e9f                    // MeV->eV                               eV
-#define c       3e8f                    // Light Velodity                        m/s
+#define SoL       3e8f                    // Light Velodity                        m/s
 #define thetaNorthlimit 0.000010f       // maximun value of latitude at north pole (this to esclude the region of not physical results due to divergence of equations)
 
 

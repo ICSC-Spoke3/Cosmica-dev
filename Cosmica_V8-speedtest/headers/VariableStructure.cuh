@@ -39,15 +39,23 @@ typedef struct InitialPositions_t {
     float *phi; // heliocentric azimutal - longitudinal angles (really needed in 2D model?)
 } InitialPositions_t;
 
-// Struct of quasi-particles arrays with coordinates, rigidities and time of flight
 typedef struct QuasiParticle_t {
+    float *r; // heliocentric radial distances
+    float *th; // heliocentric polar angles
+    float *phi; // heliocentric azimutal - longitudinal angles (really needed in 2D model?)
+    float *R; // rigidity (GeV/n?)
+    float *t_fly;
+} QuasiParticle_t;
+
+// Struct of quasi-particles arrays with coordinates, rigidities and time of flight
+typedef struct ThreadQuasiParticles_t {
     float *r; // heliocentric radial distances
     float *th; // heliocentric polar angles
     float *phi; // heliocentric azimutal - longitudinal angles (really needed in 2D model?)
     float *R; // rigidity (GeV/n?)
     float *t_fly; // total propagation time
     // float* alphapath; // Montecarlo statistical weight - exponent of c factor
-} QuasiParticle_t;
+} ThreadQuasiParticles_t;
 
 typedef struct Index_t {
     const unsigned int simulation, period, particle;
