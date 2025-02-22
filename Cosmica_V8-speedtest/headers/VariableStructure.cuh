@@ -1,6 +1,8 @@
 #ifndef VariableStructure
 #define VariableStructure
+#include <GenComputation.cuh>
 #include <HeliosphereModel.cuh>
+#include <constants.hpp>
 
 // Struct with threads, blocks and share memory with which launch a cuda function
 typedef struct LaunchParam_t {
@@ -40,11 +42,20 @@ typedef struct InitialPositions_t {
 } InitialPositions_t;
 
 typedef struct QuasiParticle_t {
-    float *r; // heliocentric radial distances
-    float *th; // heliocentric polar angles
-    float *phi; // heliocentric azimutal - longitudinal angles (really needed in 2D model?)
-    float *R; // rigidity (GeV/n?)
-    float *t_fly;
+    float r; // heliocentric radial distances
+    float th; // heliocentric polar angles
+    float phi; // heliocentric azimutal - longitudinal angles (really needed in 2D model?)
+    float R; // rigidity (GeV/n?)
+    float t_fly;
+
+    __forceinline__ __device__ void normalize_angles() {
+        th = fabsf(th);
+        th = fabsf(fmodf(2 * Pi + safeSign(Pi - th) * th, Pi));
+        th = 2 * clamp(th, thetaNorthlimit, thetaSouthlimit) - th;
+
+        phi = fmodf(phi, 2 * Pi);
+        phi = fmodf(2 * Pi + phi, 2 * Pi);
+    }
 } QuasiParticle_t;
 
 // Struct of quasi-particles arrays with coordinates, rigidities and time of flight
@@ -55,14 +66,18 @@ typedef struct ThreadQuasiParticles_t {
     float *R; // rigidity (GeV/n?)
     float *t_fly; // total propagation time
     // float* alphapath; // Montecarlo statistical weight - exponent of c factor
+
+    __forceinline__ __device__ QuasiParticle_t get(const unsigned int id) const {
+        return {r[id], th[id], phi[id], R[id], t_fly[id]};
+    }
 } ThreadQuasiParticles_t;
 
 typedef struct Index_t {
     const unsigned int simulation, period, particle;
     int radial = 0;
 
-    __forceinline__ __device__ void update(const float r, const float th, const float phi) {
-        radial = RadialZone(period, r, th, phi);
+    __forceinline__ __device__ void update(const QuasiParticle_t &qp) {
+        radial = RadialZone(period, qp);
     }
 
     __forceinline__ __device__ unsigned int combined() const {
@@ -75,7 +90,7 @@ typedef struct ThreadIndexes_t {
     __forceinline__ __host__ __device__ Index_t get(const unsigned int id) const {
         return {simulation[id], period[id], particle[id]};
     }
-} ThreadIndexes;
+} ThreadIndexes_t;
 
 // SEE IF WE CAN USE THE MATRIX CUDA UPTIMIZED LIBRARIES
 // Struct with the structure of square root decomposition of symmetric difusion tensor

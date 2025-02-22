@@ -22,7 +22,7 @@ __host__ __device__ float Boundary(const float theta, const float phi, const flo
 }
 
 
-__device__ int RadialZone(const unsigned int InitZone, const float r, const float th, const float phi) {
+__device__ int RadialZone(const unsigned int InitZone, const QuasiParticle_t &qp) {
     /* Author: SDT - Feb 2022
        * description: find in which zone the particle is.
        *              This function assume that, inside the Termination Shock, the heliosphere is divided in
@@ -35,15 +35,15 @@ __device__ int RadialZone(const unsigned int InitZone, const float r, const floa
        */
 
     if (const auto [Rts_nose, Rhp_nose, Rts_tail, Rhp_tail] = Heliosphere.RadBoundary_effe[InitZone];
-        r < Boundary(th, phi, Rhp_nose, Rhp_tail)) {
+        qp.r < Boundary(qp.th, qp.phi, Rhp_nose, Rhp_tail)) {
         // inside Heliopause boundary
-        if (r >= Boundary(th, phi, Rts_nose, Rts_tail)) {
+        if (qp.r >= Boundary(qp.th, qp.phi, Rts_nose, Rts_tail)) {
             // inside Heliosheat
             return Heliosphere.Nregions;
         }
         // inside Termination Shock Boundary
-        if (r < Rts_nose)
-            return static_cast<int>(floorf(r / Rts_nose * static_cast<float>(Heliosphere.Nregions)));
+        if (qp.r < Rts_nose)
+            return static_cast<int>(floorf(qp.r / Rts_nose * static_cast<float>(Heliosphere.Nregions)));
         return Heliosphere.Nregions - 1;
     }
     // outside heiosphere - Kill It

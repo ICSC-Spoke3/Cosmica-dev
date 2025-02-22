@@ -319,10 +319,8 @@ float rconst(const int SolarPhase, const int Polarity, const float tilt) {
  * @brief Evaluation of the diffusion tensor in the HMF frame, i.e. k0 parallel and k0 perpendicular.
  *
  * @param index Initial zone in the heliosphere
- * @param r Solar distance
- * @param theta Solar colatitude
+ * @param qp
  * @param beta v/c
- * @param P Particle rigidity
  * @param GaussRndNumber Random number with normal distribution
  * @param dK_dr Output parameter for the derivative of K with respect to r
  * @param LIM
@@ -330,9 +328,9 @@ float rconst(const int SolarPhase, const int Polarity, const float tilt) {
  * @return y Kperp_1
  * @return z Kperp_2
  */
-__device__ float3 Diffusion_Tensor_In_HMF_Frame(const Index_t &index,
-                                                const float r, const float theta, const float beta,
-                                                const float P, const float GaussRndNumber, float3 &dK_dr, const HeliosphereZoneProperties_t *LIM) {
+__device__ float3 Diffusion_Tensor_In_HMF_Frame(const Index_t &index, const QuasiParticle_t &qp, const float beta,
+                                                const float GaussRndNumber, float3 &dK_dr,
+                                                const HeliosphereZoneProperties_t *LIM) {
     float3 Ktensor;
     // HeliosphereZoneProperties_t ThisZone=LIM[HZone+InitZone];
 
@@ -345,8 +343,8 @@ __device__ float3 Diffusion_Tensor_In_HMF_Frame(const Index_t &index,
 
 
     // Kpar = k0 * beta/3 * (P/1GV + glow)*( Rconst+r/1AU) with k0 gaussian distributed
-    dK_dr.x = (k0_paral + GaussRndNumber * GaussVar * k0_paral) * beta / 3.f * (P + g_low);
-    Ktensor.x = dK_dr.x * (rconst + r);
+    dK_dr.x = (k0_paral + GaussRndNumber * GaussVar * k0_paral) * beta / 3.f * (qp.R + g_low);
+    Ktensor.x = dK_dr.x * (rconst + qp.r);
 
     // TODO: Spostare le costanti in un file di configurazione
 #ifndef rho_1
@@ -357,12 +355,12 @@ __device__ float3 Diffusion_Tensor_In_HMF_Frame(const Index_t &index,
 #endif
 
     // Kperp1 = rho_1(theta)* k0 * beta/3 * (P/1GV + glow)*( Rconst+r/1AU)
-    dK_dr.y = rho_1 * k0_perp * beta / 3.f * (P + g_low) * (fabsf(cosf(theta)) > CosPolarZone ? PolarEnhanc : 1.f);
-    Ktensor.y = dK_dr.y * (rconst + r);
+    dK_dr.y = rho_1 * k0_perp * beta / 3.f * (qp.R + g_low) * (fabsf(cosf(qp.th)) > CosPolarZone ? PolarEnhanc : 1.f);
+    Ktensor.y = dK_dr.y * (rconst + qp.r);
 
     // Kperp2 = rho_2 * k0 * beta/3 * (P/1GV + glow)*( Rconst+r/1AU) with rho_2=rho_1
-    dK_dr.z = rho_1 * k0_perp * beta / 3.f * (P + g_low);
-    Ktensor.z = dK_dr.z * (rconst + r);
+    dK_dr.z = rho_1 * k0_perp * beta / 3.f * (qp.R + g_low);
+    Ktensor.z = dK_dr.z * (rconst + qp.r);
 
     return Ktensor;
 }
@@ -372,19 +370,16 @@ __device__ float3 Diffusion_Tensor_In_HMF_Frame(const Index_t &index,
  *
  * @param
  * @param index
- * @param r Solar distance
- * @param th Solar colatitude
- * @param phi Solar longitude
+ * @param qp
  * @param beta v/c
- * @param P Particle rigidity
  * @param dK_dr Output parameter for the derivative of K with respect to r
  * @return x Diffusion coefficient
  */
-__device__ float Diffusion_Coeff_heliosheat(const Index_t &index, const float r, const float th,
-                                            const float phi, const float beta, const float P, float &dK_dr) {
+__device__ float Diffusion_Coeff_heliosheat(const Index_t &index, const QuasiParticle_t &qp, const float beta,
+                                            float &dK_dr) {
     dK_dr = 0.;
     // if around 5 AU from Heliopause, apply diffusion barrier
-    const float RhpDirection = Boundary(th, phi, Heliosphere.RadBoundary_effe[index.period].Rhp_nose,
+    const float RhpDirection = Boundary(qp.th, qp.phi, Heliosphere.RadBoundary_effe[index.period].Rhp_nose,
                                         Heliosphere.RadBoundary_effe[index.period].Rhp_tail);
     // TODO: Spostare le costanti in un file di configurazione
 #ifndef HPB_SupK
@@ -397,9 +392,9 @@ __device__ float Diffusion_Coeff_heliosheat(const Index_t &index, const float r,
 #define HP_SupSmooth 3e-2 // smoothness of suppressive factor at barrier
 #endif
 
-    if (r > RhpDirection - 5) {
-        return HS[index.period].k0 * beta * P * SmoothTransition(1, 1.f / HPB_SupK, RhpDirection - HP_width / 2.f,
-                                                          HP_SupSmooth, r);
+    if (qp.r > RhpDirection - 5) {
+        return HS[index.period].k0 * beta * qp.R * SmoothTransition(1, 1.f / HPB_SupK, RhpDirection - HP_width / 2.f,
+                                                                    HP_SupSmooth, qp.r);
     }
-    return HS[index.period].k0 * beta * P;
+    return HS[index.period].k0 * beta * qp.R;
 }

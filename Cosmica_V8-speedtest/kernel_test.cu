@@ -371,7 +371,7 @@ int main(int argc, char *argv[]) {
         ThreadQuasiParticles_t QuasiParts = AllocateQuasiParticles(NParts);
 
         // Period along which CR are integrated and the corresponding period indecies
-        ThreadIndexes indexes = AllocateIndex(NParts);
+        ThreadIndexes_t indexes = AllocateIndex(NParts);
         unsigned int ns = 1, ni = SimParameters.NInitialPositions, np = 1, nx = SimParameters.Npart;
         //TODO: check ordering for adjacency in warp
         for (unsigned int s = 0; s < ns; ++s) {
