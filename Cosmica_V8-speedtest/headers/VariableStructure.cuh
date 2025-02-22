@@ -67,27 +67,27 @@ typedef struct ThreadQuasiParticles_t {
     float *t_fly; // total propagation time
     // float* alphapath; // Montecarlo statistical weight - exponent of c factor
 
-    __forceinline__ __device__ QuasiParticle_t get(const unsigned int id) const {
+    __forceinline__ __device__ QuasiParticle_t get(const unsigned id) const {
         return {r[id], th[id], phi[id], R[id], t_fly[id]};
     }
 } ThreadQuasiParticles_t;
 
 typedef struct Index_t {
-    const unsigned int simulation, period, particle;
+    const unsigned simulation, period, particle;
     int radial = 0;
 
     __forceinline__ __device__ void update(const QuasiParticle_t &qp) {
         radial = RadialZone(period, qp);
     }
 
-    __forceinline__ __device__ unsigned int combined() const {
+    __forceinline__ __device__ unsigned combined() const {
         return period + radial;
     }
 } Index_t;
 
 typedef struct ThreadIndexes_t {
-    unsigned int *simulation, *period, *particle;
-    __forceinline__ __host__ __device__ Index_t get(const unsigned int id) const {
+    unsigned *simulation, *period, *particle;
+    __forceinline__ __host__ __device__ Index_t get(const unsigned id) const {
         return {simulation[id], period[id], particle[id]};
     }
 } ThreadIndexes_t;

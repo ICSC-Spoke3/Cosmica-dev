@@ -1,8 +1,8 @@
 // .. credit to Mark Harris (https://developer.download.nvidia.com/assets/cuda/files/reduction.pdf)
 
 // Use of the tamplate to unroll the loop at compile time (kernel_6 optimization)
-/* template <unsigned int blockSize>
-__device__ void WarpMax(volatile float* sdata, unsigned int tid) {
+/* template <unsigned blockSize>
+__device__ void WarpMax(volatile float* sdata, unsigned tid) {
     if (blockSize >= 64 && sdata[tid] < sdata[tid + 32]) sdata[tid] = sdata[tid + 32];
     if (blockSize >= 32 && sdata[tid] < sdata[tid + 16]) sdata[tid] = sdata[tid + 16];
     if (blockSize >= 16 && sdata[tid] < sdata[tid + 8])  sdata[tid] = sdata[tid + 8];
@@ -11,11 +11,11 @@ __device__ void WarpMax(volatile float* sdata, unsigned int tid) {
     if (blockSize >= 2  && sdata[tid] < sdata[tid + 1])  sdata[tid] = sdata[tid + 1];
 }
 
-template <unsigned int blockSize>
+template <unsigned blockSize>
 __device__ void BlockMax(float* sdata, float* outdata) {
     
     // thread index taking into account the shift imposed by the rigidity positions in shared memory array
-    unsigned int tid = threadIdx.x + 3*blockSize;
+    unsigned tid = threadIdx.x + 3*blockSize;
 
     // first max search steps with sub-array larger than warp dimension (unrolled loop of max search)
     if (blockSize >= 512) {
@@ -38,13 +38,13 @@ __device__ void BlockMax(float* sdata, float* outdata) {
     if (tid == 0) outdata = sdata[0];
 }
 
-template <unsigned int blockSize>
+template <unsigned blockSize>
 __global__ void GridMax(float* indata, float* outdata) {
     // shared memory allocation and filling
     extern __shared__ int sdata[];
 
-    unsigned int tid = threadIdx.x;
-    unsigned int i = blockIdx.x*blockSize + threadIdx.x;
+    unsigned tid = threadIdx.x;
+    unsigned i = blockIdx.x*blockSize + threadIdx.x;
 
     sdata[tid] = indata[i];
     __syncthreads();
@@ -71,7 +71,7 @@ __global__ void GridMax(float* indata, float* outdata) {
 } */
 
 // Unroll the last steps when reduction dimension < warp dimension
-__device__ void WarpMax(volatile float *sdata, const unsigned int tid) {
+__device__ void WarpMax(volatile float *sdata, const unsigned tid) {
     if (sdata[tid] < sdata[tid + 32]) sdata[tid] = sdata[tid + 32];
     if (sdata[tid] < sdata[tid + 16]) sdata[tid] = sdata[tid + 16];
     if (sdata[tid] < sdata[tid + 8]) sdata[tid] = sdata[tid + 8];
@@ -82,10 +82,10 @@ __device__ void WarpMax(volatile float *sdata, const unsigned int tid) {
 
 __device__ void BlockMax(float *sdata, float *outdata) {
     // thread index taking into account the shift imposed by the rigidity positions in shared memory array
-    const unsigned int sdata_id = threadIdx.x;
+    const unsigned sdata_id = threadIdx.x;
 
     // first max search steps with sub-array larger than warp dimension
-    for (unsigned int s = blockDim.x / 2; s > 32; s >>= 1) {
+    for (unsigned s = blockDim.x / 2; s > 32; s >>= 1) {
         if (threadIdx.x < s && sdata[sdata_id] < sdata[sdata_id + s]) sdata[sdata_id] = sdata[sdata_id + s];
         __syncthreads();
     }
@@ -102,7 +102,7 @@ __global__ void GridMax(const int Nmax, const float *indata, float *outdata) {
     extern __shared__ float sdata[];
 
     // !!!This is useful only launched recursively on different blocks
-    const unsigned int id = blockIdx.x * blockDim.x + threadIdx.x;
+    const unsigned id = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (id < Nmax) sdata[threadIdx.x] = indata[id];
     else if (id >= Nmax) sdata[threadIdx.x] = 0;
@@ -110,7 +110,7 @@ __global__ void GridMax(const int Nmax, const float *indata, float *outdata) {
     __syncthreads();
 
     // first max search steps with sub-array larger than warp dimension
-    for (unsigned int s = blockDim.x / 2; s > 32; s >>= 1) {
+    for (unsigned s = blockDim.x / 2; s > 32; s >>= 1) {
         if (threadIdx.x < s && sdata[threadIdx.x] < sdata[threadIdx.x + s]) sdata[threadIdx.x] = sdata[threadIdx.x + s];
         __syncthreads();
     }
@@ -123,11 +123,11 @@ __global__ void GridMax(const int Nmax, const float *indata, float *outdata) {
 }
 
 __global__ void Rhistogram_atomic(const float *R_in, const float LogBin0_lowEdge, const float DeltaLogR, const int Nbin,
-                                  const unsigned int Npart, float *R_out) {
-    extern __shared__ unsigned int smem2[];
+                                  const unsigned Npart, float *R_out) {
+    extern __shared__ unsigned smem2[];
 
-    const unsigned int id = threadIdx.x + blockIdx.x * blockDim.x;
-    const unsigned int block_shift = blockIdx.x * Nbin;
+    const unsigned id = threadIdx.x + blockIdx.x * blockDim.x;
+    const unsigned block_shift = blockIdx.x * Nbin;
 
     // initialize the shared memory empty histogram
     if (threadIdx.x < Nbin) smem2[threadIdx.x] = 0;
@@ -147,7 +147,7 @@ __global__ void Rhistogram_atomic(const float *R_in, const float LogBin0_lowEdge
 }
 
 // Unroll the last steps when reduction dimension < warp dimension
-__device__ void WarpSum(volatile int *sdata, const unsigned int tid) {
+__device__ void WarpSum(volatile int *sdata, const unsigned tid) {
     sdata[tid] += sdata[tid + 32];
     sdata[tid] += sdata[tid + 16];
     sdata[tid] += sdata[tid + 8];
@@ -156,12 +156,12 @@ __device__ void WarpSum(volatile int *sdata, const unsigned int tid) {
     sdata[tid] += sdata[tid + 1];
 }
 
-__global__ void TotalHisto(const float *indata, const unsigned int Nbins, const unsigned int Nblocks, float *outdata) {
+__global__ void TotalHisto(const float *indata, const unsigned Nbins, const unsigned Nblocks, float *outdata) {
     // shared memory allocation and filling
     extern __shared__ int shist[];
 
-    const unsigned int id = blockIdx.x * blockDim.x + threadIdx.x;
-    const unsigned int bin_id = 2 * threadIdx.x * Nbins + blockIdx.x;
+    const unsigned id = blockIdx.x * blockDim.x + threadIdx.x;
+    const unsigned bin_id = 2 * threadIdx.x * Nbins + blockIdx.x;
 
     // First histogram couple merge during shared memory allocation
     // Each block perform one rigidity bin reduction
@@ -170,7 +170,7 @@ __global__ void TotalHisto(const float *indata, const unsigned int Nbins, const 
     __syncthreads();
 
     // first max search steps with sub-array larger than warp dimension
-    for (unsigned int s = blockDim.x / 2; s > 32; s >>= 1) {
+    for (unsigned s = blockDim.x / 2; s > 32; s >>= 1) {
         if (threadIdx.x < s) shist[threadIdx.x] += shist[threadIdx.x + s];
         __syncthreads();
     }
@@ -191,9 +191,9 @@ __global__ void histogram_atomic(const float *in, const float LogBin0_lowEdge, c
                                  const unsigned long Npart, float *out, int *Nfailed) {
     // NOTE: not using shared memory
 
-    const unsigned int id = threadIdx.x + blockIdx.x * blockDim.x;
+    const unsigned id = threadIdx.x + blockIdx.x * blockDim.x;
 
-    for (unsigned int it = threadIdx.x; it < Nbin; it += blockDim.x) {
+    for (unsigned it = threadIdx.x; it < Nbin; it += blockDim.x) {
         out[blockIdx.x * Nbin + it] = 0;
     }
 
@@ -216,7 +216,7 @@ __global__ void histogram_atomic(const float *in, const float LogBin0_lowEdge, c
 __global__ void histogram_accum(const float *in, const int Nbins, const int NFraz, float *out) {
     // NOTE: not using shared memory
 
-    const unsigned int id = threadIdx.x + blockIdx.x * blockDim.x;
+    const unsigned id = threadIdx.x + blockIdx.x * blockDim.x;
 
     if (id >= Nbins) { return; } //out of range
 

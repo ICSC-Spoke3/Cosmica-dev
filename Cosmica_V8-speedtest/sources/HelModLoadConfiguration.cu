@@ -407,7 +407,7 @@ std::vector<T> node_to_vector(const fkyaml::node &node) {
     return ret;
 }
 
-unsigned int check_sources_count(const vector<float> &r, const vector<float> &th, const vector<float> &phi) {
+unsigned check_sources_count(const vector<float> &r, const vector<float> &th, const vector<float> &phi) {
     if (r.size() != th.size() || th.size() != phi.size()) {
         printf("Misaligned source coordinates (%lu, %lu, %lu)", r.size(), th.size(), phi.size());
         exit(EXIT_FAILURE);
@@ -416,12 +416,12 @@ unsigned int check_sources_count(const vector<float> &r, const vector<float> &th
 }
 
 std::tuple<vector<HeliosphereZoneProperties_t>, vector<bool>, vector<HeliosphereBoundRadius_t> >
-node_to_heliosphere(const fkyaml::node &node, const unsigned int n_sources, const unsigned int n_regions, const int z) {
+node_to_heliosphere(const fkyaml::node &node, const unsigned n_sources, const unsigned n_regions, const int z) {
     const auto &static_node = node["static"]["heliosphere"], &dynamic_node = node["dynamic"]["heliosphere"];
     vector<HeliosphereZoneProperties_t> hps;
     vector<bool> high_activity;
     vector<HeliosphereBoundRadius_t> boundary;
-    for (unsigned int i = 0; i < n_sources + n_regions - 1; ++i) {
+    for (unsigned i = 0; i < n_sources + n_regions - 1; ++i) {
         const InputHeliosphericParameters_t ihp{
             node_to_value<float>(dynamic_node["k0"][0][i]),
             node_to_value<float>(static_node["ssn"][i]),
@@ -481,10 +481,10 @@ node_to_heliosphere(const fkyaml::node &node, const unsigned int n_sources, cons
 }
 
 vector<HeliosheatProperties_t>
-node_to_heliosheat(const fkyaml::node &node, const unsigned int size) {
+node_to_heliosheat(const fkyaml::node &node, const unsigned size) {
     const auto &static_node = node["static"]["heliosheat"];
     vector<HeliosheatProperties_t> hps;
-    for (unsigned int i = 0; i < size; ++i) {
+    for (unsigned i = 0; i < size; ++i) {
         hps.push_back({
             node_to_value<float>(static_node["v0"][i]) / aukm,
             node_to_value<float>(static_node["k0"][i]),
@@ -528,8 +528,8 @@ int LoadConfigYaml(int argc, char *argv[], SimParameters_t &SimParameters, int v
     auto random_seed = node_to_value<unsigned long>(node["random_seed"]);
     auto output_path = node_to_value<std::string>(node["output_path"]);
     auto rigidities = node_to_vector<float>(node["rigidities"]);
-    auto n_particles = node_to_value<unsigned int>(node["n_particles"]);
-    auto n_regions = node_to_value<unsigned int>(node["n_regions"]);
+    auto n_particles = node_to_value<unsigned>(node["n_particles"]);
+    auto n_regions = node_to_value<unsigned>(node["n_regions"]);
     auto isotopes = node_to_vector<PartDescription_t>(node["isotopes"]);
     auto source_r = node_to_vector<float>(node["sources"]["r"]);
     auto source_th = node_to_vector<float>(node["sources"]["th"]);

@@ -61,10 +61,10 @@ typedef struct SimulatedHeliosphere_t {
     // properties related to heliosphere like dimension, coefficients
     // float Rmirror = 0.3; // [AU] Internal heliosphere bounduary - mirror radius.
 
-    unsigned int NIsotopes = 0;
+    unsigned NIsotopes = 0;
     PartDescription_t Isotopes[NMaxIsotopes];
 
-    unsigned int Nregions = 0; // Number of Inner Heliosphere region (15 inner region + 1 Heliosheat)
+    unsigned Nregions = 0; // Number of Inner Heliosphere region (15 inner region + 1 Heliosheat)
     HeliosphereBoundRadius_t RadBoundary_effe[NMaxRegions] = {0}; // boundaries in effective heliosphere
     HeliosphereBoundRadius_t RadBoundary_real[NMaxRegions] = {0}; // real boundaries heliosphere
     bool IsHighActivityPeriod[NMaxRegions] = {false}; // active the modification for high activity period
@@ -75,9 +75,9 @@ typedef struct SimParameters_t {
     // Place here all simulation variables
     char output_file_name[struct_string_lengh] = "SimTest";
     unsigned long RandomSeed = 0;
-    unsigned int Npart = 5000; // number of event to be simulated
-    unsigned int NT; // number of bins of energies to be simulated
-    unsigned int NInitialPositions = 0;
+    unsigned Npart = 5000; // number of event to be simulated
+    unsigned NT; // number of bins of energies to be simulated
+    unsigned NInitialPositions = 0;
     // number of initial positions -> this number represent also the number of Carrington rotation that
     float *Tcentr; // array of energies to be simulated
     vect3D_t *InitialPosition; // initial position

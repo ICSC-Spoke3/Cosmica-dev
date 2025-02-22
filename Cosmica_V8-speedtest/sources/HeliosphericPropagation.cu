@@ -4,18 +4,14 @@
 #include "HeliosphericPropagation.cuh"
 #include "VariableStructure.cuh"
 #include "HelModVariableStructure.cuh"
-#include "HeliosphereModel.cuh"
 #include "SDECoeffs.cuh"
-#include "GenComputation.cuh"
 #include "Histogram.cuh"
 
-__global__ void HeliosphericProp(const unsigned int Npart_PerKernel, const float Min_dt, float Max_dt,
-                                 const float TimeOut,
-                                 ThreadQuasiParticles_t QuasiParts_out, const ThreadIndexes_t indexes,
-                                 const HeliosphereZoneProperties_t *__restrict__ LIM,
-                                 curandStatePhilox4_32_10_t *const CudaState,
-                                 float *RMaxs) {
-    const unsigned int id = threadIdx.x + blockIdx.x * blockDim.x;
+__global__ void HeliosphericProp(const unsigned Npart_PerKernel, const float Min_dt, float Max_dt,
+                                 const float TimeOut, ThreadQuasiParticles_t QuasiParts_out,
+                                 const ThreadIndexes_t indexes, const HeliosphereZoneProperties_t *__restrict__ LIM,
+                                 curandStatePhilox4_32_10_t *const CudaState, float *RMaxs) {
+    const unsigned id = threadIdx.x + blockIdx.x * blockDim.x;
     if (id >= Npart_PerKernel) return;
 
     extern __shared__ float smem[];

@@ -11,8 +11,8 @@
 __global__ void kernel_max(const ThreadQuasiParticles_t *a, float *d, const int Npart, const int tpb) {
     extern __shared__ float sdata[]; //"static" shared memory
 
-    const unsigned int tid = threadIdx.x;
-    const unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+    const unsigned tid = threadIdx.x;
+    const unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < Npart) {
         sdata[tid] = a->R[i];
     }
@@ -21,7 +21,7 @@ __global__ void kernel_max(const ThreadQuasiParticles_t *a, float *d, const int 
     //   printf("lll %u %.2f %.2f \n",i,a[i].part.Ek,sdata[tid]);
     // }
     __syncthreads();
-    for (unsigned int s = tpb / 2; s >= 1; s = s / 2) {
+    for (unsigned s = tpb / 2; s >= 1; s = s / 2) {
         if (tid < s && i < Npart) {
             if (sdata[tid] < sdata[tid + s]) {
                 sdata[tid] = sdata[tid + s];
@@ -39,6 +39,6 @@ __global__ void kernel_max(const ThreadQuasiParticles_t *a, float *d, const int 
 //  
 ////////////////////////////////////////////////////////////////
 __global__ void init_rdmgenerator(curandStatePhilox4_32_10_t *state, const unsigned long seed) {
-    const unsigned int id = threadIdx.x + blockIdx.x * blockDim.x;
+    const unsigned id = threadIdx.x + blockIdx.x * blockDim.x;
     curand_init(seed, id, 0, &state[id]);
 }

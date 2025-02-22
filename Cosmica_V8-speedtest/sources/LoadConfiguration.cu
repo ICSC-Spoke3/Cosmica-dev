@@ -31,7 +31,7 @@ auto AllocateManagedSafe(const size_t size, const int v) {
     return std::unique_ptr<T[], decltype(deleter)>(AllocateManaged<T>(size, v), deleter);
 }
 
-ThreadQuasiParticles_t AllocateQuasiParticles(const unsigned int NPart) {
+ThreadQuasiParticles_t AllocateQuasiParticles(const unsigned NPart) {
     return {
         AllocateManaged<float>(NPart),
         AllocateManaged<float>(NPart),
@@ -46,15 +46,15 @@ void CopyToConstant(const T &symbol, const T *src) {
     HANDLE_ERROR(cudaMemcpyToSymbol(symbol, src, sizeof(T)));
 }
 
-ThreadIndexes_t AllocateIndex(const unsigned int NPart) {
+ThreadIndexes_t AllocateIndex(const unsigned NPart) {
     return {
-        AllocateManaged<unsigned int>(NPart),
-        AllocateManaged<unsigned int>(NPart),
-        AllocateManaged<unsigned int>(NPart),
+        AllocateManaged<unsigned>(NPart),
+        AllocateManaged<unsigned>(NPart),
+        AllocateManaged<unsigned>(NPart),
     };
 }
 
-InitialPositions_t LoadInitPos(unsigned int Npos, const bool verbose) {
+InitialPositions_t LoadInitPos(unsigned Npos, const bool verbose) {
     // Allocate the array memory
     InitialPositions_t InitialPositions;
 

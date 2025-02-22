@@ -22,7 +22,7 @@ void CopyToConstant(const T &, const T *);
 ThreadIndexes_t AllocateIndex(int);
 
 // Load the initial position and rapidity of the quasi particle from configuration file
-struct InitialPositions_t LoadInitPos(unsigned int, bool);
+InitialPositions_t LoadInitPos(unsigned, bool);
 
 // Load the array of energy bins for which simulate the modulation
 float *LoadInitRigidities(int, bool);
