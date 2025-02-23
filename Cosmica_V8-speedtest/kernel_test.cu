@@ -532,7 +532,7 @@ int main(int argc, char *argv[]) {
             // Final merged histogram allocation
             Results[iR].BoundaryDistribution = AllocateManaged<float>(Results[iR].Nbins);
 
-            auto Nfailed = AllocateManagedSafe<int>(1, 0);
+            auto Nfailed = AllocateManagedSafe<int>(0);
 
             // Partial histogram atomoic sum on GPU
             cudaDeviceSynchronize();

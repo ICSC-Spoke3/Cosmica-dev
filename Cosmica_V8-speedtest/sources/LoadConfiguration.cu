@@ -12,10 +12,16 @@ T *AllocateManaged(const size_t size) {
     return ptr;
 }
 
-template<typename T>
+template<typename T> requires (!std::is_array_v<T>)
+auto AllocateManagedSafe() {
+    return std::unique_ptr<T, decltype(&cudaFree)>(AllocateManaged<T>(1), cudaFree);
+}
+
+// Overload for array types.
+template<typename T> requires std::is_array_v<T>
 auto AllocateManagedSafe(const size_t size) {
-    auto deleter = [](T* ptr) { cudaFree(ptr); };
-    return std::unique_ptr<T, decltype(deleter)>(AllocateManaged<T>(size), deleter);
+    using ET = std::remove_extent_t<T>;
+    return std::unique_ptr<ET[], decltype(&cudaFree)>(AllocateManaged<ET>(size), cudaFree);
 }
 
 template<typename T>
@@ -25,10 +31,16 @@ T *AllocateManaged(const size_t size, const int v) {
     return ptr;
 }
 
-template<typename T>
+template<typename T> requires (!std::is_array_v<T>)
+auto AllocateManagedSafe(const int v) {
+    return std::unique_ptr<T, decltype(&cudaFree)>(AllocateManaged<T>(1, v), cudaFree);
+}
+
+// Overload for array types.
+template<typename T> requires std::is_array_v<T>
 auto AllocateManagedSafe(const size_t size, const int v) {
-    auto deleter = [](T* ptr) { cudaFree(ptr); };
-    return std::unique_ptr<T, decltype(deleter)>(AllocateManaged<T>(size, v), deleter);
+    using ET = std::remove_extent_t<T>;
+    return std::unique_ptr<ET[], decltype(&cudaFree)>(AllocateManaged<ET>(size, v), cudaFree);
 }
 
 ThreadQuasiParticles_t AllocateQuasiParticles(const unsigned NPart) {

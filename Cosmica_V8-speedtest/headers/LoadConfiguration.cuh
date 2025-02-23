@@ -2,16 +2,24 @@
 #define LoadConfigiguration
 
 template<typename T>
-T *AllocateManaged(size_t size);
+T *AllocateManaged(size_t);
+
+template<typename T> requires (!std::is_array_v<T>)
+auto AllocateManagedSafe();
+
+// Overload for array types.
+template<typename T> requires std::is_array_v<T>
+auto AllocateManagedSafe(size_t);
 
 template<typename T>
-auto AllocateManagedSafe(size_t size);
+T *AllocateManaged(size_t, int);
 
-template<typename T>
-T *AllocateManaged(size_t size, int v);
+template<typename T> requires (!std::is_array_v<T>)
+auto AllocateManagedSafe(int v);
 
-template<typename T>
-auto AllocateManagedSafe(size_t size, int v);
+// Overload for array types.
+template<typename T> requires std::is_array_v<T>
+auto AllocateManagedSafe(size_t, int);
 
 //Allocate the memory needed for an empty QuasiPArticle struct of N particle and return it
 ThreadQuasiParticles_t AllocateQuasiParticles(int);
