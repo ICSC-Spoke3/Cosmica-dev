@@ -148,8 +148,7 @@ consteval unsigned long operator""_(const char *str, const size_t len) {
 int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, int verbose) {
     auto options = ParseCLIArguments(argc, argv);
 
-    if (options["i"].ends_with(".yaml"))
-        options["i"] = options["i"].substr(0, options["i"].size() - 4) + "txt";
+    if (options["i"].ends_with(".yaml")) return LoadConfigYaml(argc, argv, SimParameters, verbose);
 
     if (options.contains("v")) verbose += 1;
     else if (options.contains("vv")) verbose += 2;
@@ -271,7 +270,8 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
         SimParameters.HeliosphereToBeSimulated.RadBoundary_real[i].Rhp_tail = IHP[i].Rhp_tail;
     }
     SimParameters.simulation_parametrization.Nparams = 1;
-    SimParameters.simulation_parametrization.heliosphere_parametrization = AllocateManaged<HeliosphereParametrizationProperties_t[NMaxRegions]>(1);
+    SimParameters.simulation_parametrization.heliosphere_parametrization = AllocateManaged<
+        HeliosphereParametrizationProperties_t[NMaxRegions]>(1);
     for (size_t i = 0; i < IHP.size(); ++i) {
         SimParameters.simulation_constants.heliosphere_properties[i].V0 = IHP[i].V0 / aukm;
         if (IHP[i].k0 > 0) {
@@ -295,15 +295,20 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
             SimParameters.simulation_parametrization.heliosphere_parametrization[0][i].k0_perp[1] = kyl;
             SimParameters.simulation_parametrization.heliosphere_parametrization[0][i].GaussVar[1] = kzl;
         }
-        SimParameters.simulation_constants.heliosphere_properties[i].g_low = g_low(IHP[i].SolarPhase, IHP[i].Polarity, IHP[i].SmoothTilt);
-        SimParameters.simulation_constants.heliosphere_properties[i].rconst = rconst(IHP[i].SolarPhase, IHP[i].Polarity, IHP[i].SmoothTilt);
-        SimParameters.simulation_constants.heliosphere_properties[i].TiltAngle = IHP[i].TiltAngle * Pi / 180.f; // conversion to radian
-        SimParameters.simulation_constants.heliosphere_properties[i].Asun = static_cast<float>(IHP[i].Polarity) * sq(aum) * IHP[i].BEarth * 1e-9f /
-                                            sqrtf(1.f + Omega * (1 - rhelio) / (IHP[i].V0 / aukm) * (
-                                                      Omega * (1 - rhelio) / (IHP[i].V0 / aukm)));
+        SimParameters.simulation_constants.heliosphere_properties[i].g_low = g_low(
+            IHP[i].SolarPhase, IHP[i].Polarity, IHP[i].SmoothTilt);
+        SimParameters.simulation_constants.heliosphere_properties[i].rconst = rconst(
+            IHP[i].SolarPhase, IHP[i].Polarity, IHP[i].SmoothTilt);
+        SimParameters.simulation_constants.heliosphere_properties[i].TiltAngle = IHP[i].TiltAngle * Pi / 180.f;
+        // conversion to radian
+        SimParameters.simulation_constants.heliosphere_properties[i].Asun =
+                static_cast<float>(IHP[i].Polarity) * sq(aum) * IHP[i].BEarth * 1e-9f /
+                sqrtf(1.f + Omega * (1 - rhelio) / (IHP[i].V0 / aukm) * (
+                          Omega * (1 - rhelio) / (IHP[i].V0 / aukm)));
 
         //HelMod-Like
-        SimParameters.simulation_constants.heliosphere_properties[i].P0d = EvalP0DriftSuppressionFactor(0, IHP[i].SolarPhase, IHP[i].TiltAngle, 0);
+        SimParameters.simulation_constants.heliosphere_properties[i].P0d = EvalP0DriftSuppressionFactor(
+            0, IHP[i].SolarPhase, IHP[i].TiltAngle, 0);
         SimParameters.simulation_constants.heliosphere_properties[i].P0dNS = EvalP0DriftSuppressionFactor(
             1, IHP[i].SolarPhase, IHP[i].TiltAngle, IHP[i].ssn);
         SimParameters.simulation_constants.heliosphere_properties[i].plateau = EvalHighRigidityDriftSuppression_plateau(
@@ -363,18 +368,25 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
                         NInitialPositions - 1; i++) {
             fprintf(stderr, "- Region %d \n", i);
             fprintf(stderr, "-- V0         %e AU/s\n", SimParameters.simulation_constants.heliosphere_properties[i].V0);
-            fprintf(stderr, "-- k0_paral   [%e,%e] \n", SimParameters.simulation_parametrization.heliosphere_parametrization[0][i].k0_paral[0],
+            fprintf(stderr, "-- k0_paral   [%e,%e] \n",
+                    SimParameters.simulation_parametrization.heliosphere_parametrization[0][i].k0_paral[0],
                     SimParameters.simulation_parametrization.heliosphere_parametrization[0][i].k0_paral[1]);
-            fprintf(stderr, "-- k0_perp    [%e,%e] \n", SimParameters.simulation_parametrization.heliosphere_parametrization[0][i].k0_perp[0],
+            fprintf(stderr, "-- k0_perp    [%e,%e] \n",
+                    SimParameters.simulation_parametrization.heliosphere_parametrization[0][i].k0_perp[0],
                     SimParameters.simulation_parametrization.heliosphere_parametrization[0][i].k0_perp[1]);
-            fprintf(stderr, "-- GaussVar   [%.4f,%.4f] \n", SimParameters.simulation_parametrization.heliosphere_parametrization[0][i].GaussVar[0],
+            fprintf(stderr, "-- GaussVar   [%.4f,%.4f] \n",
+                    SimParameters.simulation_parametrization.heliosphere_parametrization[0][i].GaussVar[0],
                     SimParameters.simulation_parametrization.heliosphere_parametrization[0][i].GaussVar[1]);
-            fprintf(stderr, "-- g_low      %.4f \n", SimParameters.simulation_constants.heliosphere_properties[i].g_low);
-            fprintf(stderr, "-- rconst     %.3f \n", SimParameters.simulation_constants.heliosphere_properties[i].rconst);
-            fprintf(stderr, "-- tilt angle %.3f rad\n", SimParameters.simulation_constants.heliosphere_properties[i].TiltAngle);
+            fprintf(stderr, "-- g_low      %.4f \n",
+                    SimParameters.simulation_constants.heliosphere_properties[i].g_low);
+            fprintf(stderr, "-- rconst     %.3f \n",
+                    SimParameters.simulation_constants.heliosphere_properties[i].rconst);
+            fprintf(stderr, "-- tilt angle %.3f rad\n",
+                    SimParameters.simulation_constants.heliosphere_properties[i].TiltAngle);
             fprintf(stderr, "-- Asun       %e \n", SimParameters.simulation_constants.heliosphere_properties[i].Asun);
             fprintf(stderr, "-- P0d        %e GV \n", SimParameters.simulation_constants.heliosphere_properties[i].P0d);
-            fprintf(stderr, "-- P0dNS      %e GV \n", SimParameters.simulation_constants.heliosphere_properties[i].P0dNS);
+            fprintf(stderr, "-- P0dNS      %e GV \n",
+                    SimParameters.simulation_constants.heliosphere_properties[i].P0dNS);
 
 
             // XXXXXXX
@@ -416,6 +428,10 @@ unsigned check_sources_count(const vector<float> &r, const vector<float> &th, co
         exit(EXIT_FAILURE);
     }
     return r.size();
+}
+
+unsigned check_params_count(const fkyaml::node &dynamic_node) {
+    return dynamic_node["heliosphere"].cbegin().value().size();
 }
 
 std::tuple<vector<vector<HeliosphereParametrizationProperties_t> >, vector<HeliosphereProperties_t>, vector<bool>,
@@ -540,7 +556,7 @@ int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbo
     auto source_th = node_to_vector<float>(node["sources"]["th"]);
     auto source_phi = node_to_vector<float>(node["sources"]["phi"]);
     auto n_sources = check_sources_count(source_r, source_th, source_phi);
-    auto n_params = node["dynamic"].begin().value().size(); //TODO: check
+    auto n_params = check_params_count(node["dynamic"]);
     auto [heliosphere_param, heliosphere, high_activity, boundary] = node_to_heliosphere(
         node, n_sources, n_regions, n_params, static_cast<int>(isotopes[0].Z));
     auto heliosheat = node_to_heliosheat(node, n_sources);
@@ -564,7 +580,8 @@ int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbo
     std::ranges::copy(boundary, config.HeliosphereToBeSimulated.RadBoundary_real);
 
     config.simulation_parametrization.Nparams = n_params;
-    config.simulation_parametrization.heliosphere_parametrization = AllocateManaged<HeliosphereParametrizationProperties_t[NMaxRegions]>(n_params);
+    config.simulation_parametrization.heliosphere_parametrization = AllocateManaged<
+        HeliosphereParametrizationProperties_t[NMaxRegions]>(n_params);
     for (unsigned int i = 0; i < n_params; ++i) {
         std::ranges::copy(heliosphere_param[i], config.simulation_parametrization.heliosphere_parametrization[i]);
     }
@@ -617,15 +634,19 @@ int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbo
                         NInitialPositions - 1; i++) {
             fprintf(stderr, "- Region %d \n", i);
             fprintf(stderr, "-- V0         %e AU/s\n", config.simulation_constants.heliosphere_properties[i].V0);
-            fprintf(stderr, "-- k0_paral   [%e,%e] \n", config.simulation_parametrization.heliosphere_parametrization[0][i].k0_paral[0],
+            fprintf(stderr, "-- k0_paral   [%e,%e] \n",
+                    config.simulation_parametrization.heliosphere_parametrization[0][i].k0_paral[0],
                     config.simulation_parametrization.heliosphere_parametrization[0][i].k0_paral[1]);
-            fprintf(stderr, "-- k0_perp    [%e,%e] \n", config.simulation_parametrization.heliosphere_parametrization[0][i].k0_perp[0],
+            fprintf(stderr, "-- k0_perp    [%e,%e] \n",
+                    config.simulation_parametrization.heliosphere_parametrization[0][i].k0_perp[0],
                     config.simulation_parametrization.heliosphere_parametrization[0][i].k0_perp[1]);
-            fprintf(stderr, "-- GaussVar   [%.4f,%.4f] \n", config.simulation_parametrization.heliosphere_parametrization[0][i].GaussVar[0],
+            fprintf(stderr, "-- GaussVar   [%.4f,%.4f] \n",
+                    config.simulation_parametrization.heliosphere_parametrization[0][i].GaussVar[0],
                     config.simulation_parametrization.heliosphere_parametrization[0][i].GaussVar[1]);
             fprintf(stderr, "-- g_low      %.4f \n", config.simulation_constants.heliosphere_properties[i].g_low);
             fprintf(stderr, "-- rconst     %.3f \n", config.simulation_constants.heliosphere_properties[i].rconst);
-            fprintf(stderr, "-- tilt angle %.3f rad\n", config.simulation_constants.heliosphere_properties[i].TiltAngle);
+            fprintf(stderr, "-- tilt angle %.3f rad\n",
+                    config.simulation_constants.heliosphere_properties[i].TiltAngle);
             fprintf(stderr, "-- Asun       %e \n", config.simulation_constants.heliosphere_properties[i].Asun);
             fprintf(stderr, "-- P0d        %e GV \n", config.simulation_constants.heliosphere_properties[i].P0d);
             fprintf(stderr, "-- P0dNS      %e GV \n", config.simulation_constants.heliosphere_properties[i].P0dNS);
