@@ -49,14 +49,11 @@ struct SimulationParametrization_t {
     HeliosphereParametrizationProperties_t (*heliosphere_parametrization)[NMaxRegions];
 };
 
-struct SimulationConstants_t {
-    HeliosphereProperties_t heliosphere_properties[NMaxRegions];
-    HeliosheatProperties_t heliosheat_properties[NMaxRegions];
-};
-
 #define NMaxIsotopes 10
 
-struct SimulatedHeliosphere_t {
+struct SimulationConstants_t {
+    float Min_dt = MIN_DT, Max_dt = MAX_DT, Timeout = TIMEOUT;
+
     unsigned NIsotopes = 0;
     PartDescription_t Isotopes[NMaxIsotopes];
 
@@ -64,6 +61,9 @@ struct SimulatedHeliosphere_t {
     HeliosphereBoundRadius_t RadBoundary_effe[NMaxRegions] = {}; // boundaries in effective heliosphere
     HeliosphereBoundRadius_t RadBoundary_real[NMaxRegions] = {}; // real boundaries heliosphere
     bool IsHighActivityPeriod[NMaxRegions] = {false}; // active the modification for high activity period
+
+    HeliosphereProperties_t heliosphere_properties[NMaxRegions];
+    HeliosheatProperties_t heliosheat_properties[NMaxRegions];
 };
 
 struct SimConfiguration_t {
@@ -76,7 +76,7 @@ struct SimConfiguration_t {
     vect3D_t *InitialPosition; // initial position
     MonteCarloResult_t *Results; // output of the code
     float RelativeBinAmplitude = 0.00855;
-    SimulatedHeliosphere_t HeliosphereToBeSimulated; // Heliosphere properties for the simulation
+    // SimulatedHeliosphere_t HeliosphereToBeSimulated; // Heliosphere properties for the simulation
     SimulationParametrization_t simulation_parametrization;
     SimulationConstants_t simulation_constants;
 };

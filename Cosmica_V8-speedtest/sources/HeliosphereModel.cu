@@ -34,17 +34,17 @@ __device__ int RadialZone(const unsigned InitZone, const QuasiParticle_t &qp) {
        * // NOTE DEV rispetto alla versione HelMod si uniscono le funzioni RadialZone e WhereIAm
        */
 
-    if (const auto [Rts_nose, Rhp_nose, Rts_tail, Rhp_tail] = Heliosphere.RadBoundary_effe[InitZone];
+    if (const auto [Rts_nose, Rhp_nose, Rts_tail, Rhp_tail] = Constants.RadBoundary_effe[InitZone];
         qp.r < Boundary(qp.th, qp.phi, Rhp_nose, Rhp_tail)) {
         // inside Heliopause boundary
         if (qp.r >= Boundary(qp.th, qp.phi, Rts_nose, Rts_tail)) {
             // inside Heliosheat
-            return Heliosphere.Nregions;
+            return Constants.Nregions;
         }
         // inside Termination Shock Boundary
         if (qp.r < Rts_nose)
-            return static_cast<int>(floorf(qp.r / Rts_nose * static_cast<float>(Heliosphere.Nregions)));
-        return Heliosphere.Nregions - 1;
+            return static_cast<int>(floorf(qp.r / Rts_nose * static_cast<float>(Constants.Nregions)));
+        return Constants.Nregions - 1;
     }
     // outside heiosphere - Kill It
     return -1;

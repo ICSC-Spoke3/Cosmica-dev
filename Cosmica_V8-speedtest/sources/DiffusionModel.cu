@@ -335,7 +335,7 @@ __device__ float3 Diffusion_Tensor_In_HMF_Frame(const Index_t &index, const Quas
     float3 Ktensor;
     // HeliosphereZoneProperties_t ThisZone=LIM[HZone+InitZone];
 
-    const int high_activity = Heliosphere.IsHighActivityPeriod[index.period] ? 0 : 1;
+    const int high_activity = Constants.IsHighActivityPeriod[index.period] ? 0 : 1;
     const float k0_paral = params.heliosphere_parametrization[index.param][index.combined()].k0_paral[high_activity];
     const float k0_perp = params.heliosphere_parametrization[index.param][index.combined()].k0_perp[high_activity];
     const float GaussVar = params.heliosphere_parametrization[index.param][index.combined()].GaussVar[high_activity];
@@ -380,8 +380,8 @@ __device__ float Diffusion_Coeff_heliosheat(const Index_t &index, const QuasiPar
                                             float &dK_dr) {
     dK_dr = 0.;
     // if around 5 AU from Heliopause, apply diffusion barrier
-    const float RhpDirection = Boundary(qp.th, qp.phi, Heliosphere.RadBoundary_effe[index.period].Rhp_nose,
-                                        Heliosphere.RadBoundary_effe[index.period].Rhp_tail);
+    const float RhpDirection = Boundary(qp.th, qp.phi, Constants.RadBoundary_effe[index.period].Rhp_nose,
+                                        Constants.RadBoundary_effe[index.period].Rhp_tail);
     // TODO: Spostare le costanti in un file di configurazione
 #ifndef HPB_SupK
 #define HPB_SupK 50 // suppressive factor at barrier

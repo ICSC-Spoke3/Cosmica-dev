@@ -12,17 +12,17 @@
  * @return Solar wind speed
  */
 __device__ float SolarWindSpeed(const Index_t &index, const QuasiParticle_t &qp) {
-    const float V0 = index.radial < Heliosphere.Nregions
+    const float V0 = index.radial < Constants.Nregions
                          ? Constants.heliosphere_properties[index.combined()].V0
                          : Constants.heliosheat_properties[index.period].V0;
 
 
     // heliosheat (or near to)...............................
-    if (const float RtsDirection = Boundary(qp.th, qp.phi, Heliosphere.RadBoundary_effe[index.period].Rts_nose,
-                                            Heliosphere.RadBoundary_effe[index.period].Rts_tail);
-        index.radial >= Heliosphere.Nregions - 1 && qp.r > RtsDirection - L_tl) {
-        const float RtsRWDirection = Boundary(qp.th, qp.phi, Heliosphere.RadBoundary_real[index.period].Rts_nose,
-                                              Heliosphere.RadBoundary_real[index.period].Rts_tail);
+    if (const float RtsDirection = Boundary(qp.th, qp.phi, Constants.RadBoundary_effe[index.period].Rts_nose,
+                                            Constants.RadBoundary_effe[index.period].Rts_tail);
+        index.radial >= Constants.Nregions - 1 && qp.r > RtsDirection - L_tl) {
+        const float RtsRWDirection = Boundary(qp.th, qp.phi, Constants.RadBoundary_real[index.period].Rts_nose,
+                                              Constants.RadBoundary_real[index.period].Rts_tail);
         float DecreasFactor = SmoothTransition(1.f, 1.f / s_tl, RtsDirection, L_tl, qp.r);
         if (qp.r > RtsDirection) {
             DecreasFactor *= sq(RtsRWDirection / (RtsRWDirection - RtsDirection + qp.r));
@@ -31,7 +31,7 @@ __device__ float SolarWindSpeed(const Index_t &index, const QuasiParticle_t &qp)
     }
 
     // inner Heliosphere .........................
-    if (Heliosphere.IsHighActivityPeriod[index.period]) {
+    if (Constants.IsHighActivityPeriod[index.period]) {
         // high solar activity
         return V0;
     }
@@ -47,16 +47,16 @@ __device__ float SolarWindSpeed(const Index_t &index, const QuasiParticle_t &qp)
  * @return Derivative of solar wind speed in d theta
  */
 __device__ float DerivativeOfSolarWindSpeed_dtheta(const Index_t &index, const QuasiParticle_t &qp) {
-    const float V0 = index.radial < Heliosphere.Nregions
+    const float V0 = index.radial < Constants.Nregions
                          ? Constants.heliosphere_properties[index.combined()].V0
                          : Constants.heliosheat_properties[index.period].V0;
 
     // heliosheat ...............................
     // inner Heliosphere .........................
-    if (const float RtsDirection = Boundary(qp.th, qp.phi, Heliosphere.RadBoundary_effe[index.period].Rts_nose,
-                                            Heliosphere.RadBoundary_effe[index.period].Rts_tail);
-        (index.radial >= Heliosphere.Nregions - 1 && qp.r > RtsDirection - L_tl) ||
-        Heliosphere.IsHighActivityPeriod[index.period] ||
+    if (const float RtsDirection = Boundary(qp.th, qp.phi, Constants.RadBoundary_effe[index.period].Rts_nose,
+                                            Constants.RadBoundary_effe[index.period].Rts_tail);
+        (index.radial >= Constants.Nregions - 1 && qp.r > RtsDirection - L_tl) ||
+        Constants.IsHighActivityPeriod[index.period] ||
         V0 * (1 + fabsf(cosf(qp.th))) > Vhigh
     ) {
         return 0;

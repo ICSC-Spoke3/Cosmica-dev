@@ -212,19 +212,19 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
                     SPphi = SplitCSV(value);
                     break;
                 case "Particle_NucleonRestMass"_:
-                    SimParameters.HeliosphereToBeSimulated.NIsotopes = 1;
-                    SimParameters.HeliosphereToBeSimulated.Isotopes[0].T0 = std::stof(value);
+                    SimParameters.simulation_constants.NIsotopes = 1;
+                    SimParameters.simulation_constants.Isotopes[0].T0 = std::stof(value);
                     break;
                 case "Particle_MassNumber"_:
-                    SimParameters.HeliosphereToBeSimulated.NIsotopes = 1;
-                    SimParameters.HeliosphereToBeSimulated.Isotopes[0].A = std::stof(value);
+                    SimParameters.simulation_constants.NIsotopes = 1;
+                    SimParameters.simulation_constants.Isotopes[0].A = std::stof(value);
                     break;
                 case "Particle_Charge"_:
-                    SimParameters.HeliosphereToBeSimulated.NIsotopes = 1;
-                    SimParameters.HeliosphereToBeSimulated.Isotopes[0].Z = std::stof(value);
+                    SimParameters.simulation_constants.NIsotopes = 1;
+                    SimParameters.simulation_constants.Isotopes[0].Z = std::stof(value);
                     break;
                 case "Nregions"_:
-                    SimParameters.HeliosphereToBeSimulated.Nregions = std::stoi(value);
+                    SimParameters.simulation_constants.Nregions = std::stoi(value);
                     break;
                 case "HeliosphericParameters"_:
                     IHP.push_back(ParseHeliospheric(value));
@@ -247,9 +247,9 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
         std::cerr << "Mismatched initial positions\n";
         return EXIT_FAILURE;
     }
-    // if (SPr.size() + SimParameters.HeliosphereToBeSimulated.Nregions - 1 != IHP.size()) {
+    // if (SPr.size() + SimParameters.simulation_constants.Nregions - 1 != IHP.size()) {
     //     std::cerr << "Mismatched initial positions and regions " << SPr.size() << ' ' << SimParameters.
-    //             HeliosphereToBeSimulated.Nregions << ' ' << IHP.size() << std::endl;
+    //             simulation_constants.Nregions << ' ' << IHP.size() << std::endl;
     //     return EXIT_FAILURE;
     // }
 
@@ -260,15 +260,23 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
         SimParameters.InitialPosition[i] = {SPr[i], SPth[i], SPphi[i]};
 
         float mean_tilt = 0;
-        for (size_t j = i; j < SimParameters.HeliosphereToBeSimulated.Nregions + i; ++j) mean_tilt += IHP[j].TiltAngle;
-        mean_tilt /= static_cast<float>(SimParameters.HeliosphereToBeSimulated.Nregions);
+        for (size_t j = i; j < SimParameters.simulation_constants.Nregions + i; ++j) mean_tilt += IHP[j].TiltAngle;
+        mean_tilt /= static_cast<float>(SimParameters.simulation_constants.Nregions);
 
-        SimParameters.HeliosphereToBeSimulated.IsHighActivityPeriod[i] = mean_tilt >= TiltL_MaxActivity_threshold;
-        SimParameters.HeliosphereToBeSimulated.RadBoundary_real[i].Rts_nose = IHP[i].Rts_nose;
-        SimParameters.HeliosphereToBeSimulated.RadBoundary_real[i].Rts_tail = IHP[i].Rts_tail;
-        SimParameters.HeliosphereToBeSimulated.RadBoundary_real[i].Rhp_nose = IHP[i].Rhp_nose;
-        SimParameters.HeliosphereToBeSimulated.RadBoundary_real[i].Rhp_tail = IHP[i].Rhp_tail;
+        SimParameters.simulation_constants.IsHighActivityPeriod[i] = mean_tilt >= TiltL_MaxActivity_threshold;
+        SimParameters.simulation_constants.RadBoundary_real[i].Rts_nose = IHP[i].Rts_nose;
+        SimParameters.simulation_constants.RadBoundary_real[i].Rts_tail = IHP[i].Rts_tail;
+        SimParameters.simulation_constants.RadBoundary_real[i].Rhp_nose = IHP[i].Rhp_nose;
+        SimParameters.simulation_constants.RadBoundary_real[i].Rhp_tail = IHP[i].Rhp_tail;
     }
+
+    std::ranges::copy(SimParameters.simulation_constants.RadBoundary_real,
+                      SimParameters.simulation_constants.RadBoundary_effe);
+    for (int i = 0; i < SimParameters.NInitialPositions; ++i) {
+        RescaleToEffectiveHeliosphere(SimParameters.simulation_constants.RadBoundary_effe[i],
+                                      SimParameters.InitialPosition[i]);
+    }
+
     SimParameters.simulation_parametrization.Nparams = 1;
     SimParameters.simulation_parametrization.heliosphere_parametrization = AllocateManaged<
         HeliosphereParametrizationProperties_t[NMaxRegions]>(1);
@@ -283,10 +291,10 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
             SimParameters.simulation_parametrization.heliosphere_parametrization[0][i].GaussVar[1] = 0;
         } else {
             auto [kxh, kyh,kzh] = EvalK0(true, // isHighActivity
-                                         IHP[i].Polarity, SimParameters.HeliosphereToBeSimulated.Isotopes[0].Z,
+                                         IHP[i].Polarity, SimParameters.simulation_constants.Isotopes[0].Z,
                                          IHP[i].SolarPhase, IHP[i].SmoothTilt, IHP[i].NMCR, IHP[i].ssn, verbose);
             auto [kxl, kyl,kzl] = EvalK0(false, // isHighActivity
-                                         IHP[i].Polarity, SimParameters.HeliosphereToBeSimulated.Isotopes[0].Z,
+                                         IHP[i].Polarity, SimParameters.simulation_constants.Isotopes[0].Z,
                                          IHP[i].SolarPhase, IHP[i].SmoothTilt, IHP[i].NMCR, IHP[i].ssn, verbose);
             SimParameters.simulation_parametrization.heliosphere_parametrization[0][i].k0_paral[0] = kxh;
             SimParameters.simulation_parametrization.heliosphere_parametrization[0][i].k0_perp[0] = kyh;
@@ -327,9 +335,9 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
     if (verbose >= VERBOSE_med) {
         fprintf(stderr, "----- Recap of Simulation parameters ----\n");
         fprintf(stderr, "NucleonRestMass         : %.3f Gev/n \n",
-                SimParameters.HeliosphereToBeSimulated.Isotopes[0].T0);
-        fprintf(stderr, "MassNumber              : %.1f \n", SimParameters.HeliosphereToBeSimulated.Isotopes[0].A);
-        fprintf(stderr, "Charge                  : %.1f \n", SimParameters.HeliosphereToBeSimulated.Isotopes[0].Z);
+                SimParameters.simulation_constants.Isotopes[0].T0);
+        fprintf(stderr, "MassNumber              : %.1f \n", SimParameters.simulation_constants.Isotopes[0].A);
+        fprintf(stderr, "Charge                  : %.1f \n", SimParameters.simulation_constants.Isotopes[0].Z);
         fprintf(stderr, "Number of sources       : %hhu \n", SimParameters.NInitialPositions);
         for (int i = 0; i < SimParameters.NInitialPositions; i++) {
             fprintf(stderr, "position              :%d \n", i);
@@ -352,19 +360,19 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
         for (int i = 0; i < SimParameters.NInitialPositions; i++) {
             fprintf(stderr, "position              :%d \n", i);
             fprintf(stderr, "  IsHighActivityPeriod    : %s \n",
-                    SimParameters.HeliosphereToBeSimulated.IsHighActivityPeriod[i] ? "true" : "false");
+                    SimParameters.simulation_constants.IsHighActivityPeriod[i] ? "true" : "false");
             fprintf(stderr, "  Rts nose direction      : %.2f AU\n",
-                    SimParameters.HeliosphereToBeSimulated.RadBoundary_real[i].Rts_nose);
+                    SimParameters.simulation_constants.RadBoundary_real[i].Rts_nose);
             fprintf(stderr, "  Rts tail direction      : %.2f AU\n",
-                    SimParameters.HeliosphereToBeSimulated.RadBoundary_real[i].Rts_tail);
+                    SimParameters.simulation_constants.RadBoundary_real[i].Rts_tail);
             fprintf(stderr, "  Rhp nose direction      : %.2f AU\n",
-                    SimParameters.HeliosphereToBeSimulated.RadBoundary_real[i].Rhp_nose);
+                    SimParameters.simulation_constants.RadBoundary_real[i].Rhp_nose);
             fprintf(stderr, "  Rhp tail direction      : %.2f AU\n",
-                    SimParameters.HeliosphereToBeSimulated.RadBoundary_real[i].Rhp_tail);
+                    SimParameters.simulation_constants.RadBoundary_real[i].Rhp_tail);
         }
-        fprintf(stderr, "Heliopshere Parameters ( %d regions ): \n", SimParameters.HeliosphereToBeSimulated.Nregions);
+        fprintf(stderr, "Heliopshere Parameters ( %d regions ): \n", SimParameters.simulation_constants.Nregions);
 
-        for (int i = 0; i < SimParameters.HeliosphereToBeSimulated.Nregions + SimParameters.
+        for (int i = 0; i < SimParameters.simulation_constants.Nregions + SimParameters.
                         NInitialPositions - 1; i++) {
             fprintf(stderr, "- Region %d \n", i);
             fprintf(stderr, "-- V0         %e AU/s\n", SimParameters.simulation_constants.heliosphere_properties[i].V0);
@@ -573,11 +581,17 @@ int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbo
     config.Results = new MonteCarloResult_t[config.NT];
     config.RelativeBinAmplitude = relative_bin_amplitude;
 
-    config.HeliosphereToBeSimulated.NIsotopes = isotopes.size();
-    std::ranges::copy(isotopes, config.HeliosphereToBeSimulated.Isotopes);
-    config.HeliosphereToBeSimulated.Nregions = n_regions;
-    std::ranges::copy(high_activity, config.HeliosphereToBeSimulated.IsHighActivityPeriod);
-    std::ranges::copy(boundary, config.HeliosphereToBeSimulated.RadBoundary_real);
+    config.simulation_constants.NIsotopes = isotopes.size();
+    std::ranges::copy(isotopes, config.simulation_constants.Isotopes);
+    config.simulation_constants.Nregions = n_regions;
+    std::ranges::copy(high_activity, config.simulation_constants.IsHighActivityPeriod);
+    std::ranges::copy(boundary, config.simulation_constants.RadBoundary_real);
+
+    std::ranges::copy(config.simulation_constants.RadBoundary_real, config.simulation_constants.RadBoundary_effe);
+    for (int i = 0; i < n_sources; ++i) {
+        RescaleToEffectiveHeliosphere(config.simulation_constants.RadBoundary_effe[i],
+                                      config.InitialPosition[i]);
+    }
 
     config.simulation_parametrization.Nparams = n_params;
     config.simulation_parametrization.heliosphere_parametrization = AllocateManaged<
@@ -592,10 +606,9 @@ int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbo
 
     if (verbose >= VERBOSE_med) {
         fprintf(stderr, "----- Recap of Simulation parameters ----\n");
-        fprintf(stderr, "NucleonRestMass         : %.3f Gev/n \n",
-                config.HeliosphereToBeSimulated.Isotopes[0].T0);
-        fprintf(stderr, "MassNumber              : %.1f \n", config.HeliosphereToBeSimulated.Isotopes[0].A);
-        fprintf(stderr, "Charge                  : %.1f \n", config.HeliosphereToBeSimulated.Isotopes[0].Z);
+        fprintf(stderr, "NucleonRestMass         : %.3f Gev/n \n", config.simulation_constants.Isotopes[0].T0);
+        fprintf(stderr, "MassNumber              : %.1f \n", config.simulation_constants.Isotopes[0].A);
+        fprintf(stderr, "Charge                  : %.1f \n", config.simulation_constants.Isotopes[0].Z);
         fprintf(stderr, "Number of sources       : %hhu \n", config.NInitialPositions);
         for (int i = 0; i < config.NInitialPositions; i++) {
             fprintf(stderr, "position              :%d \n", i);
@@ -618,19 +631,19 @@ int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbo
         for (int i = 0; i < config.NInitialPositions; i++) {
             fprintf(stderr, "position              :%d \n", i);
             fprintf(stderr, "  IsHighActivityPeriod    : %s \n",
-                    config.HeliosphereToBeSimulated.IsHighActivityPeriod[i] ? "true" : "false");
+                    config.simulation_constants.IsHighActivityPeriod[i] ? "true" : "false");
             fprintf(stderr, "  Rts nose direction      : %.2f AU\n",
-                    config.HeliosphereToBeSimulated.RadBoundary_real[i].Rts_nose);
+                    config.simulation_constants.RadBoundary_real[i].Rts_nose);
             fprintf(stderr, "  Rts tail direction      : %.2f AU\n",
-                    config.HeliosphereToBeSimulated.RadBoundary_real[i].Rts_tail);
+                    config.simulation_constants.RadBoundary_real[i].Rts_tail);
             fprintf(stderr, "  Rhp nose direction      : %.2f AU\n",
-                    config.HeliosphereToBeSimulated.RadBoundary_real[i].Rhp_nose);
+                    config.simulation_constants.RadBoundary_real[i].Rhp_nose);
             fprintf(stderr, "  Rhp tail direction      : %.2f AU\n",
-                    config.HeliosphereToBeSimulated.RadBoundary_real[i].Rhp_tail);
+                    config.simulation_constants.RadBoundary_real[i].Rhp_tail);
         }
-        fprintf(stderr, "Heliopshere Parameters ( %d regions ): \n", config.HeliosphereToBeSimulated.Nregions);
+        fprintf(stderr, "Heliopshere Parameters ( %d regions ): \n", config.simulation_constants.Nregions);
 
-        for (int i = 0; i < config.HeliosphereToBeSimulated.Nregions + config.
+        for (int i = 0; i < config.simulation_constants.Nregions + config.
                         NInitialPositions - 1; i++) {
             fprintf(stderr, "- Region %d \n", i);
             fprintf(stderr, "-- V0         %e AU/s\n", config.simulation_constants.heliosphere_properties[i].V0);

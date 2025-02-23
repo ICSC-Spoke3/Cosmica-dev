@@ -7,8 +7,7 @@
 #include "SDECoeffs.cuh"
 #include "Histogram.cuh"
 
-__global__ void HeliosphericProp(const unsigned Npart_PerKernel, const float Min_dt, float Max_dt,
-                                 const float TimeOut, ThreadQuasiParticles_t QuasiParts_out,
+__global__ void HeliosphericProp(const unsigned Npart_PerKernel, ThreadQuasiParticles_t QuasiParts_out,
                                  const ThreadIndexes_t indexes, const SimulationParametrization_t params,
                                  curandStatePhilox4_32_10_t *const CudaState, float *RMaxs) {
     const unsigned id = threadIdx.x + blockIdx.x * blockDim.x;
@@ -23,10 +22,10 @@ __global__ void HeliosphericProp(const unsigned Npart_PerKernel, const float Min
     index.update(qp);
 
 
-    while (index.radial >= 0 && qp.t_fly <= TimeOut) {
+    while (index.radial >= 0 && qp.t_fly <= Constants.Timeout) {
         const auto [rand_x, rand_y, rand_z, rand_w] = curand_normal4(&randState);
 
-        auto KSym = DiffusionTensor_symmetric(index, qp, Heliosphere.Isotopes[index.isotope], rand_w, params);
+        auto KSym = DiffusionTensor_symmetric(index, qp, Constants.Isotopes[index.isotope], rand_w, params);
 
         int res = 0;
         const auto [rr, tr, tt, pr, pt, pp] = SquareRoot_DiffusionTerm(index, qp, KSym, &res);
@@ -38,12 +37,13 @@ __global__ void HeliosphericProp(const unsigned Npart_PerKernel, const float Min
             break; //exit the while cycle
         }
 
-        const auto [adv_r, adv_th, adv_phi] = AdvectiveTerm(index, qp, KSym, Heliosphere.Isotopes[index.isotope]);
+        const auto [adv_r, adv_th, adv_phi] = AdvectiveTerm(index, qp, KSym, Constants.Isotopes[index.isotope]);
 
         const float en_loss = EnergyLoss(index, qp);
 
-        const float dt = fmaxf(Min_dt, fminf(fminf(Max_dt, Min_dt * (rr * rr) / (adv_r * adv_r)),
-                                             Min_dt * (tr + tt) * (tr + tt) / (adv_th * adv_th)));
+        const float dt = fmaxf(Constants.Min_dt, fminf(
+                                   fminf(Constants.Max_dt, Constants.Min_dt * (rr * rr) / (adv_r * adv_r)),
+                                   Constants.Min_dt * (tr + tt) * (tr + tt) / (adv_th * adv_th)));
 
         if (const float update_r = qp.r + adv_r * dt + rand_x * rr * sqrtf(dt); update_r >= r_mirror) {
             qp.r = update_r;

@@ -40,3 +40,8 @@
 #define Omega  3.03008e-6f  // solar angular velocity
 #define rhelio 0.004633333f  // solar radius in AU
 #define r_mirror 0.3
+
+#define MAX_DT 50.0                                       // max allowed value of time step
+#define MIN_DT 0.01                                       // min allowed value of time step
+#define TIMEOUT std::numeric_limits<float>::infinity()
+// #define TIMEOUT 2000

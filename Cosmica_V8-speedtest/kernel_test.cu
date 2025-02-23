@@ -50,14 +50,6 @@
 
 #endif
 #define NPARTS 5000
-#ifndef MAX_DT
-#define MAX_DT 50.                                        // max allowed value of time step
-#endif
-#ifndef MIN_DT
-#define MIN_DT 0.01                                       // min allowed value of time step
-#endif
-#define TIMEOUT std::numeric_limits<float>::infinity()
-// #define TIMEOUT 2000
 #define NPOS 10
 #define RBINS 100
 
@@ -76,7 +68,6 @@
 // -----------------------------------------------------------------
 // ------------  Device Constant Variables declaration -------------
 // -----------------------------------------------------------------
-__constant__ SimulatedHeliosphere_t Heliosphere;
 __constant__ SimulationConstants_t Constants;
 // Heliosphere properties include Local Interplanetary medium parameters
 // __constant__ HeliosphereZoneProperties_t LIM[NMaxRegions]; // inner heliosphere
@@ -183,26 +174,6 @@ int main(int argc, char *argv[]) {
     ////////////////////////////////////////////////////////////////
 
     for (int ipos = 0; ipos < NInitPos; ipos++) {
-        SimParameters.HeliosphereToBeSimulated.RadBoundary_effe[ipos] = SimParameters.HeliosphereToBeSimulated.
-                RadBoundary_real[ipos];
-        RescaleToEffectiveHeliosphere(SimParameters.HeliosphereToBeSimulated.RadBoundary_effe[ipos],
-                                      SimParameters.InitialPosition[ipos]);
-
-        if constexpr (VERBOSE_LOAD) {
-            fprintf(stderr, "--- Zone %d \n", ipos);
-            fprintf(
-                stderr,
-                "--- !! Effective Heliosphere --> effective boundaries: TS_nose=%f TS_tail=%f Rhp_nose=%f  Rhp_tail=%f \n",
-                SimParameters.HeliosphereToBeSimulated.RadBoundary_effe[ipos].Rts_nose,
-                SimParameters.HeliosphereToBeSimulated.RadBoundary_effe[ipos].Rts_tail,
-                SimParameters.HeliosphereToBeSimulated.RadBoundary_effe[ipos].Rhp_nose,
-                SimParameters.HeliosphereToBeSimulated.RadBoundary_effe[ipos].Rhp_tail);
-            fprintf(stderr, "--- !! Effective Heliosphere --> new Source Position: r=%f th=%f phi=%f \n",
-                    SimParameters.InitialPosition[ipos].r, SimParameters.InitialPosition[ipos].th,
-                    SimParameters.InitialPosition[ipos].phi);
-        }
-
-        // Copy initial positions from SimParameters to the CPU InitialPositions_t
         InitialPositions.r[ipos] = SimParameters.InitialPosition[ipos].r;
         InitialPositions.th[ipos] = SimParameters.InitialPosition[ipos].th;
         InitialPositions.phi[ipos] = SimParameters.InitialPosition[ipos].phi;
@@ -320,8 +291,6 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        // .. copy heliosphere parameters to Device Constant Memory
-        CopyToConstant(Heliosphere, &SimParameters.HeliosphereToBeSimulated);
         CopyToConstant(Constants, &SimParameters.simulation_constants);
 
         // Allocate the initial variables and allocate on device
@@ -417,8 +386,8 @@ int main(int argc, char *argv[]) {
             // and local max rigidity search inside the block
             cudaDeviceSynchronize();
             HeliosphericProp<<<prop_launch_param.blocks, prop_launch_param.threads, prop_launch_param.smem>>>
-            (NParts, MIN_DT, MAX_DT, TIMEOUT, QuasiParts, indexes, SimParameters.simulation_parametrization,
-             RandStates.get(), Maxs.get());
+            (NParts, QuasiParts, indexes, SimParameters.simulation_parametrization, RandStates.get(),
+             Maxs.get());
             cudaDeviceSynchronize();
 
             if constexpr (VERBOSE) {

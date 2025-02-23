@@ -22,7 +22,7 @@ __device__ DiffusionTensor_t DiffusionTensor_symmetric(const Index_t &index, con
                                                        const PartDescription_t pt, const float GaussRndNumber,
                                                        const SimulationParametrization_t params) {
     DiffusionTensor_t KK;
-    if (index.radial < Heliosphere.Nregions) {
+    if (index.radial < Constants.Nregions) {
         /*  NOTE about HMF
          *  In the equatorial region, we used the Parker’s IMF (B Par ) in the parametrization of Hattingh and Burger (1995),
          *  while in the polar regions we used a modiﬁed IMF (B Pol ) that includes a latitudinal component,
@@ -202,7 +202,7 @@ __device__ Tensor3D_t SquareRoot_DiffusionTerm(const Index_t &index, const Quasi
 
     K.rr = 2.f * K.rr;
     D.rr = sqrtf(K.rr); // g = sqrt(a)
-    if (index.radial < Heliosphere.Nregions) {
+    if (index.radial < Constants.Nregions) {
         //K.rt=2.*K.rt/r;                       K.rp=2.*K.rp/(r*sinf(th));
         K.tr = 2.f * K.tr / qp.r;
         K.tt = 2.f * K.tt / (qp.r * qp.r); //K.tp=2.*K.tp/(sq(qp.r)*sinf(th));
@@ -260,7 +260,7 @@ __device__ vect3D_t AdvectiveTerm(const Index_t &index, const QuasiParticle_t &q
                                   const PartDescription_t pt) {
     vect3D_t AdvTerm = {2.f * K.rr / qp.r + K.DKrr_dr, 0, 0};
 
-    if (index.radial < Heliosphere.Nregions) {
+    if (index.radial < Constants.Nregions) {
         // inner Heliosphere .........................
         // advective part related to diffision tensor
         AdvTerm.r += K.tr / (qp.r * tanf(qp.th)) + K.DKtr_dt / qp.r;
@@ -289,7 +289,7 @@ __device__ vect3D_t AdvectiveTerm(const Index_t &index, const QuasiParticle_t &q
  * @return Energy loss term
  */
 __device__ float EnergyLoss(const Index_t &index, const QuasiParticle_t &qp) {
-    if (index.radial < Heliosphere.Nregions) {
+    if (index.radial < Constants.Nregions) {
         // inner Heliosphere .........................
         return 2.f / 3.f * SolarWindSpeed(index, qp) / qp.r * qp.R;
         // (Ek + 2.*T0)/(Ek + T0) * Ek = pt.Z*pt.Z/(pt.A*pt.A)*sq(R)/(sqrt(pt.Z*pt.Z/(pt.A*pt.A)*sq(R) + pt.T0*pt.T0))
