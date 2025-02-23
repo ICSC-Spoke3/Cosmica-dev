@@ -14,9 +14,9 @@
 #define Vhigh 760.f/aukm
 #endif
 // ------------------------------------------
-__device__ float SolarWindSpeed(const Index_t &, const QuasiParticle_t&, const HeliosphereZoneProperties_t *LIM);
+__device__ float SolarWindSpeed(const Index_t &, const QuasiParticle_t &);
 
-__device__ float DerivativeOfSolarWindSpeed_dtheta(const Index_t &, const QuasiParticle_t&, const HeliosphereZoneProperties_t *LIM);
+__device__ float DerivativeOfSolarWindSpeed_dtheta(const Index_t &, const QuasiParticle_t &);
 
 // ------------------------------------------
 #endif

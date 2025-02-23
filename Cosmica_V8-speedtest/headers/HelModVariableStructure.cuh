@@ -1,17 +1,10 @@
 #ifndef HelModVariableStructure
 #define HelModVariableStructure
-#include <stdio.h>          // Supplies FILE, stdin, stdout, stderr, and the fprint() family of functions
 #include "VariableStructure.cuh"
 
 ////////////////////////////////////////////////////////////////
 // Definition of the tuned model quantities and function parameters
 ////////////////////////////////////////////////////////////////
-
-
-struct options_t {
-    unsigned char verbose;
-    FILE *input;
-};
 
 struct PartDescription_t {
     float T0 = 0.938; // rest mass in GeV/n
@@ -26,17 +19,16 @@ struct HeliosphereBoundRadius_t {
     float Rhp_tail = 122; // Heliopause position
 };
 
-
 #define NMaxRegions 335    // about 25 year of simulations
 
-struct HeliosphereZoneProperties_t {
-    // properties related to heliosphere like dimension, coefficients
+struct HeliosphereParametrizationProperties_t {
+    float k0_paral[2] = {};
+    float k0_perp[2] = {};
+    float GaussVar[2] = {};
+};
+
+struct HeliosphereProperties_t {
     float V0 = 0; // [AU/s] Radial Solar wind speed on ecliptic
-    float k0_paral[2] = {0};
-    // Diffusion parameter for parallel term of diffusion tensor [for HighActivity, for Low activity]
-    float k0_perp[2] = {0};
-    // Diffusion parameter for perpendicular term of diffusion tensor  [for HighActivity, for Low activity]
-    float GaussVar[2] = {0}; // Gaussian variation for Diffusion parameter[for HighActivity, for Low activity]
     float g_low = 0; // for evaluating Kpar, glow parameter
     float rconst = 0; // for evaluating Kpar, rconst parameter
     float TiltAngle = 0; // Tilt angle of neutral sheet
@@ -44,7 +36,6 @@ struct HeliosphereZoneProperties_t {
     float P0d = 0; // Drift Suppression rigidity
     float P0dNS = 0; // NS Drift Suppression rigidity
     float plateau = 0.; // Time dependent plateau in the high rigidity suppression
-    signed int Polarity = 0; // HMF polarity
 };
 
 struct HeliosheatProperties_t {
@@ -53,51 +44,41 @@ struct HeliosheatProperties_t {
     float k0 = 0; // Diffusion parameter for parallel term of diffusion tensor
 };
 
+struct SimulationParametrization_t {
+    unsigned Nparams;
+    HeliosphereParametrizationProperties_t (*heliosphere_parametrization)[NMaxRegions];
+};
+
+struct SimulationConstants_t {
+    HeliosphereProperties_t heliosphere_properties[NMaxRegions];
+    HeliosheatProperties_t heliosheat_properties[NMaxRegions];
+};
+
 #define NMaxIsotopes 10
 
 struct SimulatedHeliosphere_t {
-    // properties related to heliosphere like dimension, coefficients
-    // float Rmirror = 0.3; // [AU] Internal heliosphere bounduary - mirror radius.
-
     unsigned NIsotopes = 0;
     PartDescription_t Isotopes[NMaxIsotopes];
 
     unsigned Nregions = 0; // Number of Inner Heliosphere region (15 inner region + 1 Heliosheat)
-    HeliosphereBoundRadius_t RadBoundary_effe[NMaxRegions] = {0}; // boundaries in effective heliosphere
-    HeliosphereBoundRadius_t RadBoundary_real[NMaxRegions] = {0}; // real boundaries heliosphere
+    HeliosphereBoundRadius_t RadBoundary_effe[NMaxRegions] = {}; // boundaries in effective heliosphere
+    HeliosphereBoundRadius_t RadBoundary_real[NMaxRegions] = {}; // real boundaries heliosphere
     bool IsHighActivityPeriod[NMaxRegions] = {false}; // active the modification for high activity period
-    //  HeliosphereZoneProperties_t prop_medium[NMaxRegions];             // PROPerties of the interplanetary MEDIUM - Heliospheric Parameters in each Heliospheric Zone
 };
 
-
-struct SimParameters_t {
-    // Place here all simulation variables
+struct SimConfiguration_t {
     char output_file_name[struct_string_lengh] = "SimTest";
     unsigned long RandomSeed = 0;
     unsigned Npart = 5000; // number of event to be simulated
     unsigned NT; // number of bins of energies to be simulated
     unsigned NInitialPositions = 0;
-    // number of initial positions -> this number represent also the number of Carrington rotation that
     float *Tcentr; // array of energies to be simulated
     vect3D_t *InitialPosition; // initial position
     MonteCarloResult_t *Results; // output of the code
     float RelativeBinAmplitude = 0.00855;
-    // relative (respect 1.) amplitude of Energy bin used as X axis in BoundaryDistribution  --> delta T = T*RelativeBinAmplitude
     SimulatedHeliosphere_t HeliosphereToBeSimulated; // Heliosphere properties for the simulation
-    HeliosphereZoneProperties_t prop_medium[NMaxRegions];
-    // PROPerties of the interplanetary MEDIUM - Heliospheric Parameters in each Heliospheric Zone
-    HeliosheatProperties_t prop_Heliosheat[NMaxRegions]; // Properties of Heliosheat
+    SimulationParametrization_t simulation_parametrization;
+    SimulationConstants_t simulation_constants;
 };
 
-
-#endif
-
-#ifndef MAINCU
-// -----------------------------------------------------------------
-// ------------  Device Constant Variables declaration -------------
-// -----------------------------------------------------------------
-extern __constant__ SimulatedHeliosphere_t Heliosphere;
-// Heliosphere properties include Local Interplanetary medium parameters
-extern __constant__ HeliosphereZoneProperties_t LIM[NMaxRegions];
-extern __constant__ HeliosheatProperties_t HS[NMaxRegions]; // heliosheat
 #endif

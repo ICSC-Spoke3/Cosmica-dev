@@ -2,6 +2,22 @@
 #define HelModLoadConfiguration
 #include <HelModVariableStructure.cuh>
 
+struct InputHeliosphericParameters_t {
+    float k0 = 0;
+    float ssn = 0;
+    float V0 = 0;
+    float TiltAngle = 0;
+    float SmoothTilt = 0;
+    float BEarth = 0;
+    int Polarity = 0;
+    int SolarPhase = 0;
+    float NMCR = 0;
+    float Rts_nose = 0;
+    float Rts_tail = 0;
+    float Rhp_nose = 0;
+    float Rhp_tail = 0;
+};
+
 void usage(const char *);
 
 /* Loads program options
@@ -19,9 +35,9 @@ int PrintError(const char *, char *, int);
 
 
 // int LoadConfigFile(int, char **, struct SimParameters_t &, int);
-int LoadConfigFile(int argc, char *argv[], SimParameters_t &SimParameters, int verbose);
+int LoadConfigFile(int, char *[], SimConfiguration_t &, int);
 
-int LoadConfigYaml(int argc, char *argv[], SimParameters_t &SimParameters, int verbose);
+int LoadConfigYaml(int, char *[], SimConfiguration_t &, int);
 
 /* Load the simulation global parameters from the configuration file
     NOTE: USING OLD STABLE 4_CoreCode_MultiGPU_MultiYear VERSION 

@@ -17,8 +17,7 @@ __device__ float delta_Bfield(const float r, const float th) {
     return r / rhelio * delta_m / sinf(th);;
 }
 
-__device__ vect3D_t Drift_PM89(const Index_t &index, const QuasiParticle_t &qp, const PartDescription_t pt,
-                               const HeliosphereZoneProperties_t *LIM) {
+__device__ vect3D_t Drift_PM89(const Index_t &index, const QuasiParticle_t &qp, const PartDescription_t pt) {
     /*Authors: 2022 Stefano */
     /* * description: Evalaute drift velocity vector, including Neutral sheetdrift. This drift is based on Potgieter e Mooral Model (1989), this model was modified to include a theta-component in Bfield.
      *  Imporant warning: the model born as 2D model for Pure Parker Field, originally this not include theta-component in Bfield.
@@ -37,9 +36,10 @@ __device__ vect3D_t Drift_PM89(const Index_t &index, const QuasiParticle_t &qp, 
     const float Ka = safeSign(pt.Z) * GeV * beta_R(qp.R, pt) * qp.R / 3;
     /* sign(Z)*beta*P/3 constant part of antisymmetric diffusion coefficient */
     // pt.A*sqrt(Ek*(Ek+2*pt.T0))/pt.Z
-    const float Asun = LIM[index.combined()].Asun; /* Magnetic Field Amplitude constant / aum^2*/
-    const float dV_dth = DerivativeOfSolarWindSpeed_dtheta(index, qp, LIM);
-    const float TiltAngle = LIM[index.combined()].TiltAngle;
+    const float Asun = Constants.heliosphere_properties[index.combined()].Asun;
+    /* Magnetic Field Amplitude constant / aum^2*/
+    const float dV_dth = DerivativeOfSolarWindSpeed_dtheta(index, qp);
+    const float TiltAngle = Constants.heliosphere_properties[index.combined()].TiltAngle;
     // float P = R;
     // .. Scaling factor of drift in 2D approximation.  to account Neutral sheet
     float fth = 0; /* scaling function of drift vel */
@@ -47,7 +47,7 @@ __device__ vect3D_t Drift_PM89(const Index_t &index, const QuasiParticle_t &qp, 
     const float TiltPos_r = qp.r;
     const float TiltPos_th = Pi / 2.f - TiltAngle;
     const float TiltPos_phi = qp.phi;
-    float Vsw = SolarWindSpeed(index, {TiltPos_r, TiltPos_th, TiltPos_phi}, LIM);
+    float Vsw = SolarWindSpeed(index, {TiltPos_r, TiltPos_th, TiltPos_phi});
     // const float dthetans = fabsf(GeV / (c * aum) * (2. * r * R) / (Asun * sqrtf(
     //                                                                    1 + Gamma_Bfield(r, TiltPos_th, Vsw) *
     //                                                                    Gamma_Bfield(r, TiltPos_th, Vsw) + (
@@ -84,7 +84,7 @@ __device__ vect3D_t Drift_PM89(const Index_t &index, const QuasiParticle_t &qp, 
     //             Asun,r*r, Gamma_Bfield(r,TiltPos_th,Vsw), ((IsPolarRegion)?delta_Bfield(r,TiltPos_th)*delta_Bfield(r,TiltPos_th):0));
     //    printf("KA %f\tdthetans=%e\tftheta=%e\tDftheta_dtheta=%e\n", Ka, dthetans,fth,Dftheta_dtheta);
     // }
-    Vsw = SolarWindSpeed(index, qp, LIM); // solar wind evaluated
+    Vsw = SolarWindSpeed(index, qp); // solar wind evaluated
     // .. drift velocity
 
     const float dm = IsPolarRegion ? delta_m : 0;
@@ -94,7 +94,8 @@ __device__ vect3D_t Drift_PM89(const Index_t &index, const QuasiParticle_t &qp, 
                     * sinf(qp.th) * sinf(qp.th) * sinf(qp.th) * sinf(qp.th) + rhelio * rhelio * Vsw * Vsw * sinf(qp.th)
                     * sinf(qp.th);
     float C = fth * sinf(qp.th) * Ka * qp.r * rhelio / (Asun * E * E);
-    C *= qp.R * qp.R / (qp.R * qp.R + LIM[index.combined()].P0d * LIM[index.combined()].P0d);
+    C *= qp.R * qp.R / (qp.R * qp.R + Constants.heliosphere_properties[index.combined()].P0d * Constants.
+                        heliosphere_properties[index.combined()].P0d);
     /* drift reduction factor. <------------------------------ */
     //reg drift
     v.r = -C * Omega * rhelio * 2 * (qp.r - rhelio) * sinf(qp.th) * (
@@ -117,14 +118,16 @@ __device__ vect3D_t Drift_PM89(const Index_t &index, const QuasiParticle_t &qp, 
                                * sinf(qp.th) * dV_dth));
     //ns drift
     C = Vsw * Dftheta_dtheta * sinf(qp.th) * sinf(qp.th) * Ka * qp.r * rhelio * rhelio / (Asun * E);
-    C *= qp.R * qp.R / (qp.R * qp.R + LIM[index.combined()].P0dNS * LIM[index.combined()].P0dNS);
+    C *= qp.R * qp.R / (qp.R * qp.R + Constants.heliosphere_properties[index.combined()].P0dNS * Constants.
+                        heliosphere_properties[index.combined()].P0dNS);
     /* drift reduction factor.  <------------------------------ */
     v.r += -C * Omega * sinf(qp.th) * (qp.r - rhelio);
     //v.th += 0;
     v.phi += -C * Vsw;
 
     // Suppression rigidity dependence: logistic function (~1 at low energy ---> ~0 at high energy)
-    const float HighRigiSupp = LIM[index.combined()].plateau + (1.f - LIM[index.combined()].plateau) / (
+    const float HighRigiSupp = Constants.heliosphere_properties[index.combined()].plateau + (
+                                   1.f - Constants.heliosphere_properties[index.combined()].plateau) / (
                                    1.f + expf(HighRigiSupp_smoothness * (qp.R - HighRigiSupp_TransPoint)));
     v.r *= HighRigiSupp;
     v.th *= HighRigiSupp;

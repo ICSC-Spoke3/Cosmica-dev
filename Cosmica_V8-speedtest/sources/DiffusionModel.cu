@@ -3,6 +3,7 @@
 #include "VariableStructure.cuh"
 #include "HelModVariableStructure.cuh"
 #include <cstdio>          // Supplies FILE, stdin, stdout, stderr, and the fprint() family of functions
+#include <tuple>
 
 
 /**
@@ -168,28 +169,28 @@ float K0CorrFactor(const int p, const int q, const int SolarPhase, const float t
  * @return output x = k0_paral (parallel k0), y = k0_perp (perpendicular k0), z = GaussVar (Gaussian variation)
  * k0_paral is corrected by a correction factor
  */
-float3 EvalK0(const bool IsHighActivityPeriod, const int p, const int q, const int SolarPhase, const float tilt,
-              const float NMC, const float ssn, const unsigned char verbose = 0) {
-    float3 output;
-    output.x = K0CorrFactor(p, q, SolarPhase, tilt);
+std::tuple<float, float, float> EvalK0(const bool IsHighActivityPeriod, const int p, const int q, const int SolarPhase,
+                                       const float tilt,
+                                       const float NMC, const float ssn, const unsigned char verbose = 0) {
+    float K_par = K0CorrFactor(p, q, SolarPhase, tilt), K_perp, Gauss;
     // printf("-- p: %d q: %d phase: %d tilt: %e ssn: %e NMC: %e \n",p,q,SolarPhase,tilt,ssn,NMC);
-    // printf("-- K0CorrF: %e \n",output.x);
+    // printf("-- K0CorrF: %e \n",K_par);
     // printf("-- IsHighActivityPeriod %d \n",IsHighActivityPeriod);
     if (IsHighActivityPeriod && NMC > 0) {
-        output.y = K0Fit_NMC(NMC, &output.z);
-        output.x *= output.y;
+        K_perp = K0Fit_NMC(NMC, &Gauss);
+        K_par *= K_perp;
     } else {
         if (verbose >= VERBOSE_med && IsHighActivityPeriod && NMC == 0) {
             fprintf(
                 stderr,
                 "WARNING:: High Activity period require NMC variable setted with value >0, used ssn instead.\n");
         }
-        output.y = K0Fit_ssn(p, SolarPhase, ssn, &output.z);
-        output.x *= output.y;
+        K_perp = K0Fit_ssn(p, SolarPhase, ssn, &Gauss);
+        K_par *= K_perp;
     }
-    // printf("-- K0 paral: %e \n",output.x);
-    // printf("-- K0 perp : %e \n",output.y);
-    return output;
+    // printf("-- K0 paral: %e \n",K_par);
+    // printf("-- K0 perp : %e \n",K_perp);
+    return {K_par, K_perp, Gauss};
 }
 
 /**
@@ -323,23 +324,23 @@ float rconst(const int SolarPhase, const int Polarity, const float tilt) {
  * @param beta v/c
  * @param GaussRndNumber Random number with normal distribution
  * @param dK_dr Output parameter for the derivative of K with respect to r
- * @param LIM
+ * @param params
  * @return x Kparallel
  * @return y Kperp_1
  * @return z Kperp_2
  */
 __device__ float3 Diffusion_Tensor_In_HMF_Frame(const Index_t &index, const QuasiParticle_t &qp, const float beta,
                                                 const float GaussRndNumber, float3 &dK_dr,
-                                                const HeliosphereZoneProperties_t *LIM) {
+                                                const SimulationParametrization_t params) {
     float3 Ktensor;
     // HeliosphereZoneProperties_t ThisZone=LIM[HZone+InitZone];
 
     const int high_activity = Heliosphere.IsHighActivityPeriod[index.period] ? 0 : 1;
-    const float k0_paral = LIM[index.combined()].k0_paral[high_activity];
-    const float k0_perp = LIM[index.combined()].k0_perp[high_activity];
-    const float GaussVar = LIM[index.combined()].GaussVar[high_activity];
-    const float g_low = LIM[index.combined()].g_low;
-    const float rconst = LIM[index.combined()].rconst;
+    const float k0_paral = params.heliosphere_parametrization[index.param][index.combined()].k0_paral[high_activity];
+    const float k0_perp = params.heliosphere_parametrization[index.param][index.combined()].k0_perp[high_activity];
+    const float GaussVar = params.heliosphere_parametrization[index.param][index.combined()].GaussVar[high_activity];
+    const float g_low = Constants.heliosphere_properties[index.combined()].g_low;
+    const float rconst = Constants.heliosphere_properties[index.combined()].rconst;
 
 
     // Kpar = k0 * beta/3 * (P/1GV + glow)*( Rconst+r/1AU) with k0 gaussian distributed
@@ -393,8 +394,9 @@ __device__ float Diffusion_Coeff_heliosheat(const Index_t &index, const QuasiPar
 #endif
 
     if (qp.r > RhpDirection - 5) {
-        return HS[index.period].k0 * beta * qp.R * SmoothTransition(1, 1.f / HPB_SupK, RhpDirection - HP_width / 2.f,
-                                                                    HP_SupSmooth, qp.r);
+        return Constants.heliosheat_properties[index.period].k0 * beta * qp.R * SmoothTransition(
+                   1, 1.f / HPB_SupK, RhpDirection - HP_width / 2.f,
+                   HP_SupSmooth, qp.r);
     }
-    return HS[index.period].k0 * beta * qp.R;
+    return Constants.heliosheat_properties[index.period].k0 * beta * qp.R;
 }

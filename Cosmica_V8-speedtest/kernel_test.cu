@@ -77,9 +77,10 @@
 // ------------  Device Constant Variables declaration -------------
 // -----------------------------------------------------------------
 __constant__ SimulatedHeliosphere_t Heliosphere;
+__constant__ SimulationConstants_t Constants;
 // Heliosphere properties include Local Interplanetary medium parameters
 // __constant__ HeliosphereZoneProperties_t LIM[NMaxRegions]; // inner heliosphere
-__constant__ HeliosheatProperties_t HS[NMaxRegions]; // heliosheat
+// __constant__ HeliosheatProperties_t HS[NMaxRegions]; // heliosheat
 // __constant__ float dev_Npart;
 // __constant__ float min_dt;
 // __constant__ float max_dt;
@@ -165,12 +166,7 @@ int main(int argc, char *argv[]) {
     unsigned int NParts = 0;
     int NInitRig = 0;
     float RelativeBinAmplitude = 0;
-    SimParameters_t SimParameters;
-
-#if HELMOD_LOAD
-
-    // NOTE: USING OLD STABLE 4_CoreCode_MultiGPU_MultiYear VERSION
-
+    SimConfiguration_t SimParameters;
 
     if (LoadConfigFile(argc, argv, SimParameters, VERBOSE_LOAD) != EXIT_SUCCESS) {
         printf("Error while loading simulation parameters\n");
@@ -222,38 +218,6 @@ int main(int argc, char *argv[]) {
     // relative (respect 1.) amplitude of Energy bin used as X axis in BoundaryDistribution  --> delta T = T*RelativeBinAmplitude
     RelativeBinAmplitude = SimParameters.RelativeBinAmplitude;
 
-    // Load the global simulation parameters with new cosmica-GC method
-#else
-        // Load the initial positions and particle number to simulate
-        InitialPositions = LoadInitPos(NPOS, VERBOSE_LOAD);
-        NInitPos = NPOS;
-        NParts = NPARTS;
-
-        // Load rigidities to be simulated
-        InitialRigidities = LoadInitRigidities(RBINS, VERBOSE_LOAD);
-        NInitRig = RBINS;
-
-        // relative (respect 1.) amplitude of Energy bin used as X axis in BoundaryDistribution  --> delta T = T*RelativeBinAmplitude
-        RelativeBinAmplitude = 0.00855;
-
-    // Load the global simulation parameters with old HelMod method
-    /*
-    typedef struct SimParameters_t {                                                    // Place here all simulation variables
-        char  output_file_name[struct_string_lengh]="SimTest";
-        unsigned long      Npart=5000;                                  // number of event to be simulated
-        unsigned char      NT;                                          // number of bins of energies to be simulated
-        unsigned char      NInitialPositions=0;                         // number of initial positions -> this number represent also the number of Carrington rotation that
-        float              *Tcentr;                                     // array of energies to be simulated
-        vect3D_t           *InitialPosition;                            // initial position
-        PartDescription_t  IonToBeSimulated;                            // Ion to be simulated
-        MonteCarloResult_t *Results;                                    // output of the code
-        float RelativeBinAmplitude = 0.00855 ;                          // relative (respect 1.) amplitude of Energy bin used as X axis in BoundaryDistribution  --> delta T = T*RelativeBinAmplitude
-        SimulatedHeliosphere_t HeliosphereToBeSimulated;                // Heliosphere properties for the simulation
-        HeliosphereZoneProperties_t prop_medium[NMaxRegions];           // PROPerties of the interplanetary MEDIUM - Heliospheric Parameters in each Heliospheric Zone
-        HeliosheatProperties_t prop_Heliosheat[NMaxRegions];            // Properties of Heliosheat
-    } SimParameters_t;
-    */
-#endif
 
     // Allocation of the output results for all the rigidities
     auto *Results = static_cast<struct MonteCarloResult_t *>(malloc(NInitRig * sizeof(MonteCarloResult_t)));
@@ -358,14 +322,7 @@ int main(int argc, char *argv[]) {
 
         // .. copy heliosphere parameters to Device Constant Memory
         CopyToConstant(Heliosphere, &SimParameters.HeliosphereToBeSimulated);
-        // CopyToConstant(LIM, &SimParameters.prop_medium);
-        CopyToConstant(HS, &SimParameters.prop_Heliosheat);
-
-
-        // HeliosphereZoneProperties_t LIM[NMaxRegions];
-        auto LIM = AllocateManagedSafe<HeliosphereZoneProperties_t[]>(NMaxRegions);
-        cudaMemcpy(LIM.get(), &SimParameters.prop_medium, sizeof(SimParameters.prop_medium), cudaMemcpyDefault);
-
+        CopyToConstant(Constants, &SimParameters.simulation_constants);
 
         // Allocate the initial variables and allocate on device
         ThreadQuasiParticles_t QuasiParts = AllocateQuasiParticles(NParts);
@@ -379,9 +336,9 @@ int main(int argc, char *argv[]) {
                 for (unsigned int p = 0; p < np; ++p) {
                     for (unsigned int x = 0; x < nx; ++x) {
                         unsigned int idx = x + nx * (p + np * (i + ni * s));
-                        indexes.simulation[idx] = s;
+                        indexes.param[idx] = s;
                         indexes.period[idx] = i;
-                        indexes.particle[idx] = p;
+                        indexes.isotope[idx] = p;
                     }
                 }
             }
@@ -460,8 +417,8 @@ int main(int argc, char *argv[]) {
             // and local max rigidity search inside the block
             cudaDeviceSynchronize();
             HeliosphericProp<<<prop_launch_param.blocks, prop_launch_param.threads, prop_launch_param.smem>>>
-            (NParts, MIN_DT, MAX_DT, TIMEOUT, QuasiParts, indexes, LIM.get(), RandStates.get(),
-             Maxs.get());
+            (NParts, MIN_DT, MAX_DT, TIMEOUT, QuasiParts, indexes, SimParameters.simulation_parametrization,
+             RandStates.get(), Maxs.get());
             cudaDeviceSynchronize();
 
             if constexpr (VERBOSE) {

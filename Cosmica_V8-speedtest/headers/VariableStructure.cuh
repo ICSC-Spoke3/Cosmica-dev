@@ -11,9 +11,11 @@ struct LaunchParam_t {
     int smem = 0;
 };
 
-// Heliospheric physical parameters
-struct InputHeliosphericParameters_t {
+struct InputHeliosphericParametrizationProperties_t {
     float k0 = 0;
+};
+
+struct InputHeliosphericProperties_t {
     float ssn = 0;
     float V0 = 0;
     float TiltAngle = 0;
@@ -73,7 +75,7 @@ struct ThreadQuasiParticles_t {
 };
 
 struct Index_t {
-    const unsigned simulation, period, particle;
+    const unsigned param, period, isotope;
     int radial = 0;
 
     __forceinline__ __device__ void update(const QuasiParticle_t &qp) {
@@ -86,9 +88,9 @@ struct Index_t {
 };
 
 struct ThreadIndexes_t {
-    unsigned *simulation, *period, *particle;
+    unsigned *param, *period, *isotope;
     __forceinline__ __host__ __device__ Index_t get(const unsigned id) const {
-        return {simulation[id], period[id], particle[id]};
+        return {param[id], period[id], isotope[id]};
     }
 };
 

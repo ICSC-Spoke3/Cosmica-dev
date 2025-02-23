@@ -9,12 +9,12 @@
  *
  * @param index
  * @param qp
- * @param LIM
  * @return Solar wind speed
  */
-__device__ float SolarWindSpeed(const Index_t &index, const QuasiParticle_t &qp,
-                                const HeliosphereZoneProperties_t *LIM) {
-    const float V0 = index.radial < Heliosphere.Nregions ? LIM[index.combined()].V0 : HS[index.period].V0;
+__device__ float SolarWindSpeed(const Index_t &index, const QuasiParticle_t &qp) {
+    const float V0 = index.radial < Heliosphere.Nregions
+                         ? Constants.heliosphere_properties[index.combined()].V0
+                         : Constants.heliosheat_properties[index.period].V0;
 
 
     // heliosheat (or near to)...............................
@@ -44,12 +44,12 @@ __device__ float SolarWindSpeed(const Index_t &index, const QuasiParticle_t &qp,
  *
  * @param index
  * @param qp
- * @param LIM
  * @return Derivative of solar wind speed in d theta
  */
-__device__ float DerivativeOfSolarWindSpeed_dtheta(const Index_t &index, const QuasiParticle_t &qp,
-                                                   const HeliosphereZoneProperties_t *LIM) {
-    const float V0 = index.radial < Heliosphere.Nregions ? LIM[index.combined()].V0 : HS[index.period].V0;
+__device__ float DerivativeOfSolarWindSpeed_dtheta(const Index_t &index, const QuasiParticle_t &qp) {
+    const float V0 = index.radial < Heliosphere.Nregions
+                         ? Constants.heliosphere_properties[index.combined()].V0
+                         : Constants.heliosheat_properties[index.period].V0;
 
     // heliosheat ...............................
     // inner Heliosphere .........................
