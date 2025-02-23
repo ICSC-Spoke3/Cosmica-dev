@@ -339,7 +339,7 @@ int main(int argc, char *argv[]) {
 
 
         // .. Initialize random generator
-        auto RandStates = AllocateManagedSafe<curandStatePhilox4_32_10_t>(NParts);
+        auto RandStates = AllocateManagedSafe<curandStatePhilox4_32_10_t[]>(NParts);
         unsigned long Rnd_seed = SimParameters.RandomSeed == 0
                                      ? getpid() + time(nullptr) + gpu_id
                                      : SimParameters.RandomSeed;
@@ -363,7 +363,7 @@ int main(int argc, char *argv[]) {
 
 
         // HeliosphereZoneProperties_t LIM[NMaxRegions];
-        auto LIM = AllocateManagedSafe<HeliosphereZoneProperties_t>(NMaxRegions);
+        auto LIM = AllocateManagedSafe<HeliosphereZoneProperties_t[]>(NMaxRegions);
         cudaMemcpy(LIM.get(), &SimParameters.prop_medium, sizeof(SimParameters.prop_medium), cudaMemcpyDefault);
 
 
@@ -437,7 +437,7 @@ int main(int argc, char *argv[]) {
 
 
             // Allocate the array for the partial rigidities maxima and final maximum
-            auto Maxs = AllocateManagedSafe<float>(prop_launch_param.blocks);
+            auto Maxs = AllocateManagedSafe<float[]>(prop_launch_param.blocks);
 
 
             if constexpr (VERBOSE) {
@@ -527,7 +527,7 @@ int main(int argc, char *argv[]) {
 
             // .. save to histogram ..........................................
             // Partial block histogram allocation
-            auto PartialHistos = AllocateManagedSafe<float>(Results[iR].Nbins * prop_launch_param.blocks);
+            auto PartialHistos = AllocateManagedSafe<float[]>(Results[iR].Nbins * prop_launch_param.blocks);
 
             // Final merged histogram allocation
             Results[iR].BoundaryDistribution = AllocateManaged<float>(Results[iR].Nbins);
@@ -542,11 +542,11 @@ int main(int argc, char *argv[]) {
             cudaDeviceSynchronize();
 
             // Failed quasi-particle propagation count
-            Results[iR].Nregistered = NParts - Nfailed[0];
+            Results[iR].Nregistered = NParts - *Nfailed;
 
             if constexpr (VERBOSE_2) {
                 fprintf(stdout, "-- Eventi computati : %d \n", NParts);
-                fprintf(stdout, "-- Eventi falliti   : %d \n", Nfailed[0]);
+                fprintf(stdout, "-- Eventi falliti   : %d \n", *Nfailed);
                 fprintf(stdout, "-- Eventi registrati: %lu \n", Results[iR].Nregistered);
             }
 

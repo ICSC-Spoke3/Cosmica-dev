@@ -5,14 +5,14 @@
 #include <constants.hpp>
 
 // Struct with threads, blocks and share memory with which launch a cuda function
-typedef struct LaunchParam_t {
+struct LaunchParam_t {
     int threads = 0;
     int blocks = 0;
     int smem = 0;
-} LaunchParam_t;
+};
 
 // Heliospheric physical parameters
-typedef struct InputHeliosphericParameters_t {
+struct InputHeliosphericParameters_t {
     float k0 = 0;
     float ssn = 0;
     float V0 = 0;
@@ -26,22 +26,22 @@ typedef struct InputHeliosphericParameters_t {
     float Rts_tail = 0;
     float Rhp_nose = 0;
     float Rhp_tail = 0;
-} InputHeliosphericParameters_t;
+};
 
 // Heliosheat physical parameters
-typedef struct InputHeliosheatParameters_t {
+struct InputHeliosheatParameters_t {
     float k0 = 0;
     float V0 = 0; // solar wind at termination shock
-} InputHeliosheatParameters_t;
+};
 
 // Struct of initial propagation positions arrays with coordinates and rigidities
-typedef struct InitialPositions_t {
+struct InitialPositions_t {
     float *r; // heliocentric radial distances
     float *th; // heliocentric polar angles
     float *phi; // heliocentric azimutal - longitudinal angles (really needed in 2D model?)
-} InitialPositions_t;
+};
 
-typedef struct QuasiParticle_t {
+struct QuasiParticle_t {
     float r; // heliocentric radial distances
     float th; // heliocentric polar angles
     float phi; // heliocentric azimutal - longitudinal angles (really needed in 2D model?)
@@ -56,10 +56,10 @@ typedef struct QuasiParticle_t {
         phi = fmodf(phi, 2 * Pi);
         phi = fmodf(2 * Pi + phi, 2 * Pi);
     }
-} QuasiParticle_t;
+};
 
 // Struct of quasi-particles arrays with coordinates, rigidities and time of flight
-typedef struct ThreadQuasiParticles_t {
+struct ThreadQuasiParticles_t {
     float *r; // heliocentric radial distances
     float *th; // heliocentric polar angles
     float *phi; // heliocentric azimutal - longitudinal angles (really needed in 2D model?)
@@ -70,9 +70,9 @@ typedef struct ThreadQuasiParticles_t {
     __forceinline__ __device__ QuasiParticle_t get(const unsigned id) const {
         return {r[id], th[id], phi[id], R[id], t_fly[id]};
     }
-} ThreadQuasiParticles_t;
+};
 
-typedef struct Index_t {
+struct Index_t {
     const unsigned simulation, period, particle;
     int radial = 0;
 
@@ -83,28 +83,28 @@ typedef struct Index_t {
     __forceinline__ __device__ unsigned combined() const {
         return period + radial;
     }
-} Index_t;
+};
 
-typedef struct ThreadIndexes_t {
+struct ThreadIndexes_t {
     unsigned *simulation, *period, *particle;
     __forceinline__ __host__ __device__ Index_t get(const unsigned id) const {
         return {simulation[id], period[id], particle[id]};
     }
-} ThreadIndexes_t;
+};
 
 // SEE IF WE CAN USE THE MATRIX CUDA UPTIMIZED LIBRARIES
 // Struct with the structure of square root decomposition of symmetric difusion tensor
-typedef struct Tensor3D_t {
+struct Tensor3D_t {
     float rr = 0;
     float tr = 0;
     float tt = 0;
     float pr = 0;
     float pt = 0;
     float pp = 0; // not null components
-} Tensor3D_t;
+};
 
 // Struct with the structure of the the symmetric difusion tensor and its derivative
-typedef struct DiffusionTensor_t {
+struct DiffusionTensor_t {
     float rr = 0;
     float tr = 0;
     float tt = 0;
@@ -117,22 +117,22 @@ typedef struct DiffusionTensor_t {
     float DKtt_dt = 0;
     float DKrp_dr = 0;
     float DKtp_dt = 0; // not null components
-} DiffusionTensor_t;
+};
 
 // Struct with the structure of the advective-drift vector
-typedef struct vect3D_t {
+struct vect3D_t {
     float r = 0; // heliocentric radial component
     float th = 0; // heliocentric polar component
     float phi = 0.; // heliocentric azimutal - longitudinal angle component
-} vect3D_t;
+};
 
 // Data container for output result of a single energy simulation
-typedef struct MonteCarloResult_t {
+struct MonteCarloResult_t {
     unsigned long Nregistered;
     int Nbins;
     float LogBin0_lowEdge; // lower boundary of first bin
     float DeltaLogR; // Bin amplitude in log scale
     float *BoundaryDistribution;
-} MonteCarloResult_t;
+};
 
 #endif

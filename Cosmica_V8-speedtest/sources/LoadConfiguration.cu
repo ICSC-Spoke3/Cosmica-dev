@@ -15,7 +15,7 @@ T *AllocateManaged(const size_t size) {
 template<typename T>
 auto AllocateManagedSafe(const size_t size) {
     auto deleter = [](T* ptr) { cudaFree(ptr); };
-    return std::unique_ptr<T[], decltype(deleter)>(AllocateManaged<T>(size), deleter);
+    return std::unique_ptr<T, decltype(deleter)>(AllocateManaged<T>(size), deleter);
 }
 
 template<typename T>
@@ -28,7 +28,7 @@ T *AllocateManaged(const size_t size, const int v) {
 template<typename T>
 auto AllocateManagedSafe(const size_t size, const int v) {
     auto deleter = [](T* ptr) { cudaFree(ptr); };
-    return std::unique_ptr<T[], decltype(deleter)>(AllocateManaged<T>(size, v), deleter);
+    return std::unique_ptr<T, decltype(deleter)>(AllocateManaged<T>(size, v), deleter);
 }
 
 ThreadQuasiParticles_t AllocateQuasiParticles(const unsigned NPart) {

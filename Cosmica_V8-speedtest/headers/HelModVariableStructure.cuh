@@ -8,30 +8,28 @@
 ////////////////////////////////////////////////////////////////
 
 
-
-
-typedef struct options_t {
+struct options_t {
     unsigned char verbose;
     FILE *input;
-} options_t;
+};
 
-typedef struct PartDescription_t {
+struct PartDescription_t {
     float T0 = 0.938; // rest mass in GeV/n
     float Z = 1; // Atomic number
     float A = 1; // mass number
-} PartDescription_t; // particle type
+}; // particle type
 
-typedef struct HeliosphereBoundRadius_t {
+struct HeliosphereBoundRadius_t {
     float Rts_nose = 100; // Termination shock position
     float Rhp_nose = 122; // Heliopause position
     float Rts_tail = 100; // Termination shock position
     float Rhp_tail = 122; // Heliopause position
-} HeliosphereBoundRadius_t;
+};
 
 
 #define NMaxRegions 335    // about 25 year of simulations
 
-typedef struct HeliosphereZoneProperties_t {
+struct HeliosphereZoneProperties_t {
     // properties related to heliosphere like dimension, coefficients
     float V0 = 0; // [AU/s] Radial Solar wind speed on ecliptic
     float k0_paral[2] = {0};
@@ -47,17 +45,17 @@ typedef struct HeliosphereZoneProperties_t {
     float P0dNS = 0; // NS Drift Suppression rigidity
     float plateau = 0.; // Time dependent plateau in the high rigidity suppression
     signed int Polarity = 0; // HMF polarity
-} HeliosphereZoneProperties_t;
+};
 
-typedef struct HeliosheatProperties_t {
+struct HeliosheatProperties_t {
     // properties related to heliopause
     float V0 = 0; // [AU/s] Radial Solar wind speed on ecliptic
     float k0 = 0; // Diffusion parameter for parallel term of diffusion tensor
-} HeliosheatProperties_t;
+};
 
 #define NMaxIsotopes 10
 
-typedef struct SimulatedHeliosphere_t {
+struct SimulatedHeliosphere_t {
     // properties related to heliosphere like dimension, coefficients
     // float Rmirror = 0.3; // [AU] Internal heliosphere bounduary - mirror radius.
 
@@ -69,9 +67,10 @@ typedef struct SimulatedHeliosphere_t {
     HeliosphereBoundRadius_t RadBoundary_real[NMaxRegions] = {0}; // real boundaries heliosphere
     bool IsHighActivityPeriod[NMaxRegions] = {false}; // active the modification for high activity period
     //  HeliosphereZoneProperties_t prop_medium[NMaxRegions];             // PROPerties of the interplanetary MEDIUM - Heliospheric Parameters in each Heliospheric Zone
-} SimulatedHeliosphere_t;
+};
 
-typedef struct SimParameters_t {
+
+struct SimParameters_t {
     // Place here all simulation variables
     char output_file_name[struct_string_lengh] = "SimTest";
     unsigned long RandomSeed = 0;
@@ -88,7 +87,8 @@ typedef struct SimParameters_t {
     HeliosphereZoneProperties_t prop_medium[NMaxRegions];
     // PROPerties of the interplanetary MEDIUM - Heliospheric Parameters in each Heliospheric Zone
     HeliosheatProperties_t prop_Heliosheat[NMaxRegions]; // Properties of Heliosheat
-} SimParameters_t;
+};
+
 
 #endif
 
