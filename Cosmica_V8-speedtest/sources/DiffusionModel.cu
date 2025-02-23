@@ -10,10 +10,11 @@
  * @brief Create an effective heliosphere of 100 AU. This is due to the fact that K0 parameters are tuned on such dimension.
  *
  * @param Rbound Heliosphere boundaries to be rescaled
- * @param part Initial position to be rescaled
+ * @param parts Initial position to be rescaled
+ * @param index
  * @return void
  */
-void RescaleToEffectiveHeliosphere(HeliosphereBoundRadius_t &Rbound, vect3D_t &part) {
+void RescaleToEffectiveHeliosphere(HeliosphereBoundRadius_t &Rbound, InitialPositions_t &parts, const unsigned index) {
     const float Rts_nose_realworld = Rbound.Rts_nose;
     const float Rhp_nose_realworld = Rbound.Rhp_nose;
     const float Rts_tail_realworld = Rbound.Rts_tail;
@@ -25,10 +26,10 @@ void RescaleToEffectiveHeliosphere(HeliosphereBoundRadius_t &Rbound, vect3D_t &p
     Rbound.Rhp_nose = Rbound.Rts_nose + (Rhp_nose_realworld - Rts_nose_realworld); //122.;
     Rbound.Rhp_tail = Rbound.Rts_tail + (Rhp_tail_realworld - Rts_tail_realworld); //Rhp_tail*Rhp/Rhp_realworld;
 
-    const float HM_Rts_d = Boundary(part.th, part.phi, Rbound.Rts_nose, Rbound.Rts_tail);
-    const float RW_Rts_d = Boundary(part.th, part.phi, Rts_nose_realworld, Rts_tail_realworld);
-    if (const float Rdi_real = part.r; Rdi_real <= RW_Rts_d) part.r = Rdi_real / RW_Rts_d * HM_Rts_d;
-    else part.r = HM_Rts_d + (Rdi_real - RW_Rts_d);
+    const float HM_Rts_d = Boundary(parts.th[index], parts.phi[index], Rbound.Rts_nose, Rbound.Rts_tail);
+    const float RW_Rts_d = Boundary(parts.th[index], parts.phi[index], Rts_nose_realworld, Rts_tail_realworld);
+    if (const float Rdi_real = parts.r[index]; Rdi_real <= RW_Rts_d) parts.r[index] = Rdi_real / RW_Rts_d * HM_Rts_d;
+    else parts.r[index] = HM_Rts_d + (Rdi_real - RW_Rts_d);
 }
 
 

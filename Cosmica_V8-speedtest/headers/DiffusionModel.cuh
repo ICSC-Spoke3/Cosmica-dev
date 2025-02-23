@@ -3,7 +3,7 @@
 #include <tuple>
 
 
-void RescaleToEffectiveHeliosphere(HeliosphereBoundRadius_t &, vect3D_t &);
+void RescaleToEffectiveHeliosphere(HeliosphereBoundRadius_t &, InitialPositions_t &, unsigned);
 
 float K0Fit_ssn(float, float, float, float *);
 
@@ -18,7 +18,8 @@ float g_low(int, int, float);
 float rconst(int, int, float);
 
 __device__ float3
-Diffusion_Tensor_In_HMF_Frame(const Index_t &, const QuasiParticle_t &qp, float, float, float3 &, SimulationParametrization_t);
+Diffusion_Tensor_In_HMF_Frame(const Index_t &, const QuasiParticle_t &qp, float, float, float3 &,
+                              SimulationParametrization_t);
 
-__device__ float Diffusion_Coeff_heliosheat(const Index_t &, const QuasiParticle_t&, float, float &);
+__device__ float Diffusion_Coeff_heliosheat(const Index_t &, const QuasiParticle_t &, float, float &);
 #endif

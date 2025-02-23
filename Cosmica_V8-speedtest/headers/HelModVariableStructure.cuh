@@ -73,7 +73,7 @@ struct SimConfiguration_t {
     unsigned NT; // number of bins of energies to be simulated
     unsigned NInitialPositions = 0;
     float *Tcentr; // array of energies to be simulated
-    vect3D_t *InitialPosition; // initial position
+    InitialPositions_t InitialPositions; // initial position
     MonteCarloResult_t *Results; // output of the code
     float RelativeBinAmplitude = 0.00855;
     // SimulatedHeliosphere_t HeliosphereToBeSimulated; // Heliosphere properties for the simulation

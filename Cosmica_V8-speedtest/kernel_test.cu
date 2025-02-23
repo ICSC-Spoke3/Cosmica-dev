@@ -69,13 +69,7 @@
 // ------------  Device Constant Variables declaration -------------
 // -----------------------------------------------------------------
 __constant__ SimulationConstants_t Constants;
-// Heliosphere properties include Local Interplanetary medium parameters
-// __constant__ HeliosphereZoneProperties_t LIM[NMaxRegions]; // inner heliosphere
-// __constant__ HeliosheatProperties_t HS[NMaxRegions]; // heliosheat
-// __constant__ float dev_Npart;
-// __constant__ float min_dt;
-// __constant__ float max_dt;
-// __constant__ float timeout;
+
 
 #ifdef UNIFIED_COMPILE
 #include "sources/DiffusionModel.cu"
@@ -148,15 +142,6 @@ int main(int argc, char *argv[]) {
         }
 #endif
 
-    // Allocate the intial positions and rigidities into which load simulation configuration values
-    InitialPositions_t InitialPositions;
-    float *InitialRigidities;
-
-    // Allocate simulation global parameters
-    int NInitPos = 0;
-    unsigned int NParts = 0;
-    int NInitRig = 0;
-    float RelativeBinAmplitude = 0;
     SimConfiguration_t SimParameters;
 
     if (LoadConfigFile(argc, argv, SimParameters, VERBOSE_LOAD) != EXIT_SUCCESS) {
@@ -164,34 +149,14 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    // Initialize the needed parameters for the new cosmica code
-    NInitPos = static_cast<int>(SimParameters.NInitialPositions);
-    NParts = SimParameters.NInitialPositions * SimParameters.Npart;
-    InitialPositions = LoadInitPos(NParts, VERBOSE_LOAD);
+    unsigned NParts = SimParameters.NInitialPositions * SimParameters.Npart;
 
     ////////////////////////////////////////////////////////////////
     //..... Rescale Heliosphere to an effective one  ...............
     ////////////////////////////////////////////////////////////////
 
-    for (int ipos = 0; ipos < NInitPos; ipos++) {
-        InitialPositions.r[ipos] = SimParameters.InitialPosition[ipos].r;
-        InitialPositions.th[ipos] = SimParameters.InitialPosition[ipos].th;
-        InitialPositions.phi[ipos] = SimParameters.InitialPosition[ipos].phi;
-    }
-
-    NInitRig = static_cast<int>(SimParameters.NT);
-    InitialRigidities = LoadInitRigidities(NInitRig, VERBOSE_LOAD);
-
-    for (int iR = 0; iR < NInitRig; iR++) {
-        InitialRigidities[iR] = SimParameters.Tcentr[iR];
-    }
-
-    // relative (respect 1.) amplitude of Energy bin used as X axis in BoundaryDistribution  --> delta T = T*RelativeBinAmplitude
-    RelativeBinAmplitude = SimParameters.RelativeBinAmplitude;
-
-
     // Allocation of the output results for all the rigidities
-    auto *Results = static_cast<struct MonteCarloResult_t *>(malloc(NInitRig * sizeof(MonteCarloResult_t)));
+    auto *Results = new MonteCarloResult_t[SimParameters.NT];
 
     // .. Results saving files
 
@@ -330,7 +295,7 @@ int main(int argc, char *argv[]) {
         //  Build the exit energy histogram
 
         // Cycle on rigidity bins distributing their execution between the active CPU threads
-        for (unsigned int iR = gpu_id; iR < NInitRig; iR += NGPUs) {
+        for (unsigned int iR = gpu_id; iR < SimParameters.NT; iR += NGPUs) {
             if constexpr (VERBOSE) {
                 HANDLE_ERROR(cudaEventCreate( &Cycle_start ));
                 HANDLE_ERROR(cudaEventCreate( &Cycle_step00 ));
@@ -344,7 +309,7 @@ int main(int argc, char *argv[]) {
 
             // GPU propagation kernel execution parameters debugging
             if constexpr (VERBOSE_2) {
-                printf("\n-- Cycle on rigidity[%d]: %.2f \n", iR, InitialRigidities[iR]);
+                printf("\n-- Cycle on rigidity[%d]: %.2f \n", iR, SimParameters.Tcentr[iR]);
                 printf("Quasi-particles propagation kernel launched\n");
                 printf("Number of quasi-particles: %d\n", NParts);
                 printf("Number of blocks: %d\n", prop_launch_param.blocks);
@@ -354,10 +319,10 @@ int main(int argc, char *argv[]) {
 
             // Initialize the particle starting rigidities
             for (int iPart = 0; iPart < NParts; iPart++) {
-                QuasiParts.r[iPart] = InitialPositions.r[indexes.period[iPart]];
-                QuasiParts.th[iPart] = InitialPositions.th[indexes.period[iPart]];
-                QuasiParts.phi[iPart] = InitialPositions.phi[indexes.period[iPart]];
-                QuasiParts.R[iPart] = InitialRigidities[iR];
+                QuasiParts.r[iPart] = SimParameters.InitialPositions.r[indexes.period[iPart]];
+                QuasiParts.th[iPart] = SimParameters.InitialPositions.th[indexes.period[iPart]];
+                QuasiParts.phi[iPart] = SimParameters.InitialPositions.phi[indexes.period[iPart]];
+                QuasiParts.R[iPart] = SimParameters.Tcentr[iR];
                 QuasiParts.t_fly[iPart] = 0;
             }
 
@@ -409,7 +374,7 @@ int main(int argc, char *argv[]) {
                 }
             }
             if constexpr (VERBOSE_2)
-                fprintf(stdout, "\n--- RMin = %.3f Rmax = %.3f \n", InitialRigidities[iR],
+                fprintf(stdout, "\n--- RMin = %.3f Rmax = %.3f \n", SimParameters.Tcentr[iR],
                         Maxs[0]);
 
             if (Maxs[0] < SimParameters.Tcentr[iR]) {
@@ -443,8 +408,8 @@ int main(int argc, char *argv[]) {
             }
 
             // Definition of histogram binning as a fraction of the bin border (DeltaT=T*RelativeBinAmplitude)
-            float DeltaLogR = log10f(1.f + RelativeBinAmplitude);
-            float LogBin0_lowEdge = log10f(InitialRigidities[iR]) - DeltaLogR / 2.f;
+            float DeltaLogR = log10f(1.f + SimParameters.RelativeBinAmplitude);
+            float LogBin0_lowEdge = log10f(SimParameters.Tcentr[iR]) - DeltaLogR / 2.f;
             float Bin0_lowEdge = powf(10, LogBin0_lowEdge); // first LowEdge Bin
 
             Results[iR].Nbins = ceil(log10(Maxs[0] / Bin0_lowEdge) / DeltaLogR);
@@ -557,7 +522,7 @@ int main(int argc, char *argv[]) {
     //  Free the dynamic memory
 
     // Save the rigidity histograms to txt file
-    for (int iR = 0; iR < NInitRig; iR++) {
+    for (int iR = 0; iR < SimParameters.NT; iR++) {
         SaveTxt_histo(histo_filename, Results[iR].Nbins, Results[iR], VERBOSE_2);
     }
 
@@ -609,12 +574,9 @@ int main(int argc, char *argv[]) {
     fclose(pFile_Matrix);
 #endif
 
-    // Free of the initial simulation variables
-    free(InitialPositions.r);
-    free(InitialPositions.th);
-    free(InitialPositions.phi);
-    free(InitialRigidities);
-
+    free(SimParameters.InitialPositions.r);
+    free(SimParameters.InitialPositions.th);
+    free(SimParameters.InitialPositions.phi);
     free(SimParameters.Tcentr);
 
     free(GPUs_profile);

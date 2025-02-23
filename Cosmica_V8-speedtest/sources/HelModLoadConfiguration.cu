@@ -254,11 +254,11 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
     // }
 
     SimParameters.NInitialPositions = SPr.size();
-    SimParameters.InitialPosition = new vect3D_t[SimParameters.NInitialPositions];
+    std::ranges::copy(SPr, SimParameters.InitialPositions.r = new float[SPr.size()]);
+    std::ranges::copy(SPth, SimParameters.InitialPositions.th = new float[SPth.size()]);
+    std::ranges::copy(SPphi, SimParameters.InitialPositions.phi = new float[SPphi.size()]);
 
     for (size_t i = 0; i < SimParameters.NInitialPositions; ++i) {
-        SimParameters.InitialPosition[i] = {SPr[i], SPth[i], SPphi[i]};
-
         float mean_tilt = 0;
         for (size_t j = i; j < SimParameters.simulation_constants.Nregions + i; ++j) mean_tilt += IHP[j].TiltAngle;
         mean_tilt /= static_cast<float>(SimParameters.simulation_constants.Nregions);
@@ -274,7 +274,7 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
                       SimParameters.simulation_constants.RadBoundary_effe);
     for (int i = 0; i < SimParameters.NInitialPositions; ++i) {
         RescaleToEffectiveHeliosphere(SimParameters.simulation_constants.RadBoundary_effe[i],
-                                      SimParameters.InitialPosition[i]);
+                                      SimParameters.InitialPositions, i);
     }
 
     SimParameters.simulation_parametrization.Nparams = 1;
@@ -341,9 +341,9 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
         fprintf(stderr, "Number of sources       : %hhu \n", SimParameters.NInitialPositions);
         for (int i = 0; i < SimParameters.NInitialPositions; i++) {
             fprintf(stderr, "position              :%d \n", i);
-            fprintf(stderr, "  Init Pos (real) - r     : %.2f \n", SimParameters.InitialPosition[i].r);
-            fprintf(stderr, "  Init Pos (real) - theta : %.2f \n", SimParameters.InitialPosition[i].th);
-            fprintf(stderr, "  Init Pos (real) - phi   : %.2f \n", SimParameters.InitialPosition[i].phi);
+            fprintf(stderr, "  Init Pos (real) - r     : %.2f \n", SimParameters.InitialPositions.r[i]);
+            fprintf(stderr, "  Init Pos (real) - theta : %.2f \n", SimParameters.InitialPositions.th[i]);
+            fprintf(stderr, "  Init Pos (real) - phi   : %.2f \n", SimParameters.InitialPositions.phi[i]);
         }
         fprintf(stderr, "output_file_name        : %s \n", SimParameters.output_file_name);
         fprintf(stderr, "number of input energies: %d \n", SimParameters.NT);
@@ -574,10 +574,12 @@ int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbo
     config.RandomSeed = random_seed;
     config.Npart = n_particles;
     std::ranges::copy(rigidities, config.Tcentr = new float[config.NT = rigidities.size()]);
-    config.InitialPosition = new vect3D_t[config.NInitialPositions = n_sources];
-    for (size_t i = 0; i < config.NInitialPositions; ++i) {
-        config.InitialPosition[i] = {source_r[i], source_th[i], source_phi[i]};
-    }
+
+    config.NInitialPositions = n_sources;
+    std::ranges::copy(source_r, config.InitialPositions.r = new float[n_sources]);
+    std::ranges::copy(source_th, config.InitialPositions.th = new float[n_sources]);
+    std::ranges::copy(source_phi, config.InitialPositions.phi = new float[n_sources]);
+
     config.Results = new MonteCarloResult_t[config.NT];
     config.RelativeBinAmplitude = relative_bin_amplitude;
 
@@ -588,9 +590,9 @@ int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbo
     std::ranges::copy(boundary, config.simulation_constants.RadBoundary_real);
 
     std::ranges::copy(config.simulation_constants.RadBoundary_real, config.simulation_constants.RadBoundary_effe);
-    for (int i = 0; i < n_sources; ++i) {
+    for (int i = 0; i < config.NInitialPositions; ++i) {
         RescaleToEffectiveHeliosphere(config.simulation_constants.RadBoundary_effe[i],
-                                      config.InitialPosition[i]);
+                                      config.InitialPositions, i);
     }
 
     config.simulation_parametrization.Nparams = n_params;
@@ -612,9 +614,9 @@ int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbo
         fprintf(stderr, "Number of sources       : %hhu \n", config.NInitialPositions);
         for (int i = 0; i < config.NInitialPositions; i++) {
             fprintf(stderr, "position              :%d \n", i);
-            fprintf(stderr, "  Init Pos (real) - r     : %.2f \n", config.InitialPosition[i].r);
-            fprintf(stderr, "  Init Pos (real) - theta : %.2f \n", config.InitialPosition[i].th);
-            fprintf(stderr, "  Init Pos (real) - phi   : %.2f \n", config.InitialPosition[i].phi);
+            fprintf(stderr, "  Init Pos (real) - r     : %.2f \n", config.InitialPositions.r[i]);
+            fprintf(stderr, "  Init Pos (real) - theta : %.2f \n", config.InitialPositions.th[i]);
+            fprintf(stderr, "  Init Pos (real) - phi   : %.2f \n", config.InitialPositions.phi[i]);
         }
         fprintf(stderr, "output_file_name        : %s \n", config.output_file_name);
         fprintf(stderr, "number of input energies: %d \n", config.NT);
