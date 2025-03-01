@@ -166,8 +166,7 @@ int main(int argc, char *argv[]) {
     // .. Results saving files
 
     // Initial and final results files
-    char file_trivial[8];
-    sprintf(file_trivial, "");
+    char file_trivial[8] = {};
 
     char init_filename[20];
     sprintf(init_filename, "%sprop_in.txt", file_trivial);
@@ -322,7 +321,7 @@ int main(int argc, char *argv[]) {
             }
 
             // Initialize the particle starting rigidities
-            for (int iPart = 0; iPart < NParts; iPart++) {
+            for (unsigned iPart = 0; iPart < NParts; ++iPart) {
                 QuasiParts.r[iPart] = SimParameters.InitialPositions.r[indexes.period[iPart]];
                 QuasiParts.th[iPart] = SimParameters.InitialPositions.th[indexes.period[iPart]];
                 QuasiParts.phi[iPart] = SimParameters.InitialPositions.phi[indexes.period[iPart]];
@@ -496,7 +495,7 @@ int main(int argc, char *argv[]) {
     //  Free the dynamic memory
 
     // Save the rigidity histograms to txt file
-    for (int iR = 0; iR < SimParameters.NT; iR++) {
+    for (unsigned iR = 0; iR < SimParameters.NT; ++iR) {
         SaveTxt_histo(histo_filename, OldResults[iR].Nbins, OldResults[iR], VERBOSE_2);
     }
 
@@ -520,7 +519,7 @@ int main(int argc, char *argv[]) {
     if constexpr (VERBOSE) fprintf(pFile_Matrix, "# Number of Input energies;\n");
     fprintf(pFile_Matrix, "%d \n", SimParameters.NT);
 
-    for (int itemp = 0; itemp < SimParameters.NT; itemp++) {
+    for (unsigned itemp = 0; itemp < SimParameters.NT; ++itemp) {
         if constexpr (VERBOSE) {
             fprintf(pFile_Matrix, "######  Bin %d \n", itemp);
             fprintf(pFile_Matrix,
@@ -548,14 +547,14 @@ int main(int argc, char *argv[]) {
     fclose(pFile_Matrix);
 #endif
 
-    free(SimParameters.InitialPositions.r);
-    free(SimParameters.InitialPositions.th);
-    free(SimParameters.InitialPositions.phi);
-    free(SimParameters.Tcentr);
+    delete[] SimParameters.InitialPositions.r;
+    delete[] SimParameters.InitialPositions.th;
+    delete[] SimParameters.InitialPositions.phi;
+    delete[] SimParameters.Tcentr;
 
-    free(GPUs_profile);
+    delete[] GPUs_profile;
 
-    free(OldResults);
+    delete[] OldResults;
 
     if constexpr (VERBOSE) {
         // -- Save end time of simulation into log file

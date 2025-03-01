@@ -174,7 +174,7 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
         if (verbose >= VERBOSE_med) {
             fprintf(stderr, "-- --- Init ---\n");
             fprintf(stderr, "-- you entered %d arguments:\n", argc);
-            for (int i = 0; i < argc; i++) { fprintf(stderr, "-->  %s \n", argv[i]); }
+            for (int i = 0; i < argc; ++i) { fprintf(stderr, "-->  %s \n", argv[i]); }
         }
     }
 
@@ -190,6 +190,7 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
             switch (hash(key)) {
                 case "RandomSeed"_:
                     SimParameters.RandomSeed = std::stol(value);
+                    break;
                 case "OutputFilename"_:
                     strncpy(SimParameters.output_file_name, value.c_str(), struct_string_lengh);
                     break;
@@ -272,7 +273,7 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
 
     std::ranges::copy(SimParameters.simulation_constants.RadBoundary_real,
                       SimParameters.simulation_constants.RadBoundary_effe);
-    for (int i = 0; i < SimParameters.NInitialPositions; ++i) {
+    for (unsigned i = 0; i < SimParameters.NInitialPositions; ++i) {
         RescaleToEffectiveHeliosphere(SimParameters.simulation_constants.RadBoundary_effe[i],
                                       SimParameters.InitialPositions, i);
     }
@@ -323,7 +324,7 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
             IHP[i].SolarPhase, IHP[i].TiltAngle);
     }
 
-    for (int i = 0; i < IHS.size(); i++) {
+    for (unsigned i = 0; i < IHS.size(); ++i) {
         SimParameters.simulation_constants.heliosheat_properties[i].k0 = IHS[i].k0;
         SimParameters.simulation_constants.heliosheat_properties[i].V0 = IHS[i].V0 / aukm;
     }
@@ -339,7 +340,7 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
         fprintf(stderr, "MassNumber              : %.1f \n", SimParameters.simulation_constants.Isotopes[0].A);
         fprintf(stderr, "Charge                  : %.1f \n", SimParameters.simulation_constants.Isotopes[0].Z);
         fprintf(stderr, "Number of sources       : %hhu \n", SimParameters.NInitialPositions);
-        for (int i = 0; i < SimParameters.NInitialPositions; i++) {
+        for (unsigned i = 0; i < SimParameters.NInitialPositions; ++i) {
             fprintf(stderr, "position              :%d \n", i);
             fprintf(stderr, "  Init Pos (real) - r     : %.2f \n", SimParameters.InitialPositions.r[i]);
             fprintf(stderr, "  Init Pos (real) - theta : %.2f \n", SimParameters.InitialPositions.th[i]);
@@ -348,7 +349,7 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
         fprintf(stderr, "output_file_name        : %s \n", SimParameters.output_file_name);
         fprintf(stderr, "number of input energies: %d \n", SimParameters.NT);
         fprintf(stderr, "input energies          : ");
-        for (int i = 0; i < SimParameters.NT; i++) {
+        for (unsigned i = 0; i < SimParameters.NT; ++i) {
             fprintf(stderr, "%.2f ", SimParameters.Tcentr[i]);
         }
         fprintf(stderr, "\n");
@@ -357,7 +358,7 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
 
         fprintf(stderr, "\n");
         fprintf(stderr, "for each simulated periods:\n");
-        for (int i = 0; i < SimParameters.NInitialPositions; i++) {
+        for (unsigned i = 0; i < SimParameters.NInitialPositions; ++i) {
             fprintf(stderr, "position              :%d \n", i);
             fprintf(stderr, "  IsHighActivityPeriod    : %s \n",
                     SimParameters.simulation_constants.IsHighActivityPeriod[i] ? "true" : "false");
@@ -372,8 +373,8 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
         }
         fprintf(stderr, "Heliopshere Parameters ( %d regions ): \n", SimParameters.simulation_constants.Nregions);
 
-        for (int i = 0; i < SimParameters.simulation_constants.Nregions + SimParameters.
-                        NInitialPositions - 1; i++) {
+        for (unsigned i = 0; i < SimParameters.simulation_constants.Nregions + SimParameters.NInitialPositions - 1; ++
+             i) {
             fprintf(stderr, "- Region %d \n", i);
             fprintf(stderr, "-- V0         %e AU/s\n", SimParameters.simulation_constants.heliosphere_properties[i].V0);
             fprintf(stderr, "-- k0_paral   [%e,%e] \n",
@@ -400,7 +401,7 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
             // XXXXXXX
         }
         fprintf(stderr, "Heliosheat parameters ( %d periods ): \n", SimParameters.NInitialPositions);
-        for (int ipos = 0; ipos < SimParameters.NInitialPositions; ipos++) {
+        for (unsigned ipos = 0; ipos < SimParameters.NInitialPositions; ++ipos) {
             fprintf(stderr, "-period              :%d \n", ipos);
             fprintf(stderr, "-- V0 %e AU/s\n", SimParameters.simulation_constants.heliosheat_properties[ipos].V0);
             fprintf(stderr, "-- k0 %e \n", SimParameters.simulation_constants.heliosheat_properties[ipos].k0);
@@ -558,7 +559,7 @@ int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbo
         if (verbose >= VERBOSE_med) {
             fprintf(stderr, "-- --- Init ---\n");
             fprintf(stderr, "-- you entered %d arguments:\n", argc);
-            for (int i = 0; i < argc; i++) { fprintf(stderr, "-->  %s \n", argv[i]); }
+            for (int i = 0; i < argc; ++i) { fprintf(stderr, "-->  %s \n", argv[i]); }
         }
     }
 
@@ -601,7 +602,7 @@ int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbo
     std::ranges::copy(boundary, config.simulation_constants.RadBoundary_real);
 
     std::ranges::copy(config.simulation_constants.RadBoundary_real, config.simulation_constants.RadBoundary_effe);
-    for (int i = 0; i < config.NInitialPositions; ++i) {
+    for (unsigned i = 0; i < config.NInitialPositions; ++i) {
         RescaleToEffectiveHeliosphere(config.simulation_constants.RadBoundary_effe[i],
                                       config.InitialPositions, i);
     }
@@ -609,7 +610,7 @@ int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbo
     config.simulation_parametrization.Nparams = n_params;
     config.simulation_parametrization.params = AllocateManaged<SimulationParametrizations_t::Parametrization_t
         []>(n_params);
-    for (unsigned int i = 0; i < n_params; ++i) {
+    for (unsigned i = 0; i < n_params; ++i) {
         std::ranges::copy(heliosphere_param[i], config.simulation_parametrization.params[i].heliosphere);
     }
     std::ranges::copy(heliosphere, config.simulation_constants.heliosphere_properties);
@@ -624,7 +625,7 @@ int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbo
         fprintf(stderr, "MassNumber              : %.1f \n", config.simulation_constants.Isotopes[0].A);
         fprintf(stderr, "Charge                  : %.1f \n", config.simulation_constants.Isotopes[0].Z);
         fprintf(stderr, "Number of sources       : %hhu \n", config.NInitialPositions);
-        for (int i = 0; i < config.NInitialPositions; i++) {
+        for (unsigned i = 0; i < config.NInitialPositions; ++i) {
             fprintf(stderr, "position              :%d \n", i);
             fprintf(stderr, "  Init Pos (real) - r     : %.2f \n", config.InitialPositions.r[i]);
             fprintf(stderr, "  Init Pos (real) - theta : %.2f \n", config.InitialPositions.th[i]);
@@ -633,7 +634,7 @@ int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbo
         fprintf(stderr, "output_file_name        : %s \n", config.output_file_name);
         fprintf(stderr, "number of input energies: %d \n", config.NT);
         fprintf(stderr, "input energies          : ");
-        for (int i = 0; i < config.NT; i++) {
+        for (unsigned i = 0; i < config.NT; ++i) {
             fprintf(stderr, "%.2f ", config.Tcentr[i]);
         }
         fprintf(stderr, "\n");
@@ -642,7 +643,7 @@ int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbo
 
         fprintf(stderr, "\n");
         fprintf(stderr, "for each simulated periods:\n");
-        for (int i = 0; i < config.NInitialPositions; i++) {
+        for (unsigned i = 0; i < config.NInitialPositions; ++i) {
             fprintf(stderr, "position              :%d \n", i);
             fprintf(stderr, "  IsHighActivityPeriod    : %s \n",
                     config.simulation_constants.IsHighActivityPeriod[i] ? "true" : "false");
@@ -657,8 +658,7 @@ int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbo
         }
         fprintf(stderr, "Heliopshere Parameters ( %d regions ): \n", config.simulation_constants.Nregions);
 
-        for (int i = 0; i < config.simulation_constants.Nregions + config.
-                        NInitialPositions - 1; i++) {
+        for (unsigned i = 0; i < config.simulation_constants.Nregions + config.NInitialPositions - 1; ++i) {
             fprintf(stderr, "- Region %d \n", i);
             fprintf(stderr, "-- V0         %e AU/s\n", config.simulation_constants.heliosphere_properties[i].V0);
             fprintf(stderr, "-- k0_paral   [%e,%e] \n",
@@ -682,7 +682,7 @@ int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbo
             // XXXXXXX
         }
         fprintf(stderr, "Heliosheat parameters ( %d periods ): \n", config.NInitialPositions);
-        for (int ipos = 0; ipos < config.NInitialPositions; ipos++) {
+        for (unsigned ipos = 0; ipos < config.NInitialPositions; ++ipos) {
             fprintf(stderr, "-period              :%d \n", ipos);
             fprintf(stderr, "-- V0 %e AU/s\n", config.simulation_constants.heliosheat_properties[ipos].V0);
             fprintf(stderr, "-- k0 %e \n", config.simulation_constants.heliosheat_properties[ipos].k0);

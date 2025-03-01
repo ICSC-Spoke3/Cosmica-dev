@@ -1,20 +1,12 @@
+#include <iostream>
+#include <cstdio>          // Supplies FILE, stdin, stdout, stderr, and the fprint() family of functions
+#include <cuda_runtime.h>   // Device code management by providing implicit initialization, context management, and module management
+
+
 #include "GPUManage.cuh"
 #include "VariableStructure.cuh"
 #include "GenComputation.cuh"
 
-#include <cstdio>          // Supplies FILE, stdin, stdout, stderr, and the fprint() family of functions
-#include <curand_kernel.h>  // CUDA random number device library
-#include <cuda_runtime.h>   // Device code management by providing implicit initialization, context management, and module management
-
-
-
-#include <HeliosphericPropagation.cuh>
-
-
-#include <iostream>
-
-
-#include <unistd.h>         // Supplies EXIT_FAILURE, EXIT_SUCCESS
 
 void HandleError(const cudaError_t err, const char *file, const int line) {
     if (err != cudaSuccess) {
@@ -67,7 +59,8 @@ LaunchParam_t RoundNpart(const unsigned NPart, cudaDeviceProp GPUprop, const boo
     // Use a minimum of 2 blocks per Single Multiprocessor (cuda prescription)
     if (launch_param.blocks < 2) launch_param.blocks = 2;
 
-    if (launch_param.threads > GPUprop.maxThreadsPerBlock || launch_param.blocks > GPUprop.maxGridSize[0]) {
+    if (launch_param.threads > static_cast<unsigned>(GPUprop.maxThreadsPerBlock) ||
+        launch_param.blocks > static_cast<unsigned>(GPUprop.maxGridSize[0])) {
         fprintf(stderr, "------- propagation Kernel -----------------\n");
         fprintf(stderr, "ERROR:: Number of Threads per block or number of blocks not allowed for this device\n");
         fprintf(stderr, "        Number of Threads per Block setted %d - max allowed %d\n", launch_param.threads,
