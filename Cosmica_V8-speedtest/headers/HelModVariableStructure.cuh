@@ -1,5 +1,8 @@
 #ifndef HelModVariableStructure
 #define HelModVariableStructure
+#include <vector>
+#include <string>
+
 #include "VariableStructure.cuh"
 
 ////////////////////////////////////////////////////////////////
@@ -75,6 +78,7 @@ struct SimConfiguration_t {
     // SimulatedHeliosphere_t HeliosphereToBeSimulated; // Heliosphere properties for the simulation
     SimulationParametrization_t simulation_parametrization;
     SimulationConstants_t simulation_constants;
+    std::vector<std::string> isotopes_names;
 };
 
 #endif

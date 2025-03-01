@@ -35,7 +35,7 @@
 #define USAGE_MESSAGE "Thanks for using Cosmica, To execute this program please specify: "
 #define USAGE_FMT  "%s [-v] -i <inputfile> [-h] \n"
 
-using std::vector, std::string, std::unordered_map;
+using std::vector, std::string, std::pair, std::unordered_map;
 
 void usage(const char *progname) {
     fprintf(stderr, USAGE_MESSAGE);
@@ -135,13 +135,13 @@ std::pair<string, string> splitKeyValue(const string &line) {
 
 #ifndef UNIFIED_COMPILE
 constexpr unsigned long hash(const std::string_view &str) {
-     unsigned long hash = 0;
-     for (const auto &e: str) hash = hash * 131 + e;
-     return hash;
+    unsigned long hash = 0;
+    for (const auto &e: str) hash = hash * 131 + e;
+    return hash;
 }
 
 consteval unsigned long operator""_(const char *str, const size_t len) {
-     return hash(std::string_view(str, len));
+    return hash(std::string_view(str, len));
 }
 #endif
 
@@ -423,10 +423,20 @@ T node_to_value(const fkyaml::node &node) {
 }
 
 template<typename T>
-std::vector<T> node_to_vector(const fkyaml::node &node) {
+auto node_to_vector(const fkyaml::node &node) {
     vector<T> ret;
     std::ranges::transform(node, std::back_inserter(ret),
-                           [](const auto &p) { return p.template get_value<T>(); });
+                           [](const auto &p) { return node_to_value<T>(p); });
+    return ret;
+}
+
+template<typename T>
+auto node_to_map(const fkyaml::node &node) {
+    pair<vector<string>, vector<T> > ret;
+    std::ranges::transform(node.as_map(), std::back_inserter(ret.first),
+                           [](const auto &p) { return p.first.as_str(); });
+    std::ranges::transform(node.as_map(), std::back_inserter(ret.second),
+                           [](const auto &p) { return node_to_value<T>(p.second); });
     return ret;
 }
 
@@ -559,7 +569,7 @@ int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbo
     auto rigidities = node_to_vector<float>(node["rigidities"]);
     auto n_particles = node_to_value<unsigned>(node["n_particles"]);
     auto n_regions = node_to_value<unsigned>(node["n_regions"]);
-    auto isotopes = node_to_vector<PartDescription_t>(node["isotopes"]);
+    auto [isotopes_names, isotopes] = node_to_map<PartDescription_t>(node["isotopes"]);
     auto source_r = node_to_vector<float>(node["sources"]["r"]);
     auto source_th = node_to_vector<float>(node["sources"]["th"]);
     auto source_phi = node_to_vector<float>(node["sources"]["phi"]);
@@ -583,6 +593,7 @@ int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbo
     config.Results = new MonteCarloResult_t[config.NT];
     config.RelativeBinAmplitude = relative_bin_amplitude;
 
+    config.isotopes_names = isotopes_names;
     config.simulation_constants.NIsotopes = isotopes.size();
     std::ranges::copy(isotopes, config.simulation_constants.Isotopes);
     config.simulation_constants.Nregions = n_regions;
@@ -606,7 +617,8 @@ int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbo
 
     config.Npart = ceil_int(config.Npart, config.NInitialPositions);
 
-    if (verbose >= VERBOSE_med) {
+    if (verbose >= 111) {
+        //TODO: change to VERBOSE_mid
         fprintf(stderr, "----- Recap of Simulation parameters ----\n");
         fprintf(stderr, "NucleonRestMass         : %.3f Gev/n \n", config.simulation_constants.Isotopes[0].T0);
         fprintf(stderr, "MassNumber              : %.1f \n", config.simulation_constants.Isotopes[0].A);
