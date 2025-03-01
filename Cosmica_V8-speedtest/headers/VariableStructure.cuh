@@ -6,9 +6,8 @@
 
 // Struct with threads, blocks and share memory with which launch a cuda function
 struct LaunchParam_t {
-    int threads = 0;
-    int blocks = 0;
-    int smem = 0;
+    unsigned threads = 0;
+    unsigned blocks = 0;
 };
 
 struct InputHeliosphericParametrizationProperties_t {

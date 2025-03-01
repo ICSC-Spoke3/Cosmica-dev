@@ -5,51 +5,63 @@
 
 #include "VariableStructure.cuh"
 
-template<typename T>
-T *AllocateManaged(const size_t size) {
+template<typename T> requires (!std::is_array_v<T>)
+T *AllocateManaged() {
     T *ptr;
-    HANDLE_ERROR(cudaMallocManaged(&ptr, size * sizeof(T)));
+    HANDLE_ERROR(cudaMallocManaged(&ptr, sizeof(T)));
+    return ptr;
+}
+
+template<typename T> requires std::is_array_v<T>
+std::remove_extent_t<T> *AllocateManaged(const size_t size) {
+    using ET = std::remove_extent_t<T>;
+    ET *ptr;
+    HANDLE_ERROR(cudaMallocManaged(&ptr, size * sizeof(ET)));
     return ptr;
 }
 
 template<typename T> requires (!std::is_array_v<T>)
 auto AllocateManagedSafe() {
-    return std::unique_ptr<T, decltype(&cudaFree)>(AllocateManaged<T>(1), cudaFree);
+    return std::unique_ptr<T, decltype(&cudaFree)>(AllocateManaged<T>(), cudaFree);
 }
 
-// Overload for array types.
 template<typename T> requires std::is_array_v<T>
 auto AllocateManagedSafe(const size_t size) {
-    using ET = std::remove_extent_t<T>;
-    return std::unique_ptr<ET[], decltype(&cudaFree)>(AllocateManaged<ET>(size), cudaFree);
+    return std::unique_ptr<T, decltype(&cudaFree)>(AllocateManaged<T>(size), cudaFree);
 }
 
-template<typename T>
-T *AllocateManaged(const size_t size, const int v) {
-    T *ptr = AllocateManaged<T>(size);
-    HANDLE_ERROR(cudaMemset(ptr, v, size*sizeof(T)));
+template<typename T> requires (!std::is_array_v<T>)
+T *AllocateManaged(const int v) {
+    T *ptr = AllocateManaged<T>();
+    HANDLE_ERROR(cudaMemset(ptr, v, sizeof(T)));
+    return ptr;
+}
+
+template<typename T> requires std::is_array_v<T>
+std::remove_extent_t<T> *AllocateManaged(const size_t size, const int v) {
+    using ET = std::remove_extent_t<T>;
+    ET *ptr = AllocateManaged<T>(size);
+    HANDLE_ERROR(cudaMemset(ptr, v, size * sizeof(ET)));
     return ptr;
 }
 
 template<typename T> requires (!std::is_array_v<T>)
 auto AllocateManagedSafe(const int v) {
-    return std::unique_ptr<T, decltype(&cudaFree)>(AllocateManaged<T>(1, v), cudaFree);
+    return std::unique_ptr<T, decltype(&cudaFree)>(AllocateManaged<T>(v), cudaFree);
 }
 
-// Overload for array types.
 template<typename T> requires std::is_array_v<T>
 auto AllocateManagedSafe(const size_t size, const int v) {
-    using ET = std::remove_extent_t<T>;
-    return std::unique_ptr<ET[], decltype(&cudaFree)>(AllocateManaged<ET>(size, v), cudaFree);
+    return std::unique_ptr<T, decltype(&cudaFree)>(AllocateManaged<T>(size, v), cudaFree);
 }
 
 ThreadQuasiParticles_t AllocateQuasiParticles(const unsigned NPart) {
     return {
-        AllocateManaged<float>(NPart),
-        AllocateManaged<float>(NPart),
-        AllocateManaged<float>(NPart),
-        AllocateManaged<float>(NPart),
-        AllocateManaged<float>(NPart),
+        AllocateManaged<float[]>(NPart),
+        AllocateManaged<float[]>(NPart),
+        AllocateManaged<float[]>(NPart),
+        AllocateManaged<float[]>(NPart),
+        AllocateManaged<float[]>(NPart),
     };
 }
 
@@ -61,15 +73,15 @@ void CopyToConstant(const T &symbol, const T *src) {
 ThreadIndexes_t AllocateIndex(const unsigned NPart) {
     return {
         NPart,
-        AllocateManaged<unsigned>(NPart),
-        AllocateManaged<unsigned>(NPart),
-        AllocateManaged<unsigned>(NPart),
+        AllocateManaged<unsigned[]>(NPart),
+        AllocateManaged<unsigned[]>(NPart),
+        AllocateManaged<unsigned[]>(NPart),
     };
 }
 
 InstanceHistograms *AllocateResults(const unsigned NRig, const unsigned NInstances) {
-    auto *res = AllocateManaged<InstanceHistograms>(NRig);
-    for (unsigned inst = 0; inst < NInstances; ++inst) res[inst] = AllocateManaged<MonteCarloResult_t>(NInstances);
+    auto *res = AllocateManaged<InstanceHistograms[]>(NRig);
+    for (unsigned inst = 0; inst < NInstances; ++inst) res[inst] = AllocateManaged<MonteCarloResult_t[]>(NInstances);
     return res;
 }
 

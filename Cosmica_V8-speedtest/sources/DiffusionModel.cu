@@ -332,14 +332,14 @@ float rconst(const int SolarPhase, const int Polarity, const float tilt) {
  */
 __device__ float3 Diffusion_Tensor_In_HMF_Frame(const Index_t &index, const QuasiParticle_t &qp, const float beta,
                                                 const float GaussRndNumber, float3 &dK_dr,
-                                                const SimulationParametrization_t params) {
+                                                const SimulationParametrizations_t params) {
     float3 Ktensor;
     // HeliosphereZoneProperties_t ThisZone=LIM[HZone+InitZone];
 
     const int high_activity = Constants.IsHighActivityPeriod[index.period] ? 0 : 1;
-    const float k0_paral = params.heliosphere_parametrization[index.param][index.combined()].k0_paral[high_activity];
-    const float k0_perp = params.heliosphere_parametrization[index.param][index.combined()].k0_perp[high_activity];
-    const float GaussVar = params.heliosphere_parametrization[index.param][index.combined()].GaussVar[high_activity];
+    const float k0_paral = params.params[index.param].heliosphere[index.combined()].k0_paral[high_activity];
+    const float k0_perp = params.params[index.param].heliosphere[index.combined()].k0_perp[high_activity];
+    const float GaussVar = params.params[index.param].heliosphere[index.combined()].GaussVar[high_activity];
     const float g_low = Constants.heliosphere_properties[index.combined()].g_low;
     const float rconst = Constants.heliosphere_properties[index.combined()].rconst;
 

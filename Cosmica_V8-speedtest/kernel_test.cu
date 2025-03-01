@@ -217,7 +217,7 @@ int main(int argc, char *argv[]) {
         cudaDeviceProp device_prop = GPUs_profile[gpu_id];
 
         // Rounding the number of particle and calculating threads, blocks and share memory to acheive the maximum usage of the GPUs
-        LaunchParam_t prop_launch_param = RoundNpart(NParts, device_prop, VERBOSE_2, SetWarpPerBlock, 1);
+        auto [THREADS, BLOCKS] = RoundNpart(NParts, device_prop, VERBOSE_2, SetWarpPerBlock);
 
         ////////////////////////////////////////////////////////////////
         //..... capture the start time of GPU part .....................
@@ -249,7 +249,7 @@ int main(int argc, char *argv[]) {
                                      ? getpid() + time(nullptr) + gpu_id
                                      : SimParameters.RandomSeed;
         cudaDeviceSynchronize();
-        init_rdmgenerator<<<prop_launch_param.blocks, prop_launch_param.threads>>>(RandStates.get(), Rnd_seed);
+        init_rdmgenerator<<<BLOCKS, THREADS>>>(RandStates.get(), Rnd_seed);
         cudaDeviceSynchronize();
 
         if constexpr (VERBOSE) {
@@ -317,9 +317,8 @@ int main(int argc, char *argv[]) {
                 printf("\n-- Cycle on rigidity[%d]: %.2f \n", iR, SimParameters.Tcentr[iR]);
                 printf("Quasi-particles propagation kernel launched\n");
                 printf("Number of quasi-particles: %d\n", NParts);
-                printf("Number of blocks: %d\n", prop_launch_param.blocks);
-                printf("Number of threads per block: %d\n", prop_launch_param.threads);
-                printf("Number of shared memory bytes per block: %d\n", prop_launch_param.smem);
+                printf("Number of blocks: %d\n", BLOCKS);
+                printf("Number of threads per block: %d\n", THREADS);
             }
 
             // Initialize the particle starting rigidities
@@ -355,9 +354,8 @@ int main(int argc, char *argv[]) {
             // Heliosphere propagation kernel
             // and local max rigidity search inside the block
             cudaDeviceSynchronize();
-            HeliosphericProp<<<prop_launch_param.blocks, prop_launch_param.threads>>>
-            (QuasiParts, indexes, SimParameters.simulation_parametrization, RandStates.get(),
-             Maxs.get());
+            HeliosphericProp<<<BLOCKS, THREADS>>>(QuasiParts, indexes, SimParameters.simulation_parametrization,
+                                                  RandStates.get(), Maxs.get());
             cudaDeviceSynchronize();
 
             if constexpr (VERBOSE) {
@@ -408,12 +406,11 @@ int main(int argc, char *argv[]) {
                 Results[iR][inst].LogBin0_lowEdge = LogBin0_lowEdge;
                 Results[iR][inst].DeltaLogR = DeltaLogR;
 
-                Results[iR][inst].BoundaryDistribution = AllocateManaged<float>(Results[iR][inst].Nbins, 0);
+                Results[iR][inst].BoundaryDistribution = AllocateManaged<float[]>(Results[iR][inst].Nbins, 0);
             }
 
             cudaDeviceSynchronize();
-            SimpleHistogram<<<prop_launch_param.blocks, prop_launch_param.threads>>>(
-                indexes, QuasiParts.R, Results[iR], Nfailed.get());
+            SimpleHistogram<<<BLOCKS, THREADS>>>(indexes, QuasiParts.R, Results[iR], Nfailed.get());
             cudaDeviceSynchronize();
 
             for (unsigned inst = 0; inst < NInstances; ++inst) {

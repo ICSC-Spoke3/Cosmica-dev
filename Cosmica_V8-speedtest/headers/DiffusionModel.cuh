@@ -1,6 +1,7 @@
 #ifndef DiffusionModel
 #define DiffusionModel
 #include <tuple>
+#include "VariableStructure.cuh"
 
 
 void RescaleToEffectiveHeliosphere(HeliosphereBoundRadius_t &, InitialPositions_t &, unsigned);
@@ -19,7 +20,7 @@ float rconst(int, int, float);
 
 __device__ float3
 Diffusion_Tensor_In_HMF_Frame(const Index_t &, const QuasiParticle_t &qp, float, float, float3 &,
-                              SimulationParametrization_t);
+                              SimulationParametrizations_t);
 
 __device__ float Diffusion_Coeff_heliosheat(const Index_t &, const QuasiParticle_t &, float, float &);
 #endif

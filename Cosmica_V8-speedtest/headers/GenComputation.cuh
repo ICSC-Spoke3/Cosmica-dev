@@ -4,14 +4,15 @@
 // #define cb(x) ((x)*(x)*(x))
 
 // ------------------------------------------
-int ceil_int(int, int);
+template <std::integral T>
+__forceinline__ constexpr T ceil_int_div(const T a, const T b) {
+   return (a + (b - 1)) / b;
+}
 
-/* Ceil safe division for integer. Rounds x=a/b upward, returning the smallest integral value that is not less than x.
-   */
-int floor_int(int, int);
-
-/* Floor safe division for integer. Rounds x=a/b downward, returning the biggest integral value that is less than x.
-   */
+template <std::integral T>
+__forceinline__ constexpr T floor_int_div(const T a, const T b) {
+   return a / b - (a % b && a < 0 != b < 0);
+}
 
 __device__ float safeSign(float);
 

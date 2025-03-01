@@ -45,9 +45,14 @@ struct HeliosheatProperties_t {
     float k0 = 0; // Diffusion parameter for parallel term of diffusion tensor
 };
 
-struct SimulationParametrization_t {
+
+struct SimulationParametrizations_t {
+    struct Parametrization_t {
+        HeliosphereParametrizationProperties_t heliosphere[NMaxRegions];
+    };
+
     unsigned Nparams;
-    HeliosphereParametrizationProperties_t (*heliosphere_parametrization)[NMaxRegions];
+    Parametrization_t *params;
 };
 
 struct SimulationConstants_t {
@@ -76,7 +81,7 @@ struct SimConfiguration_t {
     InitialPositions_t InitialPositions; // initial position
     MonteCarloResult_t *Results; // output of the code
     // SimulatedHeliosphere_t HeliosphereToBeSimulated; // Heliosphere properties for the simulation
-    SimulationParametrization_t simulation_parametrization;
+    SimulationParametrizations_t simulation_parametrization;
     SimulationConstants_t simulation_constants;
     std::vector<std::string> isotopes_names;
 };

@@ -5,7 +5,7 @@
 
 
 __device__ DiffusionTensor_t DiffusionTensor_symmetric(const Index_t &, const QuasiParticle_t &qp, PartDescription_t,
-                                                       float, SimulationParametrization_t params);
+                                                       float, SimulationParametrizations_t params);
 
 __device__ Tensor3D_t SquareRoot_DiffusionTerm(const Index_t &, const QuasiParticle_t &, DiffusionTensor_t, int *);
 

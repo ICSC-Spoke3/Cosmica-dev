@@ -7,15 +7,6 @@
 //..... GEneric useful and safe function .......................
 ////////////////////////////////////////////////////////////////
 
-int ceil_int(const int a, const int b) {
-    // https://www.reddit.com/r/C_Programming/comments/gqpuef/comment/fru7tmu/?utm_source=share&utm_medium=web2x&context=3
-    return (a + (b - 1)) / b;
-}
-
-int floor_int(const int a, const int b) {
-    return static_cast<int>(floor(a / b));
-}
-
 __device__ float safeSign(const float num) {
     if (num >= 0) return 1;
     return -1;

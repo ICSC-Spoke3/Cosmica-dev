@@ -1,23 +1,27 @@
 #ifndef LoadConfigiguration
 #define LoadConfigiguration
 
-template<typename T>
-T *AllocateManaged(size_t);
+template<typename T> requires (!std::is_array_v<T>)
+T *AllocateManaged();
+
+template<typename T> requires std::is_array_v<T>
+std::remove_extent_t<T> *AllocateManaged(size_t);
 
 template<typename T> requires (!std::is_array_v<T>)
 auto AllocateManagedSafe();
 
-// Overload for array types.
 template<typename T> requires std::is_array_v<T>
 auto AllocateManagedSafe(size_t);
 
-template<typename T>
-T *AllocateManaged(size_t, int);
+template<typename T> requires (!std::is_array_v<T>)
+T *AllocateManaged(int);
+
+template<typename T> requires std::is_array_v<T>
+std::remove_extent_t<T> *AllocateManaged(size_t, int);
 
 template<typename T> requires (!std::is_array_v<T>)
-auto AllocateManagedSafe(int v);
+auto AllocateManagedSafe(int);
 
-// Overload for array types.
 template<typename T> requires std::is_array_v<T>
 auto AllocateManagedSafe(size_t, int);
 

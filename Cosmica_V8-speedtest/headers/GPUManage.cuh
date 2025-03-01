@@ -5,7 +5,7 @@ void HandleError(cudaError_t, const char *, int);
 
 /* Manage error in GPU
    */
-struct LaunchParam_t RoundNpart(int, cudaDeviceProp, bool, int, int);
+struct LaunchParam_t RoundNpart(unsigned, cudaDeviceProp, bool, int);
 
 /* Round the number of particle to be simulated based on the GPU capability, returning a struct with threads
    and blocks count together with shared memory bytes.

@@ -20,7 +20,7 @@
  */
 __device__ DiffusionTensor_t DiffusionTensor_symmetric(const Index_t &index, const QuasiParticle_t &qp,
                                                        const PartDescription_t pt, const float GaussRndNumber,
-                                                       const SimulationParametrization_t params) {
+                                                       const SimulationParametrizations_t params) {
     DiffusionTensor_t KK;
     if (index.radial < Constants.Nregions) {
         /*  NOTE about HMF

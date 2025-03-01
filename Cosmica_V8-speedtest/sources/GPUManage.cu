@@ -56,18 +56,16 @@ int BestWarpPerBlock(char name[], const int verbose) {
     return BestWarpPerBlock;
 }
 
-LaunchParam_t RoundNpart(const int NPart, cudaDeviceProp GPUprop, const bool verbose, const int WpB, const int svars) {
+LaunchParam_t RoundNpart(const unsigned NPart, cudaDeviceProp GPUprop, const bool verbose, const int WpB) {
     LaunchParam_t launch_param;
 
     // Computation of the number of blocks, warp per blocks, threads per block and shared memory bits
     // launch_param.Npart = ceil_int(NPart, GPUprop.warpSize) * GPUprop.warpSize;
     int WarpPerBlock = WpB <= 0 ? BestWarpPerBlock(GPUprop.name, verbose) : WpB;
     launch_param.threads = WarpPerBlock * GPUprop.warpSize;
-    launch_param.blocks = ceil_int(NPart, launch_param.threads);
+    launch_param.blocks = ceil_int_div(NPart, launch_param.threads);
     // Use a minimum of 2 blocks per Single Multiprocessor (cuda prescription)
     if (launch_param.blocks < 2) launch_param.blocks = 2;
-
-    launch_param.smem = static_cast<int>(svars * launch_param.threads * sizeof(float));
 
     if (launch_param.threads > GPUprop.maxThreadsPerBlock || launch_param.blocks > GPUprop.maxGridSize[0]) {
         fprintf(stderr, "------- propagation Kernel -----------------\n");
@@ -92,8 +90,6 @@ LaunchParam_t RoundNpart(const int NPart, cudaDeviceProp GPUprop, const bool ver
     // launch_param.threads = (768 + GPUprop.warpSize - 1) / GPUprop.warpSize * GPUprop.warpSize;
     launch_param.threads = 48;
     launch_param.blocks = (NPart + launch_param.threads - 1) / launch_param.threads;
-    // launch_param.smem = static_cast<int>(svars * launch_param.threads * sizeof(float));
-    launch_param.smem = 0;
 #endif
 
     if (verbose) {
@@ -102,7 +98,6 @@ LaunchParam_t RoundNpart(const int NPart, cudaDeviceProp GPUprop, const bool ver
         printf("-- Number of Warp in a Block       : %d \n", WarpPerBlock);
         printf("-- Number of blocks                : %d \n", launch_param.blocks);
         printf("-- Number of threadsPerBlock       : %d \n", launch_param.threads);
-        printf("-- Shared Memory                   : %d \n", launch_param.smem);
         printf("-- \n\n");
     }
 
