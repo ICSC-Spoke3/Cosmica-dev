@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.30)
-set(CMAKE_CUDA_COMPILER /opt/miniconda3/envs/cosmica-cuda/bin/nvcc)
+set(CMAKE_CUDA_COMPILER /opt/miniforge3/envs/sdegno/bin/nvcc)
         # Project name and languages: CUDA and C++.
 project(Cosmica LANGUAGES CUDA CXX)
 
@@ -17,7 +17,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_STANDARD 20)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
-add_definitions(-DUNIFIED_COMPILE)
+# add_definitions(-DUNIFIED_COMPILE)
 
 # Add the include directory (from the -I flag).
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/headers)
