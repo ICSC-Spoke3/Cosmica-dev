@@ -17,7 +17,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_STANDARD 20)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
-# add_definitions(-DUNIFIED_COMPILE)
+add_definitions(-DUNIFIED_COMPILE)
 
 # Add the include directory (from the -I flag).
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/headers)
