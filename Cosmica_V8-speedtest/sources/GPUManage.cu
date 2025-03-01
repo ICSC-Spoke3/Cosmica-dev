@@ -92,7 +92,8 @@ LaunchParam_t RoundNpart(const int NPart, cudaDeviceProp GPUprop, const bool ver
     // launch_param.threads = (768 + GPUprop.warpSize - 1) / GPUprop.warpSize * GPUprop.warpSize;
     launch_param.threads = 48;
     launch_param.blocks = (NPart + launch_param.threads - 1) / launch_param.threads;
-    launch_param.smem = static_cast<int>(svars * launch_param.threads * sizeof(float));
+    // launch_param.smem = static_cast<int>(svars * launch_param.threads * sizeof(float));
+    launch_param.smem = 0;
 #endif
 
     if (verbose) {

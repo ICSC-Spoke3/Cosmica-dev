@@ -149,14 +149,19 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    unsigned NParts = SimParameters.NInitialPositions * SimParameters.Npart;
+    unsigned NInstances = SimParameters.simulation_parametrization.Nparams * SimParameters.simulation_constants.
+                          NIsotopes;
+    unsigned NPartsPerInstance = SimParameters.NInitialPositions * SimParameters.Npart;
+    unsigned NParts = NInstances * NPartsPerInstance;
+    printf("NInstances: %u, PPI: %u, Parts: %u\n", NInstances, NPartsPerInstance, NParts);
 
     ////////////////////////////////////////////////////////////////
     //..... Rescale Heliosphere to an effective one  ...............
     ////////////////////////////////////////////////////////////////
 
     // Allocation of the output results for all the rigidities
-    auto *Results = new MonteCarloResult_t[SimParameters.NT];
+    auto *OldResults = new MonteCarloResult_t[SimParameters.NT];
+    auto *Results = AllocateResults(SimParameters.NT, NParts);
 
     // .. Results saving files
 
@@ -266,10 +271,10 @@ int main(int argc, char *argv[]) {
         unsigned int ns = 1, ni = SimParameters.NInitialPositions, np = 1, nx = SimParameters.Npart;
         //TODO: check ordering for adjacency in warp
         for (unsigned int s = 0; s < ns; ++s) {
-            for (unsigned int i = 0; i < ni; ++i) {
-                for (unsigned int p = 0; p < np; ++p) {
+            for (unsigned int p = 0; p < np; ++p) {
+                for (unsigned int i = 0; i < ni; ++i) {
                     for (unsigned int x = 0; x < nx; ++x) {
-                        unsigned int idx = x + nx * (p + np * (i + ni * s));
+                        unsigned int idx = x + nx * (i + ni * (p + np * s));
                         indexes.param[idx] = s;
                         indexes.period[idx] = i;
                         indexes.isotope[idx] = p;
@@ -328,8 +333,8 @@ int main(int argc, char *argv[]) {
 
 
             // Allocate the array for the partial rigidities maxima and final maximum
-            auto Maxs = AllocateManagedSafe<float[]>(prop_launch_param.blocks);
-
+            auto Maxs = AllocateManagedSafe<float[]>(NInstances);
+            auto Nfailed = AllocateManagedSafe<unsigned[]>(NInstances, 0);
 
             if constexpr (VERBOSE) {
                 HANDLE_ERROR(cudaEventRecord( Cycle_step00, nullptr ));
@@ -350,8 +355,8 @@ int main(int argc, char *argv[]) {
             // Heliosphere propagation kernel
             // and local max rigidity search inside the block
             cudaDeviceSynchronize();
-            HeliosphericProp<<<prop_launch_param.blocks, prop_launch_param.threads, prop_launch_param.smem>>>
-            (NParts, QuasiParts, indexes, SimParameters.simulation_parametrization, RandStates.get(),
+            HeliosphericProp<<<prop_launch_param.blocks, prop_launch_param.threads>>>
+            (QuasiParts, indexes, SimParameters.simulation_parametrization, RandStates.get(),
              Maxs.get());
             cudaDeviceSynchronize();
 
@@ -360,95 +365,67 @@ int main(int argc, char *argv[]) {
                 HANDLE_ERROR(cudaEventSynchronize( Cycle_step0 ));
             }
 
-            if constexpr (VERBOSE_2) {
-                fprintf(stdout, "--- Max values: ");
-                for (int itemp = 0; itemp < prop_launch_param.blocks; itemp++) {
-                    fprintf(stdout, "%.2f ", Maxs[itemp]);
-                }
-            }
-
-            // ->then finalize on CPU
-            for (int itemp = 1; itemp < prop_launch_param.blocks; itemp++) {
-                if (Maxs[0] < Maxs[itemp]) {
-                    Maxs[0] = Maxs[itemp];
-                }
-            }
-            if constexpr (VERBOSE_2)
-                fprintf(stdout, "\n--- RMin = %.3f Rmax = %.3f \n", SimParameters.Tcentr[iR],
-                        Maxs[0]);
-
-            if (Maxs[0] < SimParameters.Tcentr[iR]) {
-                printf("PROBLEMA: the max exiting rigidity is smaller than initial one\n");
-                continue;
-            }
-
             if constexpr (VERBOSE) {
                 HANDLE_ERROR(cudaEventRecord( Cycle_step1, nullptr ));
                 HANDLE_ERROR(cudaEventSynchronize( Cycle_step1 ));
             }
 
-            if constexpr (FINALSAVE) {
-                // host final states for specific energy
-                ThreadQuasiParticles_t host_final_QuasiParts = AllocateQuasiParticles(NParts);
-
-                SaveTxt_part(final_filename, NParts, host_final_QuasiParts, Maxs[0], VERBOSE_2);
-
-                // Free the host particle variable for the energy on which the cycle is running
-                free(host_final_QuasiParts.r);
-                free(host_final_QuasiParts.th);
-                free(host_final_QuasiParts.phi);
-                free(host_final_QuasiParts.R);
-                free(host_final_QuasiParts.t_fly);
-                // free(host_final_QuasiParts.alphapath);
-            }
+            // if constexpr (FINALSAVE) {
+            //     // host final states for specific energy
+            //     ThreadQuasiParticles_t host_final_QuasiParts = AllocateQuasiParticles(NParts);
+            //
+            //     SaveTxt_part(final_filename, NParts, host_final_QuasiParts, Maxs[0], VERBOSE_2);
+            //
+            //     // Free the host particle variable for the energy on which the cycle is running
+            //     free(host_final_QuasiParts.r);
+            //     free(host_final_QuasiParts.th);
+            //     free(host_final_QuasiParts.phi);
+            //     free(host_final_QuasiParts.R);
+            //     free(host_final_QuasiParts.t_fly);
+            //     // free(host_final_QuasiParts.alphapath);
+            // }
 
             if constexpr (VERBOSE) {
                 HANDLE_ERROR(cudaEventRecord( FinalSave, nullptr ));
                 HANDLE_ERROR(cudaEventSynchronize( FinalSave ));
             }
 
-            // Definition of histogram binning as a fraction of the bin border (DeltaT=T*RelativeBinAmplitude)
-            float DeltaLogR = log10f(1.f + SimParameters.RelativeBinAmplitude);
-            float LogBin0_lowEdge = log10f(SimParameters.Tcentr[iR]) - DeltaLogR / 2.f;
-            float Bin0_lowEdge = powf(10, LogBin0_lowEdge); // first LowEdge Bin
+            for (unsigned inst = 0; inst < NInstances; ++inst) {
+                if constexpr (VERBOSE_2)
+                    fprintf(stdout, "\n--- RMin = %.3f Rmax = %.3f \n", SimParameters.Tcentr[iR],
+                            Maxs[0]);
 
-            Results[iR].Nbins = ceil(log10(Maxs[0] / Bin0_lowEdge) / DeltaLogR);
-            Results[iR].LogBin0_lowEdge = LogBin0_lowEdge;
-            Results[iR].DeltaLogR = DeltaLogR;
+                if (Maxs[inst] < SimParameters.Tcentr[iR]) {
+                    printf("PROBLEMA: the max exiting rigidity is smaller than initial one\n");
+                    continue; //TODO: check if needed
+                }
 
-            // .. save to histogram ..........................................
-            // Partial block histogram allocation
-            auto PartialHistos = AllocateManagedSafe<float[]>(Results[iR].Nbins * prop_launch_param.blocks);
+                float DeltaLogR = log10f(1.f + SimParameters.RelativeBinAmplitude);
+                float LogBin0_lowEdge = log10f(SimParameters.Tcentr[iR]) - DeltaLogR / 2.f;
+                float Bin0_lowEdge = powf(10, LogBin0_lowEdge); // first LowEdge Bin
 
-            // Final merged histogram allocation
-            Results[iR].BoundaryDistribution = AllocateManaged<float>(Results[iR].Nbins);
+                Results[iR][inst].Nbins = ceil(log10(Maxs[inst] / Bin0_lowEdge) / DeltaLogR);
+                Results[iR][inst].LogBin0_lowEdge = LogBin0_lowEdge;
+                Results[iR][inst].DeltaLogR = DeltaLogR;
 
-            auto Nfailed = AllocateManagedSafe<int>(0);
-
-            // Partial histogram atomoic sum on GPU
-            cudaDeviceSynchronize();
-            histogram_atomic<<<prop_launch_param.blocks, prop_launch_param.threads>>>(
-                QuasiParts.R, LogBin0_lowEdge, DeltaLogR, Results[iR].Nbins, NParts,
-                PartialHistos.get(), Nfailed.get());
-            cudaDeviceSynchronize();
-
-            // Failed quasi-particle propagation count
-            Results[iR].Nregistered = NParts - *Nfailed;
-
-            if constexpr (VERBOSE_2) {
-                fprintf(stdout, "-- Eventi computati : %d \n", NParts);
-                fprintf(stdout, "-- Eventi falliti   : %d \n", *Nfailed);
-                fprintf(stdout, "-- Eventi registrati: %lu \n", Results[iR].Nregistered);
+                Results[iR][inst].BoundaryDistribution = AllocateManaged<float>(Results[iR][inst].Nbins, 0);
             }
 
-            int histo_Nblocchi = ceil_int(Results[iR].Nbins, prop_launch_param.threads);
-
-            // Merge of the partial histograms and copy to the host
             cudaDeviceSynchronize();
-            histogram_accum<<<histo_Nblocchi, prop_launch_param.threads>>>(
-                PartialHistos.get(), Results[iR].Nbins, prop_launch_param.blocks, Results[iR].BoundaryDistribution);
+            SimpleHistogram<<<prop_launch_param.blocks, prop_launch_param.threads>>>(
+                indexes, QuasiParts.R, Results[iR], Nfailed.get());
             cudaDeviceSynchronize();
 
+            for (unsigned inst = 0; inst < NInstances; ++inst) {
+                Results[iR][inst].Nregistered = NPartsPerInstance - Nfailed[inst];
+                if constexpr (VERBOSE_2) {
+                    fprintf(stdout, "-- Eventi computati : %d \n", NPartsPerInstance);
+                    fprintf(stdout, "-- Eventi falliti   : %d \n", Nfailed[inst]);
+                    fprintf(stdout, "-- Eventi registrati: %lu \n", Results[iR][inst].Nregistered);
+                }
+            }
+
+            OldResults[iR] = Results[iR][0];
 
             // ANNOTATION THE ONLY MEMCOPY NEEDED FROM DEVICE TO HOST ARE THE FINAL RESULTS (ALIAS THE ENERGY FINAL HISTOGRAM AND PARTICLE EXIT RESULTS)
 
@@ -523,7 +500,7 @@ int main(int argc, char *argv[]) {
 
     // Save the rigidity histograms to txt file
     for (int iR = 0; iR < SimParameters.NT; iR++) {
-        SaveTxt_histo(histo_filename, Results[iR].Nbins, Results[iR], VERBOSE_2);
+        SaveTxt_histo(histo_filename, OldResults[iR].Nbins, OldResults[iR], VERBOSE_2);
     }
 
     /* save results to file .dat */
@@ -555,14 +532,14 @@ int main(int argc, char *argv[]) {
 
         fprintf(pFile_Matrix, "%f %u %lu %d %f %f \n", SimParameters.Tcentr[itemp],
                 SimParameters.Npart,
-                Results[itemp].Nregistered,
-                Results[itemp].Nbins,
-                Results[itemp].LogBin0_lowEdge,
-                Results[itemp].DeltaLogR);
+                OldResults[itemp].Nregistered,
+                OldResults[itemp].Nbins,
+                OldResults[itemp].LogBin0_lowEdge,
+                OldResults[itemp].DeltaLogR);
         if constexpr (VERBOSE) fprintf(pFile_Matrix, "# output distribution \n");
 
-        for (int itNB = 0; itNB < Results[itemp].Nbins; itNB++) {
-            fprintf(pFile_Matrix, "%e ", Results[itemp].BoundaryDistribution[itNB]);
+        for (int itNB = 0; itNB < OldResults[itemp].Nbins; itNB++) {
+            fprintf(pFile_Matrix, "%e ", OldResults[itemp].BoundaryDistribution[itNB]);
         }
 
 
@@ -581,7 +558,7 @@ int main(int argc, char *argv[]) {
 
     free(GPUs_profile);
 
-    free(Results);
+    free(OldResults);
 
     if constexpr (VERBOSE) {
         // -- Save end time of simulation into log file

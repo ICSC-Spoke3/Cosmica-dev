@@ -41,7 +41,10 @@
 #define rhelio 0.004633333f  // solar radius in AU
 #define r_mirror 0.3
 
+#define NMaxRegions 335    // about 25 year of simulations
+#define NMaxIsotopes 10
+
 #define MAX_DT 50.0                                       // max allowed value of time step
 #define MIN_DT 0.01                                       // min allowed value of time step
 #define TIMEOUT std::numeric_limits<float>::infinity()
-// #define TIMEOUT 2000
+// #define TIMEOUT 20000

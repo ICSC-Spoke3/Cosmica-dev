@@ -24,6 +24,8 @@ auto AllocateManagedSafe(size_t, int);
 //Allocate the memory needed for an empty QuasiPArticle struct of N particle and return it
 ThreadQuasiParticles_t AllocateQuasiParticles(int);
 
+InstanceHistograms *AllocateResults(unsigned, unsigned);
+
 template<typename T>
 void CopyToConstant(const T &, const T *);
 

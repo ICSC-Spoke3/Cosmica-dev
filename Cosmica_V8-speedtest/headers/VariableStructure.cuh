@@ -75,7 +75,7 @@ struct ThreadQuasiParticles_t {
 };
 
 struct Index_t {
-    const unsigned param, period, isotope;
+    const unsigned param, isotope, period;
     int radial = 0;
 
     __forceinline__ __device__ void update(const QuasiParticle_t &qp) {
@@ -85,12 +85,17 @@ struct Index_t {
     __forceinline__ __device__ unsigned combined() const {
         return period + radial;
     }
+
+    __forceinline__ __device__ unsigned instance(const unsigned NIsotopes) const {
+        return param * NIsotopes + isotope;
+    }
 };
 
 struct ThreadIndexes_t {
-    unsigned *param, *period, *isotope;
+    unsigned size;
+    unsigned *param, *isotope, *period;
     __forceinline__ __host__ __device__ Index_t get(const unsigned id) const {
-        return {param[id], period[id], isotope[id]};
+        return {param[id], isotope[id], period[id]};
     }
 };
 
@@ -136,5 +141,7 @@ struct MonteCarloResult_t {
     float DeltaLogR; // Bin amplitude in log scale
     float *BoundaryDistribution;
 };
+
+typedef MonteCarloResult_t* InstanceHistograms;
 
 #endif

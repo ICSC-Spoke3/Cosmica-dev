@@ -7,13 +7,11 @@
 #include "SDECoeffs.cuh"
 #include "Histogram.cuh"
 
-__global__ void HeliosphericProp(const unsigned Npart_PerKernel, ThreadQuasiParticles_t QuasiParts_out,
-                                 const ThreadIndexes_t indexes, const SimulationParametrization_t params,
-                                 curandStatePhilox4_32_10_t *const CudaState, float *RMaxs) {
+__global__ void HeliosphericProp(ThreadQuasiParticles_t QuasiParts_out, const ThreadIndexes_t indexes,
+                                 const SimulationParametrization_t params, curandStatePhilox4_32_10_t *const CudaState,
+                                 float *RMaxs) {
     const unsigned id = threadIdx.x + blockIdx.x * blockDim.x;
-    if (id >= Npart_PerKernel) return;
-
-    extern __shared__ float smem[];
+    if (id >= indexes.size) return;
 
     curandStatePhilox4_32_10_t randState = CudaState[id];
 
@@ -61,8 +59,8 @@ __global__ void HeliosphericProp(const unsigned Npart_PerKernel, ThreadQuasiPart
     QuasiParts_out.r[id] = qp.r;
     QuasiParts_out.th[id] = qp.th;
     QuasiParts_out.phi[id] = qp.phi;
-    smem[threadIdx.x] = QuasiParts_out.R[id] = qp.R;
+    QuasiParts_out.R[id] = qp.R;
     QuasiParts_out.t_fly[id] = qp.t_fly;
 
-    BlockMax(smem, RMaxs);
+    atomicMax(&RMaxs[index.instance(Constants.NIsotopes)], qp.R);
 }

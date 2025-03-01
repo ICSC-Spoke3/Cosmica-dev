@@ -31,6 +31,17 @@ __device__ __host__ __forceinline__ float clamp(const float f, const float a, co
    return fmaxf(a, fminf(f, b));
 }
 
+__device__ __forceinline__ float atomicMax(float *address, const float val)
+{
+   int ret = __float_as_int(*address);
+   while(val > __int_as_float(ret))
+   {
+      if(const int old = ret; (ret = atomicCAS(reinterpret_cast<int *>(address), old, __float_as_int(val))) == old)
+         break;
+   }
+   return __int_as_float(ret);
+}
+
 __host__ __device__ float SmoothTransition(float, float, float, float, float);
 
 /* Smooth transition between  InitialVal to FinalVal centered at CenterOfTransition as function of x if smoothness== 0 use a sharp transition

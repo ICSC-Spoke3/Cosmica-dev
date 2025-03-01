@@ -1,3 +1,6 @@
+#include "Histogram.cuh"
+#include <VariableStructure.cuh>
+
 // .. credit to Mark Harris (https://developer.download.nvidia.com/assets/cuda/files/reduction.pdf)
 
 // Use of the tamplate to unroll the loop at compile time (kernel_6 optimization)
@@ -68,7 +71,7 @@ __global__ void GridMax(float* indata, float* outdata) {
 
     // write result for this block to global mem
     if (tid == 0) outdata = sdata[0];
-} */
+}
 
 // Unroll the last steps when reduction dimension < warp dimension
 __device__ void WarpMax(volatile float *sdata, const unsigned tid) {
@@ -227,4 +230,22 @@ __global__ void histogram_accum(const float *in, const int Nbins, const int NFra
     }
 
     out[id] = total;
+}
+*/
+
+__global__ void SimpleHistogram(const ThreadIndexes_t indexes, const float *R, InstanceHistograms histograms,
+                                unsigned *failed) {
+    const unsigned id = threadIdx.x + blockIdx.x * blockDim.x;
+    if (id >= indexes.size) return;
+
+    const auto index = indexes.get(id);
+    const auto inst = index.instance(Constants.NIsotopes);
+    const auto &hist = histograms[inst];
+
+    if (log10f(R[id]) > hist.LogBin0_lowEdge) {
+        const int DestBin = static_cast<int>(floorf((log10f(R[id]) - hist.LogBin0_lowEdge) / hist.DeltaLogR));
+        atomicAdd(&hist.BoundaryDistribution[DestBin], 1);
+    } else {
+        atomicAdd(&failed[inst], 1);
+    }
 }

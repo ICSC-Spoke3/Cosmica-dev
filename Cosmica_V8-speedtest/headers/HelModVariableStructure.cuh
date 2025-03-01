@@ -19,8 +19,6 @@ struct HeliosphereBoundRadius_t {
     float Rhp_tail = 122; // Heliopause position
 };
 
-#define NMaxRegions 335    // about 25 year of simulations
-
 struct HeliosphereParametrizationProperties_t {
     float k0_paral[2] = {};
     float k0_perp[2] = {};
@@ -49,8 +47,6 @@ struct SimulationParametrization_t {
     HeliosphereParametrizationProperties_t (*heliosphere_parametrization)[NMaxRegions];
 };
 
-#define NMaxIsotopes 10
-
 struct SimulationConstants_t {
     float Min_dt = MIN_DT, Max_dt = MAX_DT, Timeout = TIMEOUT;
 
@@ -73,9 +69,9 @@ struct SimConfiguration_t {
     unsigned NT; // number of bins of energies to be simulated
     unsigned NInitialPositions = 0;
     float *Tcentr; // array of energies to be simulated
+    float RelativeBinAmplitude = 0.00855;
     InitialPositions_t InitialPositions; // initial position
     MonteCarloResult_t *Results; // output of the code
-    float RelativeBinAmplitude = 0.00855;
     // SimulatedHeliosphere_t HeliosphereToBeSimulated; // Heliosphere properties for the simulation
     SimulationParametrization_t simulation_parametrization;
     SimulationConstants_t simulation_constants;

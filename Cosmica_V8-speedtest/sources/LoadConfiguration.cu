@@ -60,10 +60,17 @@ void CopyToConstant(const T &symbol, const T *src) {
 
 ThreadIndexes_t AllocateIndex(const unsigned NPart) {
     return {
+        NPart,
         AllocateManaged<unsigned>(NPart),
         AllocateManaged<unsigned>(NPart),
         AllocateManaged<unsigned>(NPart),
     };
+}
+
+InstanceHistograms *AllocateResults(const unsigned NRig, const unsigned NInstances) {
+    auto *res = AllocateManaged<InstanceHistograms>(NRig);
+    for (unsigned inst = 0; inst < NInstances; ++inst) res[inst] = AllocateManaged<MonteCarloResult_t>(NInstances);
+    return res;
 }
 
 InitialPositions_t LoadInitPos(unsigned Npos, const bool verbose) {
