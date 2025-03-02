@@ -79,7 +79,7 @@ struct SimConfiguration_t {
     float *Tcentr; // array of energies to be simulated
     float RelativeBinAmplitude = 0.00855;
     InitialPositions_t InitialPositions; // initial position
-    MonteCarloResult_t *Results; // output of the code
+    InstanceHistograms *Results; // output of the code
     // SimulatedHeliosphere_t HeliosphereToBeSimulated; // Heliosphere properties for the simulation
     SimulationParametrizations_t simulation_parametrization;
     SimulationConstants_t simulation_constants;

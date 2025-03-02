@@ -329,7 +329,8 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
         SimParameters.simulation_constants.heliosheat_properties[i].V0 = IHS[i].V0 / aukm;
     }
 
-    SimParameters.Results = new MonteCarloResult_t[SimParameters.NT];
+    //TODO: initialize correctly
+    // SimParameters.Results = new MonteCarloResult_t[SimParameters.NT];
 
     SimParameters.Npart = ceil_int_div(SimParameters.Npart, SimParameters.NInitialPositions);
 
@@ -591,7 +592,8 @@ int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbo
     std::ranges::copy(source_th, config.InitialPositions.th = new float[n_sources]);
     std::ranges::copy(source_phi, config.InitialPositions.phi = new float[n_sources]);
 
-    config.Results = new MonteCarloResult_t[config.NT];
+    //TODO: initialize correctly
+    // config.Results = new MonteCarloResult_t[config.NT];
     config.RelativeBinAmplitude = relative_bin_amplitude;
 
     config.isotopes_names = isotopes_names;

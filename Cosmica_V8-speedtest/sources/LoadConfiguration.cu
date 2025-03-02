@@ -81,7 +81,7 @@ ThreadIndexes_t AllocateIndex(const unsigned NPart) {
 
 InstanceHistograms *AllocateResults(const unsigned NRig, const unsigned NInstances) {
     auto *res = AllocateManaged<InstanceHistograms[]>(NRig);
-    for (unsigned inst = 0; inst < NInstances; ++inst) res[inst] = AllocateManaged<MonteCarloResult_t[]>(NInstances);
+    for (unsigned i_rig = 0; i_rig < NRig; ++i_rig) res[i_rig] = AllocateManaged<MonteCarloResult_t[]>(NInstances);
     return res;
 }
 
