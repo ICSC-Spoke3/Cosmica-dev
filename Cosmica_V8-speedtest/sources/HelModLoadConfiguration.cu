@@ -627,8 +627,6 @@ int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbo
     std::ranges::copy(heliosphere, config.simulation_constants.heliosphere_properties);
     std::ranges::copy(heliosheat, config.simulation_constants.heliosheat_properties);
 
-    config.Npart = ceil_int_div(config.Npart, config.NInitialPositions);
-
     if (verbose >= 111) {
         //TODO: change to VERBOSE_mid
         fprintf(stderr, "----- Recap of Simulation parameters ----\n");
