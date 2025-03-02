@@ -454,6 +454,14 @@ unsigned check_params_count(const fkyaml::node &dynamic_node) {
     return dynamic_node["heliosphere"].cbegin().value().size();
 }
 
+int check_isotopes_charge(const vector<PartDescription_t> &isotopes) {
+    if (isotopes.empty() || !std::ranges::all_of(isotopes, [&](const auto &i) { return i.Z == isotopes.front().Z; })) {
+        std::cerr << "All isotopes must have the same charge" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    return static_cast<int>(isotopes.front().Z);
+}
+
 std::tuple<vector<vector<HeliosphereParametrizationProperties_t> >, vector<HeliosphereProperties_t>, vector<bool>,
     vector<HeliosphereBoundRadius_t> >
 node_to_heliosphere(const fkyaml::node &node, const unsigned n_sources, const unsigned n_regions,
@@ -577,8 +585,9 @@ int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbo
     auto source_phi = node_to_vector<float>(node["sources"]["phi"]);
     auto n_sources = check_sources_count(source_r, source_th, source_phi);
     auto n_params = check_params_count(node["dynamic"]);
+    auto isotopes_charge = check_isotopes_charge(isotopes);
     auto [heliosphere_param, heliosphere, high_activity, boundary] = node_to_heliosphere(
-        node, n_sources, n_regions, n_params, static_cast<int>(isotopes[0].Z));
+        node, n_sources, n_regions, n_params, isotopes_charge);
     auto heliosheat = node_to_heliosheat(node, n_sources);
     auto relative_bin_amplitude = node_to_value<float>(node["relative_bin_amplitude"]);
 
