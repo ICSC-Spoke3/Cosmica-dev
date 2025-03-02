@@ -134,7 +134,7 @@ struct vect3D_t {
 
 // Data container for output result of a single energy simulation
 struct MonteCarloResult_t {
-    unsigned long Nregistered;
+    unsigned Nregistered;
     int Nbins;
     float LogBin0_lowEdge; // lower boundary of first bin
     float DeltaLogR; // Bin amplitude in log scale

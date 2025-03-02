@@ -1,3 +1,4 @@
+// ReSharper disable CppUnusedIncludeDirective
 #define MAINCU
 
 // .. standard C
@@ -6,6 +7,7 @@
 #include <unistd.h>         // Supplies EXIT_FAILURE, EXIT_SUCCESS
 #include <sys/types.h>      // Typedef shortcuts like uint32_t and uint64_t
 #include <sys/time.h>       // supplies time()
+#include <span>
 
 // .. multi-thread
 #include <omp.h>
@@ -19,6 +21,7 @@
 
 
 // .. project specific
+#include "headers/fkYAML.hpp"
 #include "VariableStructure.cuh"
 
 #ifndef UNIFIED_COMPILE
@@ -149,9 +152,9 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    unsigned NInstances = SimParameters.simulation_parametrization.Nparams * SimParameters.simulation_constants.
-                          NIsotopes;
-    unsigned NPartsPerInstance = SimParameters.NInitialPositions * SimParameters.Npart;
+    unsigned NParams = SimParameters.simulation_parametrization.Nparams, NPositions = SimParameters.NInitialPositions,
+            NIsotopes = SimParameters.simulation_constants.NIsotopes, NRep = SimParameters.Npart;
+    unsigned NInstances = NParams * NIsotopes, NPartsPerInstance = NPositions * NRep;
     unsigned NParts = NInstances * NPartsPerInstance;
     printf("NInstances: %u, PPI: %u, Parts: %u\n", NInstances, NPartsPerInstance, NParts);
 
@@ -161,7 +164,7 @@ int main(int argc, char *argv[]) {
 
     // Allocation of the output results for all the rigidities
     auto *OldResults = new MonteCarloResult_t[SimParameters.NT];
-    auto *Results = AllocateResults(SimParameters.NT, NParts);
+    auto Results = SimParameters.Results = AllocateResults(SimParameters.NT, NParts);
 
     // .. Results saving files
 
@@ -267,16 +270,14 @@ int main(int argc, char *argv[]) {
 
         // Period along which CR are integrated and the corresponding period indecies
         ThreadIndexes_t indexes = AllocateIndex(NParts);
-        unsigned int ns = 1, ni = SimParameters.NInitialPositions, np = 1, nx = SimParameters.Npart;
-        //TODO: check ordering for adjacency in warp
-        for (unsigned int s = 0; s < ns; ++s) {
-            for (unsigned int p = 0; p < np; ++p) {
-                for (unsigned int i = 0; i < ni; ++i) {
-                    for (unsigned int x = 0; x < nx; ++x) {
-                        unsigned int idx = x + nx * (i + ni * (p + np * s));
-                        indexes.param[idx] = s;
-                        indexes.period[idx] = i;
-                        indexes.isotope[idx] = p;
+        for (unsigned p = 0; p < NParams; ++p) {
+            for (unsigned i = 0; i < NIsotopes; ++i) {
+                for (unsigned o = 0; o < NPositions; ++o) {
+                    for (unsigned x = 0; x < NRep; ++x) {
+                        unsigned idx = x + NRep * (o + NPositions * (i + NIsotopes * p));
+                        indexes.param[idx] = p;
+                        indexes.isotope[idx] = i;
+                        indexes.period[idx] = o;
                     }
                 }
             }
@@ -415,9 +416,9 @@ int main(int argc, char *argv[]) {
             for (unsigned inst = 0; inst < NInstances; ++inst) {
                 Results[iR][inst].Nregistered = NPartsPerInstance - Nfailed[inst];
                 if constexpr (VERBOSE_2) {
-                    fprintf(stdout, "-- Eventi computati : %d \n", NPartsPerInstance);
-                    fprintf(stdout, "-- Eventi falliti   : %d \n", Nfailed[inst]);
-                    fprintf(stdout, "-- Eventi registrati: %lu \n", Results[iR][inst].Nregistered);
+                    fprintf(stdout, "-- Eventi computati : %u \n", NPartsPerInstance);
+                    fprintf(stdout, "-- Eventi falliti   : %u \n", Nfailed[inst]);
+                    fprintf(stdout, "-- Eventi registrati: %u \n", Results[iR][inst].Nregistered);
                 }
             }
 
@@ -491,6 +492,20 @@ int main(int argc, char *argv[]) {
     //..... Exit results saving   ..................................
     ////////////////////////////////////////////////////////////////
 
+    // Generate the YAML file name, following the old naming convention:
+    // "<SimParameters.output_file_name>_matrix_<pid>.yaml"
+    char yamlFilename[MaxCharinFileName];
+    sprintf(yamlFilename, "%s_matrix_%lu.yaml", SimParameters.output_file_name, static_cast<unsigned long>(getpid()));
+
+    try {
+        write_results_yaml(yamlFilename, SimParameters);
+        printf("Results saved to file: %s\n", yamlFilename);
+    } catch (const std::exception &e) {
+        std::cerr << "Error writing results to YAML file: " << e.what() << std::endl;
+        return 1;
+    }
+
+
     //  Save the summary histogram
     //  Free the dynamic memory
 
@@ -526,7 +541,7 @@ int main(int argc, char *argv[]) {
                     "# Egen, Npart Gen., Npart Registered, Nbin output, log10(lower edge bin 0), Bin amplitude (in log scale)\n");
         }
 
-        fprintf(pFile_Matrix, "%f %u %lu %d %f %f \n", SimParameters.Tcentr[itemp],
+        fprintf(pFile_Matrix, "%f %u %u %d %f %f \n", SimParameters.Tcentr[itemp],
                 SimParameters.Npart,
                 OldResults[itemp].Nregistered,
                 OldResults[itemp].Nbins,

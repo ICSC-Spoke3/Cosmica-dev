@@ -43,4 +43,6 @@ int LoadConfigYaml(int, char *[], SimConfiguration_t &, int);
     NOTE: USING OLD STABLE 4_CoreCode_MultiGPU_MultiYear VERSION 
     */
 
+int write_results_yaml(const char *, const SimConfiguration_t &);
+
 #endif

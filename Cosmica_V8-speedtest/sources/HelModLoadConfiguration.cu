@@ -693,3 +693,47 @@ int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbo
     }
     return EXIT_SUCCESS;
 }
+
+/**
+ * @brief Writes simulation results to a YAML file using fkYAML.
+ *
+ * This function builds a YAML document representing the simulation results stored in a 2D array
+ * of MonteCarloResult_t structures.
+ * @param filename   The name of the YAML output file to create or overwrite.
+ * @param config
+ *
+ * @return 0 on success, -1 on failure.
+ */
+int write_results_yaml(const char *filename, const SimConfiguration_t &config) {
+    const unsigned NIsotopes = config.simulation_constants.NIsotopes;
+    std::ofstream ofs(filename);
+    if (!ofs.is_open()) {
+        std::cerr << "Error: cannot open file " << filename << " for writing." << std::endl;
+        return -1;
+    }
+
+    auto root = fkyaml::node::mapping();
+    auto &hist_seq = (root["histograms"] = fkyaml::node::sequence()).as_seq();
+
+    for (unsigned i_rig = 0; i_rig < config.NT; ++i_rig) {
+        auto &rig_entry = hist_seq.emplace_back(fkyaml::node{{"rigidity", config.Tcentr[i_rig]}});
+        auto &isotopes = rig_entry["isotopes"] = fkyaml::node::mapping();
+        for (unsigned i_iso = 0; i_iso < NIsotopes; ++i_iso) {
+            auto &params = (isotopes[config.isotopes_names[i_iso]] = fkyaml::node::sequence()).as_seq();
+            for (unsigned i_param = 0; i_param < config.simulation_parametrization.Nparams; ++i_param) {
+                const auto &[n_reg, n_bins, low_b, ampl, bins] = config.Results[i_rig][i_param * NIsotopes + i_iso];
+                params.emplace_back(fkyaml::node{
+                    {"n_part", static_cast<int>(config.NInitialPositions * config.Npart)},
+                    {"n_reg", static_cast<int>(n_reg)},
+                    {"lower_bound", low_b},
+                    {"amplitude", ampl},
+                    {"bins", std::span(bins, n_bins)}
+                });
+            }
+        }
+    }
+
+    ofs << root;
+
+    return 0;
+}
