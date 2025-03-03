@@ -107,7 +107,7 @@ bool test_and_pop(std::deque<unsigned> &queue, unsigned &val) {
 int main(int argc, char *argv[]) {
     cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
 
-    spdlog::set_level(spdlog::level::debug);
+    spdlog::set_level(spdlog::level::trace);
     spdlog::info("Simulation started");
 
     const int NGPUs = AvailableGPUs();
@@ -133,7 +133,6 @@ int main(int argc, char *argv[]) {
             NIsotopes = SimParameters.simulation_constants.NIsotopes, NRep = SimParameters.Npart;
     unsigned NInstances = NParams * NIsotopes, NPartsPerInstance = NPositions * NRep;
     unsigned NParts = NInstances * NPartsPerInstance;
-    printf("NInstances: %u, PPI: %u, Parts: %u\n", NInstances, NPartsPerInstance, NParts);
     spdlog::info("Simulation parameters loaded:");
     spdlog::info("# of instances: {}", NInstances);
     spdlog::info("# particles per instance: {}", NPartsPerInstance);
@@ -141,37 +140,22 @@ int main(int argc, char *argv[]) {
 
     auto Results = SimParameters.Results = AllocateResults(SimParameters.NT, NParts);
 
-    // Initial and final results files
-    char file_trivial[8] = {};
+    std::string init_filename = SimParameters.output_file_name + "_prop_in.txt";
+    std::string final_filename = SimParameters.output_file_name + "_prop_out.txt";
+    std::string histo_filename = SimParameters.output_file_name + "_R_histo.txt";
 
-    char init_filename[20];
-    sprintf(init_filename, "%sprop_in.txt", file_trivial);
-    char final_filename[ReadingStringLenght];
-    sprintf(final_filename, "%s_%sprop_out.txt", SimParameters.output_file_name, file_trivial);
-    // Clean previous files
-    if (remove(init_filename) != 0 || remove(final_filename) != 0)
-        printf(
-            "Error deleting the old propagation files or it does not exist\n");
-    else printf("Old propagation files deleted successfully\n");
+    if (std::remove(init_filename.c_str()) != 0 || std::remove(final_filename.c_str()) != 0) {
+        spdlog::warn("Error deleting old propagation files or they do not exist");
+    } else {
+        spdlog::info("Old propagation files deleted successfully");
+    }
 
-    // Initial and final results files
-    char histo_filename[20];
-    sprintf(histo_filename, "%sR_histo.txt", file_trivial);
-    // Clean previous files
-    if (remove(histo_filename) != 0) printf("Error deleting the old histogram files or it does not exist\n");
-    else printf("Old histogram files deleted successfully\n");
-    printf("-- \n\n");
+    if (std::remove(histo_filename.c_str()) != 0) {
+        spdlog::warn("Error deleting old histogram files or it does not exist");
+    } else {
+        spdlog::info("Old histogram files deleted successfully");
+    }
 
-
-    ////////////////////////////////////////////////////////////////
-    //..... Simulations initialization   ...........................
-    ////////////////////////////////////////////////////////////////
-
-    //  Start CPU pragma menaging its own portion of the data
-    //  Optimation of the number of particles, threads, blocks and
-    //  shared memory with respect the GPU hardware
-
-    // start cpu threads
 #define USE_RIGIDITY_QUEUE
 #ifdef USE_RIGIDITY_QUEUE
     auto rig_indexes = std::views::iota(0u, SimParameters.NT);
@@ -180,30 +164,16 @@ int main(int argc, char *argv[]) {
 
 #pragma omp parallel
     {
-        // Grep the CPU and GPU id and set them
-        unsigned int cpu_thread_id = omp_get_thread_num(); // identificativo del CPU-thread
-        unsigned int gpu_id = cpu_thread_id % NGPUs;
-        // seleziona la id della GPU da usare. "% num_gpus" allows more CPU threads than GPU devices
-        HANDLE_ERROR(cudaSetDevice(gpu_id)); // seleziona la GPU
-        unsigned int num_cpu_threads = omp_get_num_threads(); // numero totale di CPU-thread allocated
+        unsigned cpu_thread_id = omp_get_thread_num();
+        unsigned gpu_id = cpu_thread_id % NGPUs;
+        HANDLE_ERROR(cudaSetDevice(gpu_id));
+        unsigned num_cpu_threads = omp_get_num_threads();
 
-        if constexpr (VERBOSE) {
-            printf("----- Individual CPU infos -----\n");
-            printf("-- CPU thread %d (of %d) uses CUDA device %d\n", cpu_thread_id, num_cpu_threads, gpu_id);
-            printf("-- \n\n");
-        }
+        spdlog::debug("CPU Thread {} (of {}) uses CUDA device {}", cpu_thread_id + 1, num_cpu_threads, gpu_id);
 
-
-        // Retrive information from the set GPU
         cudaDeviceProp device_prop = GPUs_profile[gpu_id];
-
-        // Rounding the number of particle and calculating threads, blocks and share memory to acheive the maximum usage of the GPUs
         auto [BLOCKS, THREADS] = GetLaunchConfig(NParts, device_prop);
 
-        ////////////////////////////////////////////////////////////////
-        //..... capture the start time of GPU part .....................
-        //      This part is for debug and performances tests
-        ////////////////////////////////////////////////////////////////
         cudaEvent_t start, MemorySet, Randomstep, stop;
         cudaEvent_t Cycle_start, Cycle_step00, Cycle_step0, Cycle_step1, Cycle_step2, InitialSave, FinalSave;
         if constexpr (VERBOSE) {
@@ -213,18 +183,7 @@ int main(int argc, char *argv[]) {
             HANDLE_ERROR(cudaEventCreate( &stop ));
             HANDLE_ERROR(cudaEventRecord( start, nullptr ));
         }
-        ////////////////////////////////////////////////////////////////
 
-
-        ////////////////////////////////////////////////////////////////
-        //..... GPU execution initialization   .........................
-        ////////////////////////////////////////////////////////////////
-
-        //  Set pseudo random number generator seeds
-        //  Device memory allocation and threads starting positions
-
-
-        // .. Initialize random generator
         auto RandStates = AllocateManagedSafe<curandStatePhilox4_32_10_t[]>(NParts);
         unsigned long Rnd_seed = SimParameters.RandomSeed == 0
                                      ? getpid() + time(nullptr) + gpu_id
@@ -241,10 +200,8 @@ int main(int argc, char *argv[]) {
 
         CopyToConstant(Constants, &SimParameters.simulation_constants);
 
-        // Allocate the initial variables and allocate on device
         ThreadQuasiParticles_t QuasiParts = AllocateQuasiParticles(NParts);
 
-        // Period along which CR are integrated and the corresponding period indecies
         ThreadIndexes_t indexes = AllocateIndex(NParts);
         for (unsigned p = 0; p < NParams; ++p) {
             for (unsigned i = 0; i < NIsotopes; ++i) {
@@ -259,29 +216,19 @@ int main(int argc, char *argv[]) {
             }
         }
 
-
-        // Recording the setting memory execution time
         if constexpr (VERBOSE) {
             HANDLE_ERROR(cudaEventRecord( MemorySet, nullptr ));
             HANDLE_ERROR(cudaEventSynchronize( MemorySet ));
         }
 
-        ////////////////////////////////////////////////////////////////
-        //..... GPU perticle propagation   .............................
-        ////////////////////////////////////////////////////////////////
-
-        //  Initialization of the cycle on rigidities bins (for all the positions)
-        //  Launch of the GPU propagation kernel (computing diffusion
-        //  coefficients and solving stochastic differential equations)
-        //  Build the exit energy histogram
-
-        // Cycle on rigidity bins distributing their execution between the active CPU threads
 #ifdef USE_RIGIDITY_QUEUE
         unsigned iR;
         while (test_and_pop(queue, iR)) {
 #else
         for (unsigned int iR = gpu_id; iR < SimParameters.NT; iR += NGPUs) {
 #endif
+            spdlog::info("Simulation for rigidity {} [{}] started", SimParameters.Tcentr[iR], iR);
+
             if constexpr (VERBOSE) {
                 HANDLE_ERROR(cudaEventCreate( &Cycle_start ));
                 HANDLE_ERROR(cudaEventCreate( &Cycle_step00 ));
@@ -293,19 +240,16 @@ int main(int argc, char *argv[]) {
                 HANDLE_ERROR(cudaEventRecord( Cycle_start, nullptr ));
             }
 
-            spdlog::debug("Simulation for rigidity {} [{}]", SimParameters.Tcentr[iR], iR);
 
-            // Initialize the particle starting rigidities
             for (unsigned iPart = 0; iPart < NParts; ++iPart) {
                 QuasiParts.r[iPart] = SimParameters.InitialPositions.r[indexes.period[iPart]];
                 QuasiParts.th[iPart] = SimParameters.InitialPositions.th[indexes.period[iPart]];
                 QuasiParts.phi[iPart] = SimParameters.InitialPositions.phi[indexes.period[iPart]];
-                QuasiParts.R[iPart] = SimParameters.Tcentr[iR];
+                QuasiParts.R[iPart] = SimParameters.Tcentr[iR]; // TODO: dynamic rigidity based on isotope
                 QuasiParts.t_fly[iPart] = 0;
             }
 
 
-            // Allocate the array for the partial rigidities maxima and final maximum
             auto Maxs = AllocateManagedSafe<float[]>(NInstances);
             auto Nfailed = AllocateManagedSafe<unsigned[]>(NInstances, 0);
 
@@ -314,9 +258,8 @@ int main(int argc, char *argv[]) {
                 HANDLE_ERROR(cudaEventSynchronize( Cycle_step00 ));
             }
 
-            // Saving the initial particles parameters into a txt file for debugging
             if constexpr (INITSAVE) {
-                SaveTxt_part(init_filename, NParts, QuasiParts, Maxs[0], VERBOSE_2);
+                SaveTxt_part(init_filename.c_str(), NParts, QuasiParts, Maxs[0]);
             }
 
             if constexpr (VERBOSE) {
@@ -324,9 +267,6 @@ int main(int argc, char *argv[]) {
                 HANDLE_ERROR(cudaEventSynchronize( InitialSave ));
             }
 
-
-            // Heliosphere propagation kernel
-            // and local max rigidity search inside the block
             cudaDeviceSynchronize();
             HeliosphericProp<<<BLOCKS, THREADS>>>(QuasiParts, indexes, SimParameters.simulation_parametrization,
                                                   RandStates.get(), Maxs.get());
@@ -342,20 +282,9 @@ int main(int argc, char *argv[]) {
                 HANDLE_ERROR(cudaEventSynchronize( Cycle_step1 ));
             }
 
-            // if constexpr (FINALSAVE) {
-            //     // host final states for specific energy
-            //     ThreadQuasiParticles_t host_final_QuasiParts = AllocateQuasiParticles(NParts);
-            //
-            //     SaveTxt_part(final_filename, NParts, host_final_QuasiParts, Maxs[0], VERBOSE_2);
-            //
-            //     // Free the host particle variable for the energy on which the cycle is running
-            //     free(host_final_QuasiParts.r);
-            //     free(host_final_QuasiParts.th);
-            //     free(host_final_QuasiParts.phi);
-            //     free(host_final_QuasiParts.R);
-            //     free(host_final_QuasiParts.t_fly);
-            //     // free(host_final_QuasiParts.alphapath);
-            // }
+            if constexpr (FINALSAVE) {
+                SaveTxt_part(final_filename.c_str(), NParts, QuasiParts, Maxs[0]);
+            }
 
             if constexpr (VERBOSE) {
                 HANDLE_ERROR(cudaEventRecord( FinalSave, nullptr ));
@@ -363,18 +292,17 @@ int main(int argc, char *argv[]) {
             }
 
             for (unsigned inst = 0; inst < NInstances; ++inst) {
-                if constexpr (VERBOSE_2)
-                    fprintf(stdout, "\n--- RMin = %.3f Rmax = %.3f \n", SimParameters.Tcentr[iR],
-                            Maxs[0]);
+                spdlog::debug("Results for Instance {} (Rigidity {}):", inst, iR);
+                spdlog::debug("* R_min: {}, R_max: {}", SimParameters.Tcentr[iR], Maxs[0]);
 
                 if (Maxs[inst] < SimParameters.Tcentr[iR]) {
-                    printf("PROBLEMA: the max exiting rigidity is smaller than initial one\n");
+                    spdlog::error("The max exiting rigidity is smaller than initial one (Instance {})", inst);
                     continue; //TODO: check if needed
                 }
 
                 float DeltaLogR = log10f(1.f + SimParameters.RelativeBinAmplitude);
                 float LogBin0_lowEdge = log10f(SimParameters.Tcentr[iR]) - DeltaLogR / 2.f;
-                float Bin0_lowEdge = powf(10, LogBin0_lowEdge); // first LowEdge Bin
+                float Bin0_lowEdge = powf(10, LogBin0_lowEdge);
 
                 Results[iR][inst].Nbins = ceil(log10(Maxs[inst] / Bin0_lowEdge) / DeltaLogR);
                 Results[iR][inst].LogBin0_lowEdge = LogBin0_lowEdge;
@@ -389,16 +317,11 @@ int main(int argc, char *argv[]) {
 
             for (unsigned inst = 0; inst < NInstances; ++inst) {
                 Results[iR][inst].Nregistered = NPartsPerInstance - Nfailed[inst];
-                if constexpr (VERBOSE_2) {
-                    fprintf(stdout, "-- Eventi computati : %u \n", NPartsPerInstance);
-                    fprintf(stdout, "-- Eventi falliti   : %u \n", Nfailed[inst]);
-                    fprintf(stdout, "-- Eventi registrati: %u \n", Results[iR][inst].Nregistered);
-                }
+                spdlog::debug("* Total Events.   : {}", NPartsPerInstance);
+                spdlog::debug("* Recorded Events : {}", Nfailed[inst]);
+                spdlog::debug("* Failed Events.  : {}", Results[iR][inst].Nregistered);
             }
 
-            // ANNOTATION THE ONLY MEMCOPY NEEDED FROM DEVICE TO HOST ARE THE FINAL RESULTS (ALIAS THE ENERGY FINAL HISTOGRAM AND PARTICLE EXIT RESULTS)
-
-            // .. ............................................................
             if constexpr (VERBOSE_2) {
                 HANDLE_ERROR(cudaEventRecord( Cycle_step2, nullptr ));
                 HANDLE_ERROR(cudaEventSynchronize( Cycle_step2 ));
@@ -415,12 +338,13 @@ int main(int argc, char *argv[]) {
                     Cycle_step1, FinalSave ));
                 HANDLE_ERROR(cudaEventElapsedTime( &Enl2,
                     FinalSave, Cycle_step2 ));
-                printf("-- Init              :  %3.2f ms \n", Enl00);
-                printf("-- Save initial state:  %3.2f ms \n", EnlIn);
-                printf("-- Propagation phase :  %3.2f ms \n", Enl0);
-                printf("-- Find Max          :  %3.2f ms \n", Enl1);
-                printf("-- Save final state  :  %3.2f ms \n", EnlFin);
-                printf("-- Binning           :  %3.2f ms \n", Enl2);
+                spdlog::debug("Performance for Rigidity {}:", iR);
+                spdlog::debug("* Init               :  {:.3f} s", Enl00 * 1e-3);
+                spdlog::debug("* Save initial state :  {:.3f} s", EnlIn * 1e-3);
+                spdlog::debug("* Propagation phase  :  {:.3f} s", Enl0 * 1e-3);
+                spdlog::debug("* Find Max           :  {:.3f} s", Enl1 * 1e-3);
+                spdlog::debug("* Save final state   :  {:.3f} s", EnlFin * 1e-3);
+                spdlog::debug("* Binning            :  {:.3f} s", Enl2 * 1e-3);
                 HANDLE_ERROR(cudaEventDestroy( Cycle_start ));
                 HANDLE_ERROR(cudaEventDestroy( Cycle_step00 ));
                 HANDLE_ERROR(cudaEventDestroy( InitialSave ));
@@ -439,15 +363,13 @@ int main(int argc, char *argv[]) {
         // Execution Time
         if constexpr (VERBOSE) {
             float elapsedTime, firstStep, memset;
-            HANDLE_ERROR(cudaEventElapsedTime( &memset,
-                start, MemorySet ));
-            HANDLE_ERROR(cudaEventElapsedTime( &firstStep,
-                start, Randomstep ));
-            HANDLE_ERROR(cudaEventElapsedTime( &elapsedTime,
-                start, stop ));
-            printf("Time to Set Memory:  %3.1f ms \n", memset);
-            printf("Time to create Rnd:  %3.1f ms (delta = %3.1f)\n", firstStep, firstStep - memset);
-            printf("Time to execute   :  %3.1f ms (delta = %3.1f)\n", elapsedTime, elapsedTime - firstStep);
+            HANDLE_ERROR(cudaEventElapsedTime( &memset, start, MemorySet ));
+            HANDLE_ERROR(cudaEventElapsedTime( &firstStep, start, Randomstep ));
+            HANDLE_ERROR(cudaEventElapsedTime( &elapsedTime, start, stop ));
+            spdlog::debug("* Time to Set Memory : {:.3f} s", memset * 1e-3);
+            spdlog::debug("* Time to create Rnd : {:.3f} s ({:.3f})", firstStep * 1e-3, (firstStep - memset) * 1e-3);
+            spdlog::debug("* Time to execute    : {:.3f} s ({:.3f})", elapsedTime * 1e-3,
+                          (elapsedTime - firstStep) * 1e-3);
         }
 
         if constexpr (VERBOSE) {
@@ -456,6 +378,8 @@ int main(int argc, char *argv[]) {
             HANDLE_ERROR(cudaEventDestroy( Randomstep ));
             HANDLE_ERROR(cudaEventDestroy( stop ));
         }
+
+        spdlog::info("Simulation for rigidity {} [{}] ended", SimParameters.Tcentr[iR], iR);
     }
     // end of the multiple CPU thread pragma
 
@@ -466,12 +390,13 @@ int main(int argc, char *argv[]) {
 
     // Generate the YAML file name, following the old naming convention:
     // "<SimParameters.output_file_name>_matrix_<pid>.yaml"
-    char yamlFilename[MaxCharinFileName];
-    sprintf(yamlFilename, "%s_matrix_%lu.yaml", SimParameters.output_file_name, static_cast<unsigned long>(getpid()));
+    // char yamlFilename[MaxCharinFileName];
+    // sprintf(yamlFilename, "%s_matrix_%lu.yaml", SimParameters.output_file_name, static_cast<unsigned long>(getpid()));
+    std::string yamlFilename = fmt::format("{}_matrix_{}.yaml", SimParameters.output_file_name, getpid());
 
     try {
         write_results_yaml(yamlFilename, SimParameters);
-        printf("Results saved to file: %s\n", yamlFilename);
+        spdlog::info("Results saved to file: {}", yamlFilename);
     } catch (const std::exception &e) {
         std::cerr << "Error writing results to YAML file: " << e.what() << std::endl;
         return 1;
@@ -483,22 +408,19 @@ int main(int argc, char *argv[]) {
 
     // Save the rigidity histograms to txt file
     for (unsigned iR = 0; iR < SimParameters.NT; ++iR) {
-        SaveTxt_histo(histo_filename, Results[iR][0].Nbins, Results[iR][0], VERBOSE_2);
+        SaveTxt_histo(histo_filename.c_str(), Results[iR][0].Nbins, Results[iR][0]);
     }
 
     /* save results to file .dat */
     FILE *pFile_Matrix = nullptr;
-    char RAWMatrix_name[MaxCharinFileName];
-    sprintf(RAWMatrix_name, "%s_matrix_%lu.dat", SimParameters.output_file_name,
-            static_cast<unsigned long int>(getpid()));
+    std::string datFilename = fmt::format("{}_matrix_{}.dat", SimParameters.output_file_name, getpid());
 
-    if constexpr (VERBOSE_2) fprintf(stdout, "Writing Output File: %s \n", RAWMatrix_name);
-    pFile_Matrix = fopen(RAWMatrix_name, "w");
+    spdlog::debug("Writing Output File: {}", datFilename);
+    pFile_Matrix = fopen(datFilename.c_str(), "w");
 
-    if (pFile_Matrix == nullptr && VERBOSE_2) {
-        fprintf(stderr, ERR_NoOutputFile);
-        fprintf(stderr, "Writing to StandardOutput instead\n");
-        pFile_Matrix = stdout;
+    if (pFile_Matrix == nullptr) {
+        spdlog::critical("Error, no output file");
+        exit(EXIT_FAILURE);
     }
 
     fprintf(pFile_Matrix, "# COSMICA \n");
@@ -539,13 +461,7 @@ int main(int argc, char *argv[]) {
 
     delete[] GPUs_profile;
 
-    if constexpr (VERBOSE) {
-        // -- Save end time of simulation into log file
-        time_t tim = time(nullptr);
-        tm *local = localtime(&tim);
-        printf("\nSimulation end at: %s  \n", asctime(local));
-    }
-
+    spdlog::info("Simulation ended");
 
     return cudaDeviceReset();
 }

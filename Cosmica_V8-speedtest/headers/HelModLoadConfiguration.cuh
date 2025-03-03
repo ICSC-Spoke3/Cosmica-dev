@@ -28,6 +28,6 @@ int LoadConfigFile(int, char *[], SimConfiguration_t &, int);
 
 int LoadConfigYaml(int, char *[], SimConfiguration_t &, int);
 
-int write_results_yaml(const char *, const SimConfiguration_t &);
+int write_results_yaml(const std::string &, const SimConfiguration_t &);
 
 #endif

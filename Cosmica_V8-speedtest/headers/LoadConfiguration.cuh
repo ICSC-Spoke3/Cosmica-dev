@@ -34,12 +34,12 @@ void CopyToConstant(const T &, const T *);
 
 ThreadIndexes_t AllocateIndex(int);
 
-InitialPositions_t LoadInitPos(unsigned, bool);
+InitialPositions_t LoadInitPos(unsigned);
 
 float *LoadInitRigidities(int, bool);
 
-void SaveTxt_part(const char *, int, const ThreadQuasiParticles_t &, float, bool);
+void SaveTxt_part(const char *, int, const ThreadQuasiParticles_t &, float);
 
-void SaveTxt_histo(const char *, int, const MonteCarloResult_t &, bool);
+void SaveTxt_histo(const char *, int, const MonteCarloResult_t &);
 
 #endif

@@ -151,21 +151,14 @@ InstanceHistograms *AllocateResults(const unsigned NRig, const unsigned NInstanc
 /**
 * @brief Load the initial positions of the particles
 * @param Npos Number of particles to load
-* @param verbose Whether to print verbose output
 * @return InitialPositions_t struct with the loaded values
 */
-InitialPositions_t LoadInitPos(unsigned Npos, const bool verbose) {
-    InitialPositions_t InitialPositions;
-
-    InitialPositions.r = new float[Npos];
-    InitialPositions.th = new float[Npos];
-    InitialPositions.phi = new float[Npos];
-
-    if (verbose) {
-        printf("Default initial quasi particles configuration loaded\n");
-    }
-
-    return InitialPositions;
+InitialPositions_t LoadInitPos(const unsigned Npos) {
+    return {
+        new float[Npos],
+        new float[Npos],
+        new float[Npos],
+    };
 }
 
 /**
@@ -193,11 +186,10 @@ float *LoadInitRigidities(const int RBins, const bool verbose) {
 * @param NPart Number of particles
 * @param Out_QuasiParts ThreadQuasiParticles_t struct with the particles
 * @param RMax Maximum rigidity
-* @param verbose Whether to print verbose output
 * @throws EXIT_FAILURE if the file cannot be opened
 */
-void SaveTxt_part(const char *filename, const int Npart, const ThreadQuasiParticles_t &Out_QuasiParts, const float RMax,
-                  const bool verbose) {
+void SaveTxt_part(const char *filename, const int Npart, const ThreadQuasiParticles_t &Out_QuasiParts,
+                  const float RMax) {
     FILE *file = fopen(filename, "ab");
     if (file == nullptr) {
         printf("Error opening the file %s\n", filename);
@@ -212,10 +204,6 @@ void SaveTxt_part(const char *filename, const int Npart, const ThreadQuasiPartic
 
     fprintf(file, "max R\n%f\n\n", RMax);
 
-    if (verbose) {
-        printf("Propagation variables written successfully in file %s\n", filename);
-    }
-
     fclose(file);
 }
 
@@ -224,10 +212,9 @@ void SaveTxt_part(const char *filename, const int Npart, const ThreadQuasiPartic
 * @param filename Name of the file to save the histogram to
 * @param Bins Number of bins
 * @param histo MonteCarloResult_t struct with the histogram
-* @param verbose Whether to print verbose output
 * @throws EXIT_FAILURE if the file cannot be opened
 */
-void SaveTxt_histo(const char *filename, const int Bins, const MonteCarloResult_t &histo, const bool verbose) {
+void SaveTxt_histo(const char *filename, const int Bins, const MonteCarloResult_t &histo) {
     FILE *file = fopen(filename, "ab");
     if (file == nullptr) {
         printf("Error opening the file %s\n", filename);
@@ -239,10 +226,6 @@ void SaveTxt_histo(const char *filename, const int Bins, const MonteCarloResult_
 
     for (int i = 0; i < Bins; i++) {
         fprintf(file, "%f\n", histo.BoundaryDistribution[i]);
-    }
-
-    if (verbose) {
-        printf("Histo array written successfully\n");
     }
 
     fclose(file);
