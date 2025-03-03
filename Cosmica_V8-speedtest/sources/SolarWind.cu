@@ -8,16 +8,15 @@
  * @brief Calculate the solar wind speed at a given position in the heliosphere.
  *
  * @param index
- * @param qp
- * @return Solar wind speed
+ * @param qp the quasi-particle
+ * @return Solar wind speed at the given position;
+ * @note If the quasi-particle is outside the heliosphere, the solar wind speed is simply V0.
  */
 __device__ float SolarWindSpeed(const Index_t &index, const QuasiParticle_t &qp) {
     const float V0 = index.radial < Constants.Nregions
                          ? Constants.heliosphere_properties[index.combined()].V0
                          : Constants.heliosheat_properties[index.period].V0;
 
-
-    // heliosheat (or near to)...............................
     if (const float RtsDirection = Boundary(qp.th, qp.phi, Constants.RadBoundary_effe[index.period].Rts_nose,
                                             Constants.RadBoundary_effe[index.period].Rts_tail);
         index.radial >= Constants.Nregions - 1 && qp.r > RtsDirection - L_tl) {
@@ -30,20 +29,17 @@ __device__ float SolarWindSpeed(const Index_t &index, const QuasiParticle_t &qp)
         return V0 * DecreasFactor;
     }
 
-    // inner Heliosphere .........................
     if (Constants.IsHighActivityPeriod[index.period]) {
-        // high solar activity
         return V0;
     }
-
     return min(Vhigh, V0 * (1 + fabsf(cosf(qp.th))));
 }
 
 /**
- * @brief Derivative of solar wind speed in d theta
+ * @brief Derivative of solar wind speed with respect to theta.
  *
  * @param index
- * @param qp
+ * @param qp the quasi-particle
  * @return Derivative of solar wind speed in d theta
  */
 __device__ float DerivativeOfSolarWindSpeed_dtheta(const Index_t &index, const QuasiParticle_t &qp) {
@@ -51,13 +47,10 @@ __device__ float DerivativeOfSolarWindSpeed_dtheta(const Index_t &index, const Q
                          ? Constants.heliosphere_properties[index.combined()].V0
                          : Constants.heliosheat_properties[index.period].V0;
 
-    // heliosheat ...............................
-    // inner Heliosphere .........................
     if (const float RtsDirection = Boundary(qp.th, qp.phi, Constants.RadBoundary_effe[index.period].Rts_nose,
                                             Constants.RadBoundary_effe[index.period].Rts_tail);
-        (index.radial >= Constants.Nregions - 1 && qp.r > RtsDirection - L_tl) ||
-        Constants.IsHighActivityPeriod[index.period] ||
-        V0 * (1 + fabsf(cosf(qp.th))) > Vhigh
+        (index.radial >= Constants.Nregions - 1 && qp.r > RtsDirection - L_tl) || Constants.IsHighActivityPeriod[index.
+            period] || V0 * (1 + fabsf(cosf(qp.th))) > Vhigh
     ) {
         return 0;
     }

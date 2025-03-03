@@ -14,6 +14,4 @@ __device__ vect3D_t AdvectiveTerm(const Index_t &, const QuasiParticle_t &, cons
 
 __device__ float EnergyLoss(const Index_t &, const QuasiParticle_t &);
 
-// __device__ float LossTerm(unsigned char,signed char, float, float, float, float, float);
-
 #endif

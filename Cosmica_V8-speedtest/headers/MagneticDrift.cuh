@@ -60,14 +60,12 @@
 #define HighRigiSupp_TransPoint 9.5f
 #endif
 
-// ------------------------------------------
 __device__ float Gamma_Bfield(float, float, float);
 
 __device__ float delta_Bfield(float, float);
 
 __device__ vect3D_t Drift_PM89(const Index_t &, const QuasiParticle_t &, PartDescription_t);
 
-/* * description: Evaluate the components of drift velocity according to Potgieter Mooral 1985 - See Burger&Hatttingh 1995 */
 float EvalP0DriftSuppressionFactor(int, int, float, float);
 
 float EvalHighRigidityDriftSuppression_plateau(int, float);

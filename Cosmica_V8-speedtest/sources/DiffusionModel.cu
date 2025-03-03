@@ -186,8 +186,6 @@ std::tuple<float, float, float> EvalK0(const bool IsHighActivityPeriod, const in
         K_perp = K0Fit_ssn(p, SolarPhase, ssn, &Gauss);
         K_par *= K_perp;
     }
-    // printf("-- K0 paral: %e \n",K_par);
-    // printf("-- K0 perp : %e \n",K_perp);
     return {K_par, K_perp, Gauss};
 }
 
