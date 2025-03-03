@@ -4,10 +4,12 @@
 #include <HeliosphereModel.cuh>
 #include <constants.hpp>
 
-// Struct with threads, blocks and share memory with which launch a cuda function
 struct LaunchParam_t {
-    unsigned threads = 0;
-    unsigned blocks = 0;
+    unsigned blocks = 0, threads = 0;
+
+    static LaunchParam_t from_TpB(const unsigned TpB, const unsigned NParts) {
+        return {(NParts + TpB - 1) / TpB, TpB};
+    }
 };
 
 struct InputHeliosphericParametrizationProperties_t {

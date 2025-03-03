@@ -207,7 +207,7 @@ int main(int argc, char *argv[]) {
         cudaDeviceProp device_prop = GPUs_profile[gpu_id];
 
         // Rounding the number of particle and calculating threads, blocks and share memory to acheive the maximum usage of the GPUs
-        auto [THREADS, BLOCKS] = RoundNpart(NParts, device_prop, VERBOSE_2, SetWarpPerBlock);
+        auto [BLOCKS, THREADS] = GetLaunchConfig(NParts, device_prop);
 
         ////////////////////////////////////////////////////////////////
         //..... capture the start time of GPU part .....................

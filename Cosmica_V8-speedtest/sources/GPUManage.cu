@@ -1,8 +1,4 @@
-#include <iostream>
-#include <cstdio>          // Supplies FILE, stdin, stdout, stderr, and the fprint() family of functions
-#include <cuda_runtime.h>   // Device code management by providing implicit initialization, context management, and module management
-
-
+#include <cuda_runtime.h>
 
 #include "GPUManage.cuh"
 #include "VariableStructure.cuh"
@@ -54,33 +50,26 @@ int AvailableGPUs() {
 
 
 /**
- * @brief Define the best value of NWarpPerBlock for a given GPU (name)
+ * @brief Define the optimal Threads per Block value for a given GPU (name)
  * @param name the name of the GPU
- * @param verbose the verbosity of the output
- * @return the best warp per block
+ * @return the best number of threads per block
  */
-// TODO: refactor to be BestThreadsPerBlock
-int BestWarpPerBlock(char name[], const int verbose) {
-    int BestWarpPerBlock = 8;
+int BestThreadsPerBlock(const std::string &name) {
+    static const std::unordered_map<std::string, int> deviceTpB = {
+        {"NVIDIA A30", 48},
+        {"NVIDIA A40", 48},
+        {"NVIDIA A100", 64} // TODO: temporary
+    };
 
-    switch (hash(name)) {
-        case "NVIDIA A30"_:
-        case "NVIDIA A40"_:
-            BestWarpPerBlock = 2;
-            break;
-        case "NVIDIA A100"_:
-            BestWarpPerBlock = 16;
-            break;
-        default:
-            std::cerr << "WARNING: best value not known, used default warp per block = 8 for " << name << std::endl;
+    int TpB = 32;  // Default value
+    if (const auto it = deviceTpB.find(name); it != deviceTpB.end()) {
+        TpB = it->second;
+    } else {
+        spdlog::warn("Optimal TpB value for device {} unknown, using {}", name, TpB);
     }
 
-    if (verbose) {
-        printf("----- Simulation infos -----\n");
-        printf("-- For board %s we execute the code using NWarpPerBlock=%d\n", name, BestWarpPerBlock);
-    }
-
-    return BestWarpPerBlock;
+    spdlog::debug("Using {} Threads per Block for device {}", TpB, name);
+    return TpB;
 }
 
 /**
@@ -89,19 +78,10 @@ int BestWarpPerBlock(char name[], const int verbose) {
  * The calculations are done based on the cuda occupancy calculator output to maximize the usage of the GPUs.
  * @param NPart the number of particles
  * @param GPUprop the GPU properties
- * @param verbose the verbosity of the output
- * @param WpB the warp per block
  * @return the launch parameters
  */
-LaunchParam_t RoundNpart(const unsigned NPart, cudaDeviceProp GPUprop, const bool verbose, const int WpB) {
-    LaunchParam_t launch_param;
-
-    // Computation of the number of blocks, warp per blocks, threads per block and shared memory bits
-    int WarpPerBlock = WpB <= 0 ? BestWarpPerBlock(GPUprop.name, verbose) : WpB;
-    launch_param.threads = WarpPerBlock * GPUprop.warpSize;
-    launch_param.blocks = ceil_int_div(NPart, launch_param.threads);
-    // Use a minimum of 2 blocks per Single Multiprocessor (cuda prescription)
-    if (launch_param.blocks < 2) launch_param.blocks = 2;
+LaunchParam_t GetLaunchConfig(const unsigned NPart, cudaDeviceProp GPUprop) {
+    auto launch_param = LaunchParam_t::from_TpB(BestThreadsPerBlock(GPUprop.name), NPart);
 
     if (launch_param.threads > static_cast<unsigned>(GPUprop.maxThreadsPerBlock)) {
         spdlog::critical("Error while configuring the Propagation Kernel");
@@ -115,24 +95,8 @@ LaunchParam_t RoundNpart(const unsigned NPart, cudaDeviceProp GPUprop, const boo
         exit(EXIT_FAILURE);
     }
 
-#define EXPERIMENTAL_GRID
-#ifdef EXPERIMENTAL_GRID
-    // int gridSize, minGridSize, blockSize = 32;
-    // int maxActiveBlocks = 0;
-    // cudaOccupancyMaxActiveBlocksPerMultiprocessor(&maxActiveBlocks, HeliosphericProp, blockSize, 0);
-    // gridSize = GPUprop.multiProcessorCount * maxActiveBlocks;
-    // cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, HeliosphericProp, 0, 65536 / 86);
-    // blockSize = (blockSize + GPUprop.warpSize - 1) / GPUprop.warpSize * GPUprop.warpSize;
-    // gridSize = (NPart + blockSize - 1) / blockSize;
-
-    // launch_param.threads = (768 + GPUprop.warpSize - 1) / GPUprop.warpSize * GPUprop.warpSize;
-    launch_param.threads = 48;
-    launch_param.blocks = (NPart + launch_param.threads - 1) / launch_param.threads;
-#endif
-
     spdlog::info("Propagation Kernel Configuration:");
     spdlog::info("* Number of particles      : {}", NPart);
-    spdlog::info("* Number of Warp in a Block: {}", WarpPerBlock);
     spdlog::info("* Number of blocks         : {}", launch_param.blocks);
     spdlog::info("* Number of threadsPerBlock: {}", launch_param.threads);
 

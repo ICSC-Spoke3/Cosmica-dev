@@ -11,7 +11,7 @@ int AvailableGPUs();
 
 int BestNWarpPerBlock(char, bool);
 
-LaunchParam_t RoundNpart(unsigned, cudaDeviceProp, bool, int);
+LaunchParam_t GetLaunchConfig(unsigned, cudaDeviceProp);
 
 cudaDeviceProp *DeviceInfo(int);
 
