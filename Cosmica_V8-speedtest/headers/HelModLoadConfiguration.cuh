@@ -18,7 +18,7 @@ struct InputHeliosphericParameters_t {
     float Rhp_tail = 0;
 };
 
-void usage(const char *);
+[[noreturn]] void usage(const char *);
 
 void kill_me(const char *);
 
