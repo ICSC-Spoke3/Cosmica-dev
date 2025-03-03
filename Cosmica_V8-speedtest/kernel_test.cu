@@ -24,6 +24,7 @@
 
 
 // .. project specific
+#include "spdlog/spdlog.h"
 #include "headers/fkYAML.hpp"
 #include "VariableStructure.cuh"
 
@@ -113,9 +114,8 @@ int main(int argc, char *argv[]) {
     ////////////////////////////////////////////////////////////////
     if constexpr (VERBOSE) {
         // -- Save initial time of simulation
-        time_t tim = time(nullptr);
-        tm *local = localtime(&tim);
-        printf("\nSimulation started at: %s  \n", asctime(local));
+        auto tim = std::time(nullptr);
+        spdlog::info("Simulation started at: {}", std::asctime(std::localtime(&tim)));
     }
     ////////////////////////////////////////////////////////////////
 
