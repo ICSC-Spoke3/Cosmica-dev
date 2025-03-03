@@ -139,16 +139,7 @@ int main(int argc, char *argv[]) {
     spdlog::info("# particles per instance: {}", NPartsPerInstance);
     spdlog::info("# total particles: {}", NParts);
 
-
-    ////////////////////////////////////////////////////////////////
-    //..... Rescale Heliosphere to an effective one  ...............
-    ////////////////////////////////////////////////////////////////
-
-    // Allocation of the output results for all the rigidities
-    auto *OldResults = new MonteCarloResult_t[SimParameters.NT];
     auto Results = SimParameters.Results = AllocateResults(SimParameters.NT, NParts);
-
-    // .. Results saving files
 
     // Initial and final results files
     char file_trivial[8] = {};
@@ -405,8 +396,6 @@ int main(int argc, char *argv[]) {
                 }
             }
 
-            OldResults[iR] = Results[iR][0];
-
             // ANNOTATION THE ONLY MEMCOPY NEEDED FROM DEVICE TO HOST ARE THE FINAL RESULTS (ALIAS THE ENERGY FINAL HISTOGRAM AND PARTICLE EXIT RESULTS)
 
             // .. ............................................................
@@ -494,7 +483,7 @@ int main(int argc, char *argv[]) {
 
     // Save the rigidity histograms to txt file
     for (unsigned iR = 0; iR < SimParameters.NT; ++iR) {
-        SaveTxt_histo(histo_filename, OldResults[iR].Nbins, OldResults[iR], VERBOSE_2);
+        SaveTxt_histo(histo_filename, Results[iR][0].Nbins, Results[iR][0], VERBOSE_2);
     }
 
     /* save results to file .dat */
@@ -525,14 +514,14 @@ int main(int argc, char *argv[]) {
 
         fprintf(pFile_Matrix, "%f %u %u %d %f %f \n", SimParameters.Tcentr[itemp],
                 SimParameters.Npart,
-                OldResults[itemp].Nregistered,
-                OldResults[itemp].Nbins,
-                OldResults[itemp].LogBin0_lowEdge,
-                OldResults[itemp].DeltaLogR);
+                Results[itemp][0].Nregistered,
+                Results[itemp][0].Nbins,
+                Results[itemp][0].LogBin0_lowEdge,
+                Results[itemp][0].DeltaLogR);
         if constexpr (VERBOSE) fprintf(pFile_Matrix, "# output distribution \n");
 
-        for (int itNB = 0; itNB < OldResults[itemp].Nbins; itNB++) {
-            fprintf(pFile_Matrix, "%e ", OldResults[itemp].BoundaryDistribution[itNB]);
+        for (int itNB = 0; itNB < Results[itemp][0].Nbins; itNB++) {
+            fprintf(pFile_Matrix, "%e ", Results[itemp][0].BoundaryDistribution[itNB]);
         }
 
 
@@ -549,8 +538,6 @@ int main(int argc, char *argv[]) {
     delete[] SimParameters.Tcentr;
 
     delete[] GPUs_profile;
-
-    delete[] OldResults;
 
     if constexpr (VERBOSE) {
         // -- Save end time of simulation into log file
