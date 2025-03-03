@@ -21,14 +21,7 @@
 #define LOAD_CONF_FILE_NoFile "No configuration file Specified. default value used instead \n"
 #define ERR_NoOutputFile "ERROR: output file cannot be open, do you have writing permission?\n"
 
-// -----------------------------------------------------------------
-// ------------------  External Declaration  -----------------------
-// -----------------------------------------------------------------
-// extern int errno;
-// extern char *optarg;
-// extern int opterr, optind;
-/////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////
+
 #define WELCOME "Welcome to COSMICA, enjoy the speedy side of propagation\n"
 #define DEFAULT_PROGNAME "Cosmica"
 #define OPTSTR "vi:h"
@@ -37,24 +30,46 @@
 
 using std::vector, std::string, std::pair, std::unordered_map;
 
-void usage(const char *progname) {
+
+
+/**
+ * @brief Print the usage message
+ * @param progname the name of the program
+ *
+ * @note noreturn: the function will never return a value
+ */
+[[noreturn]] void usage(const char *progname) {
     fprintf(stderr, USAGE_MESSAGE);
     fprintf(stderr, USAGE_FMT, progname ? progname : DEFAULT_PROGNAME);
     exit(EXIT_FAILURE);
-    /* NOTREACHED */
 }
 
+/**
+ * @brief Kill the program with a message
+ * @param REASON the message to print
+ */
 void kill_me(const char *REASON) {
     perror(REASON);
     exit(EXIT_FAILURE);
 }
 
+/**
+ * @brief Print an error message
+ * @param var the variable name
+ * @param value the value that caused the error
+ * @param zone the region where the error occurred
+ * @return EXIT_FAILURE
+ */
 int PrintError(const char *var, char *value, const int zone) {
     fprintf(stderr, "ERROR: %s value not valid [actual value %s for region %d] \n", var, value, zone);
     return EXIT_FAILURE;
 }
 
-
+/**
+ * @brief Split a CSV string into a vector of floats using as delimiter ','
+ * @param str the string to split
+ * @return a vector of floats from the CSV string
+ */
 vector<float> SplitCSV(const string &str) {
     vector<float> tempFloats;
     std::stringstream ss(str);
@@ -74,6 +89,11 @@ vector<float> SplitCSV(const string &str) {
     return tempFloats;
 }
 
+/**
+ * @brief Parse a CSV string into a InputHeliosphericParameters_t struct
+ * @param str the string to parse
+ * @return a InputHeliosphericParameters_t struct
+ */
 InputHeliosphericParameters_t ParseHeliospheric(const string &str) {
     const auto parsed = SplitCSV(str);
     return {
@@ -93,11 +113,22 @@ InputHeliosphericParameters_t ParseHeliospheric(const string &str) {
     };
 }
 
+/**
+ * @brief Parse a CSV string into a InputHeliosheatParameters_t struct
+ * @param str the string to parse
+ * @return a InputHeliosheatParameters_t struct
+ */
 InputHeliosheatParameters_t ParseHeliosheat(const string &str) {
     const auto parsed = SplitCSV(str);
     return {parsed[0], parsed[1]};
 }
 
+/**
+ * @brief Parse the command line arguments
+ * @param argc the number of arguments
+ * @param argv the arguments
+ * @return a map of the arguments
+ */
 unordered_map<string, string> ParseCLIArguments(const int argc, char *argv[]) {
     unordered_map<string, string> cliArgs;
 
@@ -111,10 +142,16 @@ unordered_map<string, string> ParseCLIArguments(const int argc, char *argv[]) {
             }
         }
     }
-
     return cliArgs;
 }
 
+/**
+ * @brief Split a string into a key-value pair
+ * @param line the string to split
+ * @return a pair of strings with the key and value
+ *
+ * @throws std::invalid_argument if the string is not in the expected format
+ */
 std::pair<string, string> splitKeyValue(const string &line) {
     const size_t colonPos = line.find(':');
     if (colonPos == string::npos) {
@@ -145,6 +182,14 @@ consteval unsigned long operator""_(const char *str, const size_t len) {
 }
 #endif
 
+/**
+ * @brief Load the configuration file
+ * @param argc the number of arguments
+ * @param argv the arguments
+ * @param SimParameters the simulation parameters
+ * @param verbose the verbosity level
+ * @return EXIT_SUCCESS if the configuration was loaded successfully, EXIT_FAILURE otherwise
+ */
 int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, int verbose) {
     auto options = ParseCLIArguments(argc, argv);
 
@@ -248,11 +293,6 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
         std::cerr << "Mismatched initial positions\n";
         return EXIT_FAILURE;
     }
-    // if (SPr.size() + SimParameters.simulation_constants.Nregions - 1 != IHP.size()) {
-    //     std::cerr << "Mismatched initial positions and regions " << SPr.size() << ' ' << SimParameters.
-    //             simulation_constants.Nregions << ' ' << IHP.size() << std::endl;
-    //     return EXIT_FAILURE;
-    // }
 
     SimParameters.NInitialPositions = SPr.size();
     std::ranges::copy(SPr, SimParameters.InitialPositions.r = new float[SPr.size()]);
@@ -308,8 +348,9 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
             IHP[i].SolarPhase, IHP[i].Polarity, IHP[i].SmoothTilt);
         SimParameters.simulation_constants.heliosphere_properties[i].rconst = rconst(
             IHP[i].SolarPhase, IHP[i].Polarity, IHP[i].SmoothTilt);
+        // Convert tilt angle to radians
         SimParameters.simulation_constants.heliosphere_properties[i].TiltAngle = IHP[i].TiltAngle * Pi / 180.f;
-        // conversion to radian
+        // Calculate Asun
         SimParameters.simulation_constants.heliosphere_properties[i].Asun =
                 static_cast<float>(IHP[i].Polarity) * sq(aum) * IHP[i].BEarth * 1e-9f /
                 sqrtf(1.f + Omega * (1 - rhelio) / (IHP[i].V0 / aukm) * (
@@ -372,7 +413,7 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
             fprintf(stderr, "  Rhp tail direction      : %.2f AU\n",
                     SimParameters.simulation_constants.RadBoundary_real[i].Rhp_tail);
         }
-        fprintf(stderr, "Heliopshere Parameters ( %d regions ): \n", SimParameters.simulation_constants.Nregions);
+        fprintf(stderr, "Heliosphere Parameters ( %d regions ): \n", SimParameters.simulation_constants.Nregions);
 
         for (unsigned i = 0; i < SimParameters.simulation_constants.Nregions + SimParameters.NInitialPositions - 1; ++
              i) {
@@ -397,9 +438,6 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
             fprintf(stderr, "-- P0d        %e GV \n", SimParameters.simulation_constants.heliosphere_properties[i].P0d);
             fprintf(stderr, "-- P0dNS      %e GV \n",
                     SimParameters.simulation_constants.heliosphere_properties[i].P0dNS);
-
-
-            // XXXXXXX
         }
         fprintf(stderr, "Heliosheat parameters ( %d periods ): \n", SimParameters.NInitialPositions);
         for (unsigned ipos = 0; ipos < SimParameters.NInitialPositions; ++ipos) {
@@ -413,17 +451,32 @@ int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, in
     return EXIT_SUCCESS;
 }
 
+/**
+ * @brief From a YAML node, extract the particle description
+ * @param node the YAML node
+ * @param particle the particle description
+ */
 void from_node(const fkyaml::node &node, PartDescription_t &particle) {
     particle.T0 = node["nucleon_rest_mass"].get_value<float>();
     particle.A = node["mass_number"].get_value<float>();
     particle.Z = node["charge"].get_value<float>();
 }
 
+/**
+ * @brief Extract the value from a YAML node
+ * @param node the YAML node
+ * @return the value
+ */
 template<typename T>
 T node_to_value(const fkyaml::node &node) {
     return node.get_value<T>();
 }
 
+/**
+ * @brief Extract a vector from a YAML node
+ * @param node the YAML node
+ * @return the vector
+ */
 template<typename T>
 auto node_to_vector(const fkyaml::node &node) {
     vector<T> ret;
@@ -432,6 +485,11 @@ auto node_to_vector(const fkyaml::node &node) {
     return ret;
 }
 
+/**
+ * @brief Extract a map from a YAML node
+ * @param node the YAML node
+ * @return the map
+ */
 template<typename T>
 auto node_to_map(const fkyaml::node &node) {
     pair<vector<string>, vector<T> > ret;
@@ -442,6 +500,13 @@ auto node_to_map(const fkyaml::node &node) {
     return ret;
 }
 
+/**
+ * @brief Check the number of sources
+ * @param r the radial coordinates
+ * @param th the polar coordinates
+ * @param phi the azimuthal coordinates
+ * @return the number of sources or exit if the coordinates are misaligned
+ */
 unsigned check_sources_count(const vector<float> &r, const vector<float> &th, const vector<float> &phi) {
     if (r.size() != th.size() || th.size() != phi.size()) {
         printf("Misaligned source coordinates (%lu, %lu, %lu)", r.size(), th.size(), phi.size());
@@ -450,10 +515,20 @@ unsigned check_sources_count(const vector<float> &r, const vector<float> &th, co
     return r.size();
 }
 
+/**
+ * @brief Check the number of parameters
+ * @param dynamic_node the dynamic node
+ * @return the number of parameters
+ */
 unsigned check_params_count(const fkyaml::node &dynamic_node) {
     return dynamic_node["heliosphere"].cbegin().value().size();
 }
 
+/**
+ * @brief Check the number of regions
+ * @param isotopes the isotopes descriptions
+ * @return the number of regions or exit if the isotopes have different charges
+ */
 int check_isotopes_charge(const vector<PartDescription_t> &isotopes) {
     if (isotopes.empty() || !std::ranges::all_of(isotopes, [&](const auto &i) { return i.Z == isotopes.front().Z; })) {
         std::cerr << "All isotopes must have the same charge" << std::endl;
@@ -462,6 +537,16 @@ int check_isotopes_charge(const vector<PartDescription_t> &isotopes) {
     return static_cast<int>(isotopes.front().Z);
 }
 
+/**
+ * @brief Extract the heliosphere parameters from a YAML node
+ * @param node the YAML node
+ * @param n_sources the number of sources
+ * @param n_regions the number of regions
+ * @param n_param the number of parameters
+ * @param z the charge of the isotopes
+ * @return a tuple with the heliosphere parameters (heliosphere parametrization properties, heliosphere properties,
+ *              high activity, boundary)
+ */
 std::tuple<vector<vector<HeliosphereParametrizationProperties_t> >, vector<HeliosphereProperties_t>, vector<bool>,
     vector<HeliosphereBoundRadius_t> >
 node_to_heliosphere(const fkyaml::node &node, const unsigned n_sources, const unsigned n_regions,
@@ -529,8 +614,13 @@ node_to_heliosphere(const fkyaml::node &node, const unsigned n_sources, const un
     return {hpps, hps, high_activity, boundary};
 }
 
-vector<HeliosheatProperties_t>
-node_to_heliosheat(const fkyaml::node &node, const unsigned size) {
+/**
+ * @brief Extract the heliosheat parameters from a YAML node
+ * @param node the YAML node
+ * @param size the number of sources
+ * @return the heliosheat parameters vector
+ */
+vector<HeliosheatProperties_t> node_to_heliosheat(const fkyaml::node &node, const unsigned size) {
     const auto &static_node = node["static"]["heliosheat"];
     vector<HeliosheatProperties_t> hps;
     for (unsigned i = 0; i < size; ++i) {
@@ -542,6 +632,14 @@ node_to_heliosheat(const fkyaml::node &node, const unsigned size) {
     return hps;
 }
 
+/**
+ * @brief Load the configuration file in YAML format
+ * @param argc the number of arguments
+ * @param argv the arguments
+ * @param config the simulation configuration
+ * @param verbose the verbosity level
+ * @return EXIT_SUCCESS if the configuration was loaded successfully, EXIT_FAILURE otherwise
+ */
 int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbose) {
     auto options = ParseCLIArguments(argc, argv);
     if (options.contains("v")) verbose += 1;
@@ -707,7 +805,7 @@ int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbo
  * This function builds a YAML document representing the simulation results stored in a 2D array
  * of MonteCarloResult_t structures.
  * @param filename   The name of the YAML output file to create or overwrite.
- * @param config
+ * @param config    The simulation configuration containing the results to write.
  *
  * @return 0 on success, -1 on failure.
  */
@@ -739,7 +837,6 @@ int write_results_yaml(const char *filename, const SimConfiguration_t &config) {
             }
         }
     }
-
     ofs << root;
 
     return 0;
