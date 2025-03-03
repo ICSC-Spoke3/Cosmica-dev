@@ -5,8 +5,16 @@
 #include "VariableStructure.cuh"
 #include "HelModVariableStructure.cuh"
 #include "SDECoeffs.cuh"
-#include "Histogram.cuh"
 
+/**
+ * @brief Heliospheric propagation of cosmic rays in the heliosphere using a stochastic differential equation (SDE) approach
+ * @param QuasiParts_out QuasiParticles output
+ * @param indexes Indexes of the particles
+ * @param params Simulation parameters
+ * @param CudaState Random number generator state
+ * @param RMaxs Maximum rigidity of the particles
+ * @throws res If the diffusion tensor is not positive definite, the propagation is stopped and the energy is set to a negative value to signal the event
+ */
 __global__ void HeliosphericProp(ThreadQuasiParticles_t QuasiParts_out, const ThreadIndexes_t indexes,
                                  const SimulationParametrizations_t params, curandStatePhilox4_32_10_t *const CudaState,
                                  float *RMaxs) {
@@ -29,10 +37,8 @@ __global__ void HeliosphericProp(ThreadQuasiParticles_t QuasiParts_out, const Th
         const auto [rr, tr, tt, pr, pt, pp] = SquareRoot_DiffusionTerm(index, qp, KSym, &res);
 
         if (res > 0) {
-            // SDE diffusion matrix is not positive definite; in this case propagation should be stopped and a new event generated
-            // placing the energy below zero ensure that this event is ignored in the after-part of the analysis
             qp.R = -1;
-            break; //exit the while cycle
+            break;
         }
 
         const auto [adv_r, adv_th, adv_phi] = AdvectiveTerm(index, qp, KSym, Constants.Isotopes[index.isotope]);

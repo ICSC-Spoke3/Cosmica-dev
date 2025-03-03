@@ -64,8 +64,6 @@
 #define VERBOSE 1
 #define VERBOSE_2 1
 #define VERBOSE_LOAD 0
-#define SINGLE_CPU 0
-#define HELMOD_LOAD 1
 #define INITSAVE 0
 #define FINALSAVE 0
 
@@ -93,7 +91,7 @@ __constant__ SimulationConstants_t Constants;
 #include "sources/SolarWind.cu"
 #endif
 
-bool test_and_pop(std::deque<unsigned>& queue, unsigned& val) {
+bool test_and_pop(std::deque<unsigned> &queue, unsigned &val) {
     bool ret;
 #pragma omp critical
     {
@@ -107,63 +105,27 @@ bool test_and_pop(std::deque<unsigned>& queue, unsigned& val) {
 
 // Main Code
 int main(int argc, char *argv[]) {
-    // cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
-    ////////////////////////////////////////////////////////////////
-    //..... Print Start time  ...................................
-    // This part is for debug and performances tests
-    ////////////////////////////////////////////////////////////////
-    if constexpr (VERBOSE) {
-        // -- Save initial time of simulation
-        auto tim = std::time(nullptr);
-        spdlog::info("Simulation started at: {}", std::asctime(std::localtime(&tim)));
-    }
-    ////////////////////////////////////////////////////////////////
+    cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
 
+    spdlog::set_level(spdlog::level::debug);
+    spdlog::info("Simulation started");
 
-    ////////////////////////////////////////////////////////////////
-    //..... Initialize CPU threads   ...............................
-    ////////////////////////////////////////////////////////////////
-
-    //  Run as many CPU threads as there are CUDA devices
-    //  each CPU thread controls a different device, processing its
-    //  portion of the data.
-    //  Initialize the global simulation parameter fron the input file
-    //  Start execution time recording
-
-
-    // Retrive GPUs infos and set the CPU multi threads
-    int NGPUs;
-    HANDLE_ERROR(cudaGetDeviceCount(&NGPUs)); // Count the available GPUs
+    const int NGPUs = AvailableGPUs();
 
     if (NGPUs < 1) {
-        fprintf(stderr, "No CUDA capable devices were detected\n");
+        spdlog::critical("No CUDA capable devices were detected");
         exit(EXIT_FAILURE);
     }
 
-    // Retrive the infos of alla the available GPUs and eventually print them
-    cudaDeviceProp *GPUs_profile = DeviceInfo(NGPUs, VERBOSE_2);
+    cudaDeviceProp *GPUs_profile = DeviceInfo(NGPUs);
+    omp_set_num_threads(NGPUs);
 
-    omp_set_num_threads(NGPUs); // create as many CPU threads as there are CUDA devices
-
-    if constexpr (VERBOSE_2) {
-        printf("\n");
-        printf("----- Global CPU infos -----\n");
-        printf("Number of host CPUs:\t%d\n", omp_get_num_procs());
-    }
-
-#if SINGLE_CPU
-        omp_set_num_threads(1);   // setting 1 CPU thread for easier debugging
-        NGPUs = 1;                // setting 1 GPU thread for easier debugging
-
-        if (VERBOSE) {
-            printf("WARNING: only 1 CPU managing only 1 GPU thread is instanziated, for easier debugging\n\n");
-        }
-#endif
+    spdlog::debug("CPU cores: {} (threads used {})", omp_get_num_procs(), omp_get_num_threads());
 
     SimConfiguration_t SimParameters;
 
     if (LoadConfigFile(argc, argv, SimParameters, VERBOSE_LOAD) != EXIT_SUCCESS) {
-        printf("Error while loading simulation parameters\n");
+        spdlog::critical("Error while loading simulation parameters");
         exit(EXIT_FAILURE);
     }
 
@@ -172,6 +134,11 @@ int main(int argc, char *argv[]) {
     unsigned NInstances = NParams * NIsotopes, NPartsPerInstance = NPositions * NRep;
     unsigned NParts = NInstances * NPartsPerInstance;
     printf("NInstances: %u, PPI: %u, Parts: %u\n", NInstances, NPartsPerInstance, NParts);
+    spdlog::info("Simulation parameters loaded:");
+    spdlog::info("# of instances: {}", NInstances);
+    spdlog::info("# particles per instance: {}", NPartsPerInstance);
+    spdlog::info("# total particles: {}", NParts);
+
 
     ////////////////////////////////////////////////////////////////
     //..... Rescale Heliosphere to an effective one  ...............
@@ -276,12 +243,9 @@ int main(int argc, char *argv[]) {
         cudaDeviceSynchronize();
 
         if constexpr (VERBOSE) {
-            //.. capture the time from GPU
             HANDLE_ERROR(cudaEventRecord( Randomstep, nullptr ));
             HANDLE_ERROR(cudaEventSynchronize( Randomstep ));
-            if constexpr (VERBOSE_2) {
-                fprintf(stdout, "--- Random Generator Seed: %lu \n", Rnd_seed);
-            }
+            spdlog::debug("Random Seeds Configured (seed {})", Rnd_seed);
         }
 
         CopyToConstant(Constants, &SimParameters.simulation_constants);
@@ -338,14 +302,7 @@ int main(int argc, char *argv[]) {
                 HANDLE_ERROR(cudaEventRecord( Cycle_start, nullptr ));
             }
 
-            // GPU propagation kernel execution parameters debugging
-            if constexpr (VERBOSE_2) {
-                printf("\n-- Cycle on rigidity[%d]: %.2f \n", iR, SimParameters.Tcentr[iR]);
-                printf("Quasi-particles propagation kernel launched\n");
-                printf("Number of quasi-particles: %d\n", NParts);
-                printf("Number of blocks: %d\n", BLOCKS);
-                printf("Number of threads per block: %d\n", THREADS);
-            }
+            spdlog::debug("Simulation for rigidity {} [{}]", SimParameters.Tcentr[iR], iR);
 
             // Initialize the particle starting rigidities
             for (unsigned iPart = 0; iPart < NParts; ++iPart) {
@@ -541,7 +498,6 @@ int main(int argc, char *argv[]) {
     }
 
     /* save results to file .dat */
-#if HELMOD_LOAD
     FILE *pFile_Matrix = nullptr;
     char RAWMatrix_name[MaxCharinFileName];
     sprintf(RAWMatrix_name, "%s_matrix_%lu.dat", SimParameters.output_file_name,
@@ -586,7 +542,6 @@ int main(int argc, char *argv[]) {
 
     fflush(pFile_Matrix);
     fclose(pFile_Matrix);
-#endif
 
     delete[] SimParameters.InitialPositions.r;
     delete[] SimParameters.InitialPositions.th;

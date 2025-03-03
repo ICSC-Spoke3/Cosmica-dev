@@ -1,5 +1,4 @@
 #include <cstdio>          // Supplies FILE, stdin, stdout, stderr, and the fprint() family of functions
-#include <unistd.h>         // Supplies EXIT_FAILURE, EXIT_SUCCESS
 
 #include "HelModLoadConfiguration.cuh"
 
@@ -29,8 +28,6 @@
 #define USAGE_FMT  "%s [-v] -i <inputfile> [-h] \n"
 
 using std::vector, std::string, std::pair, std::unordered_map;
-
-
 
 /**
  * @brief Print the usage message
