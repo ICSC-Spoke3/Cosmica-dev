@@ -8,6 +8,9 @@
 #include <sys/types.h>      // Typedef shortcuts like uint32_t and uint64_t
 #include <sys/time.h>       // supplies time()
 #include <span>
+#include <numeric>
+#include <deque>
+#include <ranges>
 
 // .. multi-thread
 #include <omp.h>
@@ -88,6 +91,18 @@ __constant__ SimulationConstants_t Constants;
 #include "sources/SDECoeffs.cu"
 #include "sources/SolarWind.cu"
 #endif
+
+bool test_and_pop(std::deque<unsigned>& queue, unsigned& val) {
+    bool ret;
+#pragma omp critical
+    {
+        if ((ret = !queue.empty())) {
+            val = queue.front();
+            queue.pop_front();
+        }
+    }
+    return ret;
+}
 
 // Main Code
 int main(int argc, char *argv[]) {
@@ -199,6 +214,12 @@ int main(int argc, char *argv[]) {
     //  shared memory with respect the GPU hardware
 
     // start cpu threads
+#define USE_RIGIDITY_QUEUE
+#ifdef USE_RIGIDITY_QUEUE
+    auto rig_indexes = std::views::iota(0u, SimParameters.NT);
+    std::deque queue(rig_indexes.begin(), rig_indexes.end());
+#endif
+
 #pragma omp parallel
     {
         // Grep the CPU and GPU id and set them
@@ -300,7 +321,12 @@ int main(int argc, char *argv[]) {
         //  Build the exit energy histogram
 
         // Cycle on rigidity bins distributing their execution between the active CPU threads
+#ifdef USE_RIGIDITY_QUEUE
+        unsigned iR;
+        while (test_and_pop(queue, iR)) {
+#else
         for (unsigned int iR = gpu_id; iR < SimParameters.NT; iR += NGPUs) {
+#endif
             if constexpr (VERBOSE) {
                 HANDLE_ERROR(cudaEventCreate( &Cycle_start ));
                 HANDLE_ERROR(cudaEventCreate( &Cycle_step00 ));
