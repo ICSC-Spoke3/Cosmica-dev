@@ -7,12 +7,11 @@
 
 
 /**
- * @brief Create an effective heliosphere of 100 AU. This is due to the fact that K0 parameters are tuned on such dimension.
+ * @brief Rescale the heliosphere boundaries to the effective heliosphere.
  *
  * @param Rbound Heliosphere boundaries to be rescaled
  * @param parts Initial position to be rescaled
- * @param index
- * @return void
+ * @param index Index of the particle
  */
 void RescaleToEffectiveHeliosphere(HeliosphereBoundRadius_t &Rbound, InitialPositions_t &parts, const unsigned index) {
     const float Rts_nose_realworld = Rbound.Rts_nose;
@@ -90,7 +89,7 @@ float K0Fit_NMC(const float NMC, float *GaussVar) {
  * @return float The correction factor
  */
 float K0CorrFactor(const int p, const int q, const int SolarPhase, const float tilt) {
-    // TODO: Spostare le costanti in un file di configurazione
+    // TODO: Move constants to a configuration file
 #ifndef K0Corr_maxv
 #define K0Corr_maxv 1.5f
 #endif
@@ -128,10 +127,10 @@ float K0CorrFactor(const int p, const int q, const int SolarPhase, const float t
     if (q > 0) {
         if (q * p > 0) {
             if (SolarPhase == 0) {
-                //ascending
+                // Ascending
                 return SmoothTransition(K0Corr_maxv, K0Corr_minv, K0Corr_p1_asc, K0Corr_p0_asc, tilt);
             }
-            //descending
+            // Descending
             return SmoothTransition(K0Corr_maxv, K0Corr_minv, K0Corr_p1_des, K0Corr_p0_des, tilt);
         }
         return 1;
@@ -139,17 +138,17 @@ float K0CorrFactor(const int p, const int q, const int SolarPhase, const float t
     if (q < 0) {
         if (q * p > 0) {
             if (SolarPhase == 0) {
-                //ascending
+                // Ascending
                 return SmoothTransition(K0Corr_maxv, K0Corr_minv, K0Corr_p1_asc, K0Corr_p0_asc, tilt);
             }
-            //descending
+            // Descending
             return SmoothTransition(K0Corr_maxv, K0Corr_minv, K0Corr_p1_des, K0Corr_p0_des, tilt);
         }
         if (SolarPhase == 0) {
-            //ascending
+            // Ascending
             return SmoothTransition(K0Corr_maxv_neg, K0Corr_minv, K0Corr_p1_asc_neg, K0Corr_p0_asc_neg, tilt);
         }
-        //descending
+        // Descending
         return SmoothTransition(K0Corr_maxv_neg, K0Corr_minv, K0Corr_p1_des_neg, K0Corr_p0_des_neg, tilt);
     }
     return 1;
@@ -174,9 +173,7 @@ std::tuple<float, float, float> EvalK0(const bool IsHighActivityPeriod, const in
                                        const float tilt,
                                        const float NMC, const float ssn, const unsigned char verbose = 0) {
     float K_par = K0CorrFactor(p, q, SolarPhase, tilt), K_perp, Gauss;
-    // printf("-- p: %d q: %d phase: %d tilt: %e ssn: %e NMC: %e \n",p,q,SolarPhase,tilt,ssn,NMC);
-    // printf("-- K0CorrF: %e \n",K_par);
-    // printf("-- IsHighActivityPeriod %d \n",IsHighActivityPeriod);
+
     if (IsHighActivityPeriod && NMC > 0) {
         K_perp = K0Fit_NMC(NMC, &Gauss);
         K_par *= K_perp;
@@ -200,10 +197,10 @@ std::tuple<float, float, float> EvalK0(const bool IsHighActivityPeriod, const in
  * @param SolarPhase Indicates the phase of the solar activity cycle (0=rising / 1=Declining)
  * @param Polarity Solar polarity of HMF
  * @param tilt Tilt angle of neutral sheet (in degree)
- * @return g_low
+ * @return g_low parameter
  */
 float g_low(const int SolarPhase, const int Polarity, const float tilt) {
-    // TODO: Spostare le costanti in un file di configurazione
+    // TODO: Move constants to a configuration file
 #ifndef MaxValueOf_g_low_pos
 #define MaxValueOf_g_low_pos 0.6f
 #endif
@@ -334,7 +331,6 @@ __device__ float3 Diffusion_Tensor_In_HMF_Frame(const Index_t &index, const Quas
                                                 const float GaussRndNumber, float3 &dK_dr,
                                                 const SimulationParametrizations_t params) {
     float3 Ktensor;
-    // HeliosphereZoneProperties_t ThisZone=LIM[HZone+InitZone];
 
     const int high_activity = Constants.IsHighActivityPeriod[index.period] ? 0 : 1;
     const float k0_paral = params.params[index.param].heliosphere[index.combined()].k0_paral[high_activity];
@@ -348,7 +344,7 @@ __device__ float3 Diffusion_Tensor_In_HMF_Frame(const Index_t &index, const Quas
     dK_dr.x = (k0_paral + GaussRndNumber * GaussVar * k0_paral) * beta / 3.f * (qp.R + g_low);
     Ktensor.x = dK_dr.x * (rconst + qp.r);
 
-    // TODO: Spostare le costanti in un file di configurazione
+    // TODO: Move constants to a configuration file
 #ifndef rho_1
 #define rho_1 0.065f // Kpar/Kperp (ex Kp0)
 #endif
@@ -370,12 +366,11 @@ __device__ float3 Diffusion_Tensor_In_HMF_Frame(const Index_t &index, const Quas
 /**
  * @brief Evaluation of the diffusion tensor in the HMF frame, i.e. K0 parallel and K0 perpendicular.
  *
- * @param
- * @param index
- * @param qp
+ * @param index Initial zone in the heliosphere
+ * @param qp QuasiParticle
  * @param beta v/c
  * @param dK_dr Output parameter for the derivative of K with respect to r
- * @return x Diffusion coefficient
+ * @return Diffusion coefficient
  */
 __device__ float Diffusion_Coeff_heliosheat(const Index_t &index, const QuasiParticle_t &qp, const float beta,
                                             float &dK_dr) {
