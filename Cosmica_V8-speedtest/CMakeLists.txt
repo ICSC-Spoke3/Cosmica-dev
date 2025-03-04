@@ -26,11 +26,12 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/headers)
 set(SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/kernel_test.cu
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/DiffusionModel.cu
+        ${CMAKE_CURRENT_SOURCE_DIR}/sources/EventSequence.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/GenComputation.cu
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/GPUManage.cu
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/HeliosphereModel.cu
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/HeliosphericPropagation.cu
-        ${CMAKE_CURRENT_SOURCE_DIR}/sources/HelModLoadConfiguration.cu
+        ${CMAKE_CURRENT_SOURCE_DIR}/sources/IOConfiguration.cu
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/HistoComputation.cu
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/Histogram.cu
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/LoadConfiguration.cu

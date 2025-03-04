@@ -38,10 +38,12 @@
 
 // .. old HelMod code
 #include "HelModVariableStructure.cuh"
-#include "HelModLoadConfiguration.cuh"
+#include "IOConfiguration.cuh"
 #include "DiffusionModel.cuh"
 #endif
 #include "HelModVariableStructure.cuh"
+
+#include "EventSequence.hpp"
 
 
 // Track the errors
@@ -78,11 +80,12 @@ __constant__ SimulationConstants_t Constants;
 
 #ifdef UNIFIED_COMPILE
 #include "sources/DiffusionModel.cu"
+#include "sources/EventSequence.cpp"
 #include "sources/GenComputation.cu"
 #include "sources/GPUManage.cu"
 #include "sources/HeliosphereModel.cu"
 #include "sources/HeliosphericPropagation.cu"
-#include "sources/HelModLoadConfiguration.cu"
+#include "sources/IOConfiguration.cu"
 #include "sources/HistoComputation.cu"
 #include "sources/Histogram.cu"
 #include "sources/LoadConfiguration.cu"
@@ -159,7 +162,9 @@ int main(int argc, char *argv[]) {
 #define USE_RIGIDITY_QUEUE
 #ifdef USE_RIGIDITY_QUEUE
     auto rig_indexes = std::views::iota(0u, SimParameters.NT);
-    std::deque queue(rig_indexes.begin(), rig_indexes.end());
+    std::deque<unsigned> queue{rig_indexes.begin(), rig_indexes.end()};
+    // std::deque<unsigned> queue;
+    // for (unsigned i = 0; i < SimParameters.NT; ++i) queue.push_back(i);
 #endif
 
 #pragma omp parallel
@@ -174,15 +179,7 @@ int main(int argc, char *argv[]) {
         cudaDeviceProp device_prop = GPUs_profile[gpu_id];
         auto [BLOCKS, THREADS] = GetLaunchConfig(NParts, device_prop);
 
-        cudaEvent_t start, MemorySet, Randomstep, stop;
-        cudaEvent_t Cycle_start, Cycle_step00, Cycle_step0, Cycle_step1, Cycle_step2, InitialSave, FinalSave;
-        if constexpr (VERBOSE) {
-            HANDLE_ERROR(cudaEventCreate( &start ));
-            HANDLE_ERROR(cudaEventCreate( &MemorySet ));
-            HANDLE_ERROR(cudaEventCreate( &Randomstep ));
-            HANDLE_ERROR(cudaEventCreate( &stop ));
-            HANDLE_ERROR(cudaEventRecord( start, nullptr ));
-        }
+        EventSequence BENCHMARK(fmt::format("Thread {} Benchmarks", cpu_thread_id + 1));
 
         auto RandStates = AllocateManagedSafe<curandStatePhilox4_32_10_t[]>(NParts);
         unsigned long Rnd_seed = SimParameters.RandomSeed == 0
@@ -192,11 +189,9 @@ int main(int argc, char *argv[]) {
         init_rdmgenerator<<<BLOCKS, THREADS>>>(RandStates.get(), Rnd_seed);
         cudaDeviceSynchronize();
 
-        if constexpr (VERBOSE) {
-            HANDLE_ERROR(cudaEventRecord( Randomstep, nullptr ));
-            HANDLE_ERROR(cudaEventSynchronize( Randomstep ));
-            spdlog::debug("Random Seeds Configured (seed {})", Rnd_seed);
-        }
+        BENCHMARK.AddEvent("Random State Initialized");
+
+        spdlog::debug("Random Seeds Configured (seed {})", Rnd_seed);
 
         CopyToConstant(Constants, &SimParameters.simulation_constants);
 
@@ -216,10 +211,7 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        if constexpr (VERBOSE) {
-            HANDLE_ERROR(cudaEventRecord( MemorySet, nullptr ));
-            HANDLE_ERROR(cudaEventSynchronize( MemorySet ));
-        }
+        BENCHMARK.AddEvent("Shared Data Allocated");
 
 #ifdef USE_RIGIDITY_QUEUE
         unsigned iR;
@@ -229,17 +221,7 @@ int main(int argc, char *argv[]) {
 #endif
             spdlog::info("Simulation for rigidity {} [{}] started", SimParameters.Tcentr[iR], iR);
 
-            if constexpr (VERBOSE) {
-                HANDLE_ERROR(cudaEventCreate( &Cycle_start ));
-                HANDLE_ERROR(cudaEventCreate( &Cycle_step00 ));
-                HANDLE_ERROR(cudaEventCreate( &Cycle_step0 ));
-                HANDLE_ERROR(cudaEventCreate( &Cycle_step1 ));
-                HANDLE_ERROR(cudaEventCreate( &Cycle_step2 ));
-                HANDLE_ERROR(cudaEventCreate( &InitialSave ));
-                HANDLE_ERROR(cudaEventCreate( &FinalSave ));
-                HANDLE_ERROR(cudaEventRecord( Cycle_start, nullptr ));
-            }
-
+            BENCHMARK.StartSubsequence(fmt::format("Rigidity {:.3e} [{:02}]", SimParameters.Tcentr[iR], iR));
 
             for (unsigned iPart = 0; iPart < NParts; ++iPart) {
                 QuasiParts.r[iPart] = SimParameters.InitialPositions.r[indexes.period[iPart]];
@@ -253,44 +235,28 @@ int main(int argc, char *argv[]) {
             auto Maxs = AllocateManagedSafe<float[]>(NInstances);
             auto Nfailed = AllocateManagedSafe<unsigned[]>(NInstances, 0);
 
-            if constexpr (VERBOSE) {
-                HANDLE_ERROR(cudaEventRecord( Cycle_step00, nullptr ));
-                HANDLE_ERROR(cudaEventSynchronize( Cycle_step00 ));
-            }
+            BENCHMARK.AddEvent("Particles Data Allocated");
 
             if constexpr (INITSAVE) {
                 SaveTxt_part(init_filename.c_str(), NParts, QuasiParts, Maxs[0]);
+                BENCHMARK.AddEvent("Initial State Stored");
             }
 
-            if constexpr (VERBOSE) {
-                HANDLE_ERROR(cudaEventRecord( InitialSave, nullptr ));
-                HANDLE_ERROR(cudaEventSynchronize( InitialSave ));
-            }
 
             cudaDeviceSynchronize();
             HeliosphericProp<<<BLOCKS, THREADS>>>(QuasiParts, indexes, SimParameters.simulation_parametrization,
                                                   RandStates.get(), Maxs.get());
             cudaDeviceSynchronize();
 
-            if constexpr (VERBOSE) {
-                HANDLE_ERROR(cudaEventRecord( Cycle_step0, nullptr ));
-                HANDLE_ERROR(cudaEventSynchronize( Cycle_step0 ));
-            }
-
-            if constexpr (VERBOSE) {
-                HANDLE_ERROR(cudaEventRecord( Cycle_step1, nullptr ));
-                HANDLE_ERROR(cudaEventSynchronize( Cycle_step1 ));
-            }
+            BENCHMARK.AddEvent("Propagation Completed");
 
             if constexpr (FINALSAVE) {
                 SaveTxt_part(final_filename.c_str(), NParts, QuasiParts, Maxs[0]);
+                BENCHMARK.AddEvent("Final State Stored");
             }
 
-            if constexpr (VERBOSE) {
-                HANDLE_ERROR(cudaEventRecord( FinalSave, nullptr ));
-                HANDLE_ERROR(cudaEventSynchronize( FinalSave ));
-            }
 
+            BENCHMARK.StartSubsequence("Histograms Allocation");
             for (unsigned inst = 0; inst < NInstances; ++inst) {
                 spdlog::debug("Results for Instance {} (Rigidity {}):", inst, iR);
                 spdlog::debug("* R_min: {}, R_max: {}", SimParameters.Tcentr[iR], Maxs[0]);
@@ -309,7 +275,9 @@ int main(int argc, char *argv[]) {
                 Results[iR][inst].DeltaLogR = DeltaLogR;
 
                 Results[iR][inst].BoundaryDistribution = AllocateManaged<float[]>(Results[iR][inst].Nbins, 0);
+                BENCHMARK.AddEvent(fmt::format("Histogram {} Allocated", inst));
             }
+            BENCHMARK.StopSubsequence();
 
             cudaDeviceSynchronize();
             SimpleHistogram<<<BLOCKS, THREADS>>>(indexes, QuasiParts.R, Results[iR], Nfailed.get());
@@ -322,64 +290,16 @@ int main(int argc, char *argv[]) {
                 spdlog::debug("* Failed Events.  : {}", Results[iR][inst].Nregistered);
             }
 
-            if constexpr (VERBOSE_2) {
-                HANDLE_ERROR(cudaEventRecord( Cycle_step2, nullptr ));
-                HANDLE_ERROR(cudaEventSynchronize( Cycle_step2 ));
-                float Enl00, Enl0, Enl1, Enl2, EnlIn, EnlFin;
-                HANDLE_ERROR(cudaEventElapsedTime( &Enl00,
-                    Cycle_start, Cycle_step00 ));
-                HANDLE_ERROR(cudaEventElapsedTime( &EnlIn,
-                    Cycle_step00, InitialSave ));
-                HANDLE_ERROR(cudaEventElapsedTime( &Enl0,
-                    InitialSave, Cycle_step0 ));
-                HANDLE_ERROR(cudaEventElapsedTime( &Enl1,
-                    Cycle_step0, Cycle_step1 ));
-                HANDLE_ERROR(cudaEventElapsedTime( &EnlFin,
-                    Cycle_step1, FinalSave ));
-                HANDLE_ERROR(cudaEventElapsedTime( &Enl2,
-                    FinalSave, Cycle_step2 ));
-                spdlog::debug("Performance for Rigidity {}:", iR);
-                spdlog::debug("* Init               :  {:.3f} s", Enl00 * 1e-3);
-                spdlog::debug("* Save initial state :  {:.3f} s", EnlIn * 1e-3);
-                spdlog::debug("* Propagation phase  :  {:.3f} s", Enl0 * 1e-3);
-                spdlog::debug("* Find Max           :  {:.3f} s", Enl1 * 1e-3);
-                spdlog::debug("* Save final state   :  {:.3f} s", EnlFin * 1e-3);
-                spdlog::debug("* Binning            :  {:.3f} s", Enl2 * 1e-3);
-                HANDLE_ERROR(cudaEventDestroy( Cycle_start ));
-                HANDLE_ERROR(cudaEventDestroy( Cycle_step00 ));
-                HANDLE_ERROR(cudaEventDestroy( InitialSave ));
-                HANDLE_ERROR(cudaEventDestroy( Cycle_step0 ));
-                HANDLE_ERROR(cudaEventDestroy( Cycle_step1 ));
-                HANDLE_ERROR(cudaEventDestroy( FinalSave ));
-                HANDLE_ERROR(cudaEventDestroy( Cycle_step2 ));
-            }
+            BENCHMARK.AddEvent("Histograms Generated");
+
+            BENCHMARK.StopSubsequence();
+
+            spdlog::info("Simulation for rigidity {} [{}] ended", SimParameters.Tcentr[iR], iR);
         }
         // end of the cycle on the rigidities
 
-        if constexpr (VERBOSE) {
-            HANDLE_ERROR(cudaEventRecord( stop, nullptr ));
-            HANDLE_ERROR(cudaEventSynchronize( stop ));
-        }
-        // Execution Time
-        if constexpr (VERBOSE) {
-            float elapsedTime, firstStep, memset;
-            HANDLE_ERROR(cudaEventElapsedTime( &memset, start, MemorySet ));
-            HANDLE_ERROR(cudaEventElapsedTime( &firstStep, start, Randomstep ));
-            HANDLE_ERROR(cudaEventElapsedTime( &elapsedTime, start, stop ));
-            spdlog::debug("* Time to Set Memory : {:.3f} s", memset * 1e-3);
-            spdlog::debug("* Time to create Rnd : {:.3f} s ({:.3f})", firstStep * 1e-3, (firstStep - memset) * 1e-3);
-            spdlog::debug("* Time to execute    : {:.3f} s ({:.3f})", elapsedTime * 1e-3,
-                          (elapsedTime - firstStep) * 1e-3);
-        }
-
-        if constexpr (VERBOSE) {
-            HANDLE_ERROR(cudaEventDestroy( start ));
-            HANDLE_ERROR(cudaEventDestroy( MemorySet ));
-            HANDLE_ERROR(cudaEventDestroy( Randomstep ));
-            HANDLE_ERROR(cudaEventDestroy( stop ));
-        }
-
-        spdlog::info("Simulation for rigidity {} [{}] ended", SimParameters.Tcentr[iR], iR);
+        if (spdlog::get_level() <= spdlog::level::debug) BENCHMARK.Log(spdlog::level::debug, 2);
+        else BENCHMARK.Log(spdlog::level::info, 1);
     }
     // end of the multiple CPU thread pragma
 
@@ -389,9 +309,6 @@ int main(int argc, char *argv[]) {
     ////////////////////////////////////////////////////////////////
 
     // Generate the YAML file name, following the old naming convention:
-    // "<SimParameters.output_file_name>_matrix_<pid>.yaml"
-    // char yamlFilename[MaxCharinFileName];
-    // sprintf(yamlFilename, "%s_matrix_%lu.yaml", SimParameters.output_file_name, static_cast<unsigned long>(getpid()));
     std::string yamlFilename = fmt::format("{}_matrix_{}.yaml", SimParameters.output_file_name, getpid());
 
     try {

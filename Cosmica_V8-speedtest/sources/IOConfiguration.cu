@@ -1,6 +1,6 @@
 #include <cstdio>          // Supplies FILE, stdin, stdout, stderr, and the fprint() family of functions
 
-#include "HelModLoadConfiguration.cuh"
+#include "IOConfiguration.cuh"
 
 #include <fstream>
 #include <GenComputation.cuh>
