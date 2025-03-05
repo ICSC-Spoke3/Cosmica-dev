@@ -8,11 +8,11 @@
 #include <sstream>
 #include <unordered_map>
 #include <vector>
+#include <fkYAML/node.hpp>
 
 #include "VariableStructure.cuh"
 #include "DiffusionModel.cuh"
 #include "MagneticDrift.cuh"
-#include <fkYAML.hpp>
 #include <LoadConfiguration.cuh>
 // Define load function parameteres
 #define ERR_Load_Configuration_File "Error while loading simulation parameters \n"

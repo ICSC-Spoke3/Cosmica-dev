@@ -2,6 +2,29 @@ cmake_minimum_required(VERSION 3.30)
 set(CMAKE_CUDA_COMPILER /opt/miniforge3/envs/sdegno/bin/nvcc)
 project(Cosmica LANGUAGES CXX CUDA)
 
+include(FetchContent)
+
+FetchContent_Declare(
+        fkYAML
+        GIT_REPOSITORY https://github.com/fktn-k/fkYAML.git
+        GIT_TAG 6b36aac6a9907af2e921acf8ac12cc302b740977
+)
+FetchContent_MakeAvailable(fkYAML)
+
+FetchContent_Declare(
+        spdlog
+        GIT_REPOSITORY https://github.com/gabime/spdlog.git
+        GIT_TAG v1.15.1
+)
+FetchContent_MakeAvailable(spdlog)
+
+FetchContent_Declare(
+        lyra
+        GIT_REPOSITORY https://github.com/bfgroup/Lyra.git
+        GIT_TAG e71849c1bc6dfb489464eb1a429e9be79d4f6745
+)
+FetchContent_MakeAvailable(lyra)
+
 #-----------------------------------------------------------------------------
 # Create executable from the CUDA source.
 add_executable(Cosmica ${CMAKE_CURRENT_SOURCE_DIR}/kernel_test.cu)
@@ -41,6 +64,9 @@ target_compile_options(Cosmica PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=${C
 #-----------------------------------------------------------------------------
 # Link OpenMP libraries to resolve undefined references.
 target_link_libraries(Cosmica PRIVATE OpenMP::OpenMP_CXX)
+target_link_libraries(Cosmica PRIVATE fkYAML::fkYAML)
+target_link_libraries(Cosmica PRIVATE spdlog::spdlog)
+target_link_libraries(Cosmica PRIVATE bfg::lyra)
 
 #-----------------------------------------------------------------------------
 # Optionally, set the output directory for the executable.
@@ -73,3 +99,6 @@ set_target_properties(IgnoreThisTarget PROPERTIES
 
 target_include_directories(IgnoreThisTarget PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/headers)
 target_compile_definitions(IgnoreThisTarget PRIVATE UNIFIED_COMPILE)
+target_link_libraries(IgnoreThisTarget PRIVATE fkYAML::fkYAML)
+target_link_libraries(IgnoreThisTarget PRIVATE spdlog::spdlog)
+target_link_libraries(IgnoreThisTarget PRIVATE bfg::lyra)

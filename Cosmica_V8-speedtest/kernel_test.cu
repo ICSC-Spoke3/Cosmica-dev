@@ -24,8 +24,8 @@
 
 
 // .. project specific
-#include "spdlog/spdlog.h"
-#include "headers/fkYAML.hpp"
+#include <spdlog/spdlog.h>
+#include <fkYAML/node.hpp>
 #include "VariableStructure.cuh"
 
 #ifndef UNIFIED_COMPILE
@@ -113,6 +113,8 @@ int main(int argc, char *argv[]) {
     spdlog::set_level(spdlog::level::trace);
     spdlog::info("Simulation started");
 
+    EventSequence BENCHMARK{"Cosmica"};
+
     const int NGPUs = AvailableGPUs();
 
     if (NGPUs < 1) {
@@ -179,7 +181,7 @@ int main(int argc, char *argv[]) {
         cudaDeviceProp device_prop = GPUs_profile[gpu_id];
         auto [BLOCKS, THREADS] = GetLaunchConfig(NParts, device_prop);
 
-        EventSequence BENCHMARK(fmt::format("Thread {} Benchmarks", cpu_thread_id + 1));
+        EventSequence THREAD_BENCHMARK(fmt::format("Thread {} Benchmarks", cpu_thread_id + 1));
 
         auto RandStates = AllocateManagedSafe<curandStatePhilox4_32_10_t[]>(NParts);
         unsigned long Rnd_seed = SimParameters.RandomSeed == 0
@@ -189,7 +191,7 @@ int main(int argc, char *argv[]) {
         init_rdmgenerator<<<BLOCKS, THREADS>>>(RandStates.get(), Rnd_seed);
         cudaDeviceSynchronize();
 
-        BENCHMARK.AddEvent("Random State Initialized");
+        THREAD_BENCHMARK.AddEvent("Random State Initialized");
 
         spdlog::debug("Random Seeds Configured (seed {})", Rnd_seed);
 
@@ -211,7 +213,7 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        BENCHMARK.AddEvent("Shared Data Allocated");
+        THREAD_BENCHMARK.AddEvent("Shared Data Allocated");
 
 #ifdef USE_RIGIDITY_QUEUE
         unsigned iR;
@@ -221,7 +223,7 @@ int main(int argc, char *argv[]) {
 #endif
             spdlog::info("Simulation for rigidity {} [{}] started", SimParameters.Tcentr[iR], iR);
 
-            BENCHMARK.StartSubsequence(fmt::format("Rigidity {:.3e} [{:02}]", SimParameters.Tcentr[iR], iR));
+            THREAD_BENCHMARK.StartSubsequence(fmt::format("Rigidity {:.3e} [{:02}]", SimParameters.Tcentr[iR], iR));
 
             for (unsigned iPart = 0; iPart < NParts; ++iPart) {
                 QuasiParts.r[iPart] = SimParameters.InitialPositions.r[indexes.period[iPart]];
@@ -235,11 +237,11 @@ int main(int argc, char *argv[]) {
             auto Maxs = AllocateManagedSafe<float[]>(NInstances);
             auto Nfailed = AllocateManagedSafe<unsigned[]>(NInstances, 0);
 
-            BENCHMARK.AddEvent("Particles Data Allocated");
+            THREAD_BENCHMARK.AddEvent("Particles Data Allocated");
 
             if constexpr (INITSAVE) {
                 SaveTxt_part(init_filename.c_str(), NParts, QuasiParts, Maxs[0]);
-                BENCHMARK.AddEvent("Initial State Stored");
+                THREAD_BENCHMARK.AddEvent("Initial State Stored");
             }
 
 
@@ -248,15 +250,15 @@ int main(int argc, char *argv[]) {
                                                   RandStates.get(), Maxs.get());
             cudaDeviceSynchronize();
 
-            BENCHMARK.AddEvent("Propagation Completed");
+            THREAD_BENCHMARK.AddEvent("Propagation Completed");
 
             if constexpr (FINALSAVE) {
                 SaveTxt_part(final_filename.c_str(), NParts, QuasiParts, Maxs[0]);
-                BENCHMARK.AddEvent("Final State Stored");
+                THREAD_BENCHMARK.AddEvent("Final State Stored");
             }
 
 
-            BENCHMARK.StartSubsequence("Histograms Allocation");
+            THREAD_BENCHMARK.StartSubsequence("Histograms Allocation");
             for (unsigned inst = 0; inst < NInstances; ++inst) {
                 spdlog::debug("Results for Instance {} (Rigidity {}):", inst, iR);
                 spdlog::debug("* R_min: {}, R_max: {}", SimParameters.Tcentr[iR], Maxs[0]);
@@ -275,9 +277,9 @@ int main(int argc, char *argv[]) {
                 Results[iR][inst].DeltaLogR = DeltaLogR;
 
                 Results[iR][inst].BoundaryDistribution = AllocateManaged<float[]>(Results[iR][inst].Nbins, 0);
-                BENCHMARK.AddEvent(fmt::format("Histogram {} Allocated", inst));
+                THREAD_BENCHMARK.AddEvent(fmt::format("Histogram {} Allocated", inst));
             }
-            BENCHMARK.StopSubsequence();
+            THREAD_BENCHMARK.StopSubsequence();
 
             cudaDeviceSynchronize();
             SimpleHistogram<<<BLOCKS, THREADS>>>(indexes, QuasiParts.R, Results[iR], Nfailed.get());
@@ -290,16 +292,16 @@ int main(int argc, char *argv[]) {
                 spdlog::debug("* Failed Events.  : {}", Results[iR][inst].Nregistered);
             }
 
-            BENCHMARK.AddEvent("Histograms Generated");
+            THREAD_BENCHMARK.AddEvent("Histograms Generated");
 
-            BENCHMARK.StopSubsequence();
+            THREAD_BENCHMARK.StopSubsequence();
 
             spdlog::info("Simulation for rigidity {} [{}] ended", SimParameters.Tcentr[iR], iR);
         }
         // end of the cycle on the rigidities
 
-        if (spdlog::get_level() <= spdlog::level::debug) BENCHMARK.Log(spdlog::level::debug, 2);
-        else BENCHMARK.Log(spdlog::level::info, 1);
+        if (spdlog::get_level() <= spdlog::level::debug) THREAD_BENCHMARK.Log(spdlog::level::debug, 2);
+        else THREAD_BENCHMARK.Log(spdlog::level::info, 1);
     }
     // end of the multiple CPU thread pragma
 
@@ -378,6 +380,8 @@ int main(int argc, char *argv[]) {
 
     delete[] GPUs_profile;
 
+    BENCHMARK.AddEvent("End");
+    BENCHMARK.Log(spdlog::level::info, 0);
     spdlog::info("Simulation ended");
 
     return cudaDeviceReset();
