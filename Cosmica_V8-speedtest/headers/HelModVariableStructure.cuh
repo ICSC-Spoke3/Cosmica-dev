@@ -86,4 +86,16 @@ struct SimConfiguration_t {
     std::vector<std::string> isotopes_names;
 };
 
+#include <spdlog/common.h>
+
+inline std::istream& operator>>(std::istream& is, spdlog::level::level_enum& level) {
+    std::string token;
+    is >> token;
+    level = spdlog::level::from_str(token);  // Convert string to spdlog::level::level_enum
+    return is;
+}
+
+
 #endif
+
+

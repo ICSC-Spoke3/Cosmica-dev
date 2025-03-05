@@ -110,7 +110,13 @@ bool test_and_pop(std::deque<unsigned> &queue, unsigned &val) {
 int main(int argc, char *argv[]) {
     cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
 
-    spdlog::set_level(spdlog::level::trace);
+    cli_options options = parse_cli_options(argc, argv);
+    spdlog::set_level(options.log_level);
+
+    spdlog::info("Input file: {}", options.input_file);
+    spdlog::info("Verbosity Level: {}", static_cast<int>(options.log_level));
+
+    // spdlog::set_level(spdlog::level::trace);
     spdlog::info("Simulation started");
 
     EventSequence BENCHMARK{"Cosmica"};
@@ -129,7 +135,7 @@ int main(int argc, char *argv[]) {
 
     SimConfiguration_t SimParameters;
 
-    if (LoadConfigFile(argc, argv, SimParameters, VERBOSE_LOAD) != EXIT_SUCCESS) {
+    if (LoadConfigFile(options, SimParameters, VERBOSE_LOAD) != EXIT_SUCCESS) {
         spdlog::critical("Error while loading simulation parameters");
         exit(EXIT_FAILURE);
     }

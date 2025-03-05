@@ -1,6 +1,7 @@
 #ifndef HelModLoadConfiguration
 #define HelModLoadConfiguration
 #include <HelModVariableStructure.cuh>
+#include <lyra/lyra.hpp>
 
 struct InputHeliosphericParameters_t {
     float k0 = 0;
@@ -18,6 +19,14 @@ struct InputHeliosphericParameters_t {
     float Rhp_tail = 0;
 };
 
+struct cli_options {
+    std::string input_file;
+    spdlog::level::level_enum log_level;
+};
+
+
+cli_options parse_cli_options(int, const char **);
+
 [[noreturn]] void usage(const char *);
 
 void kill_me(const char *);
@@ -26,7 +35,7 @@ int PrintError(const char *, char *, int);
 
 int LoadConfigFile(int, char *[], SimConfiguration_t &, int);
 
-int LoadConfigYaml(int, char *[], SimConfiguration_t &, int);
+int LoadConfigYaml(const cli_options&, SimConfiguration_t &, int);
 
 int write_results_yaml(const std::string &, const SimConfiguration_t &);
 

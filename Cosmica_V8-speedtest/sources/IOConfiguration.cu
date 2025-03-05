@@ -30,6 +30,37 @@
 using std::vector, std::string, std::pair, std::unordered_map;
 
 /**
+ * @brief Parse the command line options
+ * @param argc the number of arguments
+ * @param argv the arguments
+ * @return the parsed options
+ */
+cli_options parse_cli_options(int argc, char *argv[]) {
+    cli_options options;
+    options.log_level = spdlog::level::info; // Default log level
+
+    auto cli = lyra::cli();
+    cli.add_argument(lyra::opt(options.input_file, "input_file")
+        .name("-i")
+        .name("--input")
+        .help("Input file")
+        .required());
+    cli.add_argument(lyra::opt(options.log_level, "log_level")
+        .name("-v")
+        .name("--verbose")
+        .help("Verbose mode: the options are  0 (trace), 1 (debug), 2 (info), 3 (warn), 4 (err), 5 (critical), 6 (off)")
+        .optional());
+
+    if (const auto results = cli.parse({argc, argv}); !results) {
+        std::cerr << results.message() << std::endl;
+        usage(argv[0]);
+    }
+    return options;
+}
+
+
+
+/**
  * @brief Print the usage message
  * @param progname the name of the program
  *
@@ -181,44 +212,15 @@ consteval unsigned long operator""_(const char *str, const size_t len) {
 
 /**
  * @brief Load the configuration file
- * @param argc the number of arguments
- * @param argv the arguments
+ * @param options the command line options
  * @param SimParameters the simulation parameters
  * @param verbose the verbosity level
  * @return EXIT_SUCCESS if the configuration was loaded successfully, EXIT_FAILURE otherwise
  */
-int LoadConfigFile(int argc, char *argv[], SimConfiguration_t &SimParameters, int verbose) {
-    auto options = ParseCLIArguments(argc, argv);
+int LoadConfigFile(const cli_options& options, SimConfiguration_t &SimParameters, int verbose) {
+    if (options.input_file.ends_with(".yaml")) return LoadConfigYaml(options, SimParameters, verbose);
 
-    if (options["i"].ends_with(".yaml")) return LoadConfigYaml(argc, argv, SimParameters, verbose);
-
-    if (options.contains("v")) verbose += 1;
-    else if (options.contains("vv")) verbose += 2;
-    else if (options.contains("vvv")) verbose += 3;
-    std::ifstream file(options["i"]);
-
-    if (verbose) {
-        printf(WELCOME);
-        switch (verbose) {
-            case VERBOSE_low:
-                printf("Verbose level: low\n");
-                break;
-            case VERBOSE_med:
-                printf("Verbose level: medium\n");
-                break;
-            case VERBOSE_hig:
-                printf("Verbose level: high\n");
-                break;
-            default:
-                printf("Verbose level: crazy\n");
-                break;
-        }
-        if (verbose >= VERBOSE_med) {
-            fprintf(stderr, "-- --- Init ---\n");
-            fprintf(stderr, "-- you entered %d arguments:\n", argc);
-            for (int i = 0; i < argc; ++i) { fprintf(stderr, "-->  %s \n", argv[i]); }
-        }
-    }
+    std::ifstream file(options.input_file);
 
     vector<float> SPr, SPth, SPphi, Ts;
     vector<InputHeliosphericParameters_t> IHP;
@@ -631,41 +633,13 @@ vector<HeliosheatProperties_t> node_to_heliosheat(const fkyaml::node &node, cons
 
 /**
  * @brief Load the configuration file in YAML format
- * @param argc the number of arguments
- * @param argv the arguments
+ * @param options the command line options
  * @param config the simulation configuration
  * @param verbose the verbosity level
  * @return EXIT_SUCCESS if the configuration was loaded successfully, EXIT_FAILURE otherwise
  */
-int LoadConfigYaml(int argc, char *argv[], SimConfiguration_t &config, int verbose) {
-    auto options = ParseCLIArguments(argc, argv);
-    if (options.contains("v")) verbose += 1;
-    else if (options.contains("vv")) verbose += 2;
-    else if (options.contains("vvv")) verbose += 3;
-    std::ifstream file(options["i"]);
-
-    if (verbose) {
-        printf(WELCOME);
-        switch (verbose) {
-            case VERBOSE_low:
-                printf("Verbose level: low\n");
-                break;
-            case VERBOSE_med:
-                printf("Verbose level: medium\n");
-                break;
-            case VERBOSE_hig:
-                printf("Verbose level: high\n");
-                break;
-            default:
-                printf("Verbose level: crazy\n");
-                break;
-        }
-        if (verbose >= VERBOSE_med) {
-            fprintf(stderr, "-- --- Init ---\n");
-            fprintf(stderr, "-- you entered %d arguments:\n", argc);
-            for (int i = 0; i < argc; ++i) { fprintf(stderr, "-->  %s \n", argv[i]); }
-        }
-    }
+int LoadConfigYaml(const cli_options& options, SimConfiguration_t &config, int verbose) {
+    std::ifstream file(options.input_file);
 
     auto node = fkyaml::node::deserialize(file);
 
