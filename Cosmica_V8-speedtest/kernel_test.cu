@@ -25,6 +25,7 @@
 
 // .. project specific
 #include <spdlog/spdlog.h>
+#include <spdlog/sinks/basic_file_sink.h>
 #include <fkYAML/node.hpp>
 #include "VariableStructure.cuh"
 
@@ -111,6 +112,10 @@ int main(int argc, char *argv[]) {
     cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
 
     cli_options options = parse_cli_options(argc, argv);
+    if (!options.log_file.empty()) {
+        spdlog::drop("");
+        set_default_logger(spdlog::basic_logger_mt("", options.log_file));
+    }
     spdlog::set_level(options.log_level);
 
     spdlog::info("Verbosity Level: {}", to_string_view(options.log_level));
@@ -133,7 +138,7 @@ int main(int argc, char *argv[]) {
 
     SimConfiguration_t SimParameters;
 
-    if (LoadConfigFile(options, SimParameters, VERBOSE_LOAD) != EXIT_SUCCESS) {
+    if (LoadConfigFile(options, SimParameters) != EXIT_SUCCESS) {
         spdlog::critical("Error while loading simulation parameters");
         exit(EXIT_FAILURE);
     }
@@ -317,16 +322,7 @@ int main(int argc, char *argv[]) {
     ////////////////////////////////////////////////////////////////
 
     // Generate the YAML file name, following the old naming convention:
-    std::string yamlFilename = fmt::format("{}_matrix_{}.yaml", SimParameters.output_file, getpid());
-
-    try {
-        write_results_yaml(yamlFilename, SimParameters);
-        spdlog::info("Results saved to file: {}", yamlFilename);
-    } catch (const std::exception &e) {
-        std::cerr << "Error writing results to YAML file: " << e.what() << std::endl;
-        return 1;
-    }
-
+    spdlog::info("Results saved to file: {}", write_results_yaml(options, SimParameters));
 
     //  Save the summary histogram
     //  Free the dynamic memory

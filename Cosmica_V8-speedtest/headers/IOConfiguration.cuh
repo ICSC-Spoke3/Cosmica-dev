@@ -20,8 +20,8 @@ struct InputHeliosphericParameters_t {
 };
 
 struct cli_options {
-    std::string input_file;
-    std::string output_dir;
+    std::string input_file{}, output_dir{}, log_file{};
+    bool use_stdin = false, use_stdout = false;
     spdlog::level::level_enum log_level = spdlog::level::info;
 };
 
@@ -32,10 +32,12 @@ void kill_me(const char *);
 
 int PrintError(const char *, char *, int);
 
-int LoadConfigFile(int, char *[], SimConfiguration_t &, int);
+int LoadConfigFile(const cli_options &, SimConfiguration_t &);
 
-int LoadConfigYaml(const cli_options&, SimConfiguration_t &, int);
+int LoadConfigTxt(std::istream *, const cli_options &, SimConfiguration_t &);
 
-int write_results_yaml(const std::string &, const SimConfiguration_t &);
+int LoadConfigYaml(std::istream *, const cli_options &, SimConfiguration_t &);
+
+std::string write_results_yaml(const cli_options &, const SimConfiguration_t &);
 
 #endif
