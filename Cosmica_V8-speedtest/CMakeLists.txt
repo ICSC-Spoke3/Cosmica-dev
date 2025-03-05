@@ -1,30 +1,56 @@
 cmake_minimum_required(VERSION 3.30)
 set(CMAKE_CUDA_COMPILER /opt/miniforge3/envs/sdegno/bin/nvcc)
-        # Project name and languages: CUDA and C++.
-project(Cosmica LANGUAGES CUDA CXX)
+project(Cosmica LANGUAGES CXX CUDA)
 
-# Optionally, locate OpenMP (if your host code uses OpenMP)
+#-----------------------------------------------------------------------------
+# Create executable from the CUDA source.
+add_executable(Cosmica ${CMAKE_CURRENT_SOURCE_DIR}/kernel_test.cu)
+
+#-----------------------------------------------------------------------------
+# Set C++ and CUDA standards.
+set_target_properties(Cosmica PROPERTIES
+        CXX_STANDARD 20
+        CUDA_STANDARD 20
+)
+
+#-----------------------------------------------------------------------------
+# Find and enable OpenMP.
 find_package(OpenMP REQUIRED)
-find_package(Threads REQUIRED)
 
-if(OpenMP_FOUND)
-    message(STATUS "Found OpenMP: ${OpenMP_CXX_FLAGS}")
-endif()
+# Set the include directory.
+target_include_directories(Cosmica PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/headers)
 
-# Set the CUDA standard.
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CUDA_STANDARD 20)
-set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+# Define macros.
+target_compile_definitions(Cosmica PRIVATE UNIFIED_COMPILE)
 
-add_definitions(-DUNIFIED_COMPILE)
+#-----------------------------------------------------------------------------
+# Set the target CUDA architecture.
+set_target_properties(Cosmica PROPERTIES CUDA_ARCHITECTURES 86)
 
-# Add the include directory (from the -I flag).
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/headers)
+#-----------------------------------------------------------------------------
+# Add host compiler options (for C++). They will be forwarded to the CUDA compiler.
+# Add CUDA-specific compile options.
+set(HOST_FLAGS -fopenmp -Wall -Wextra -Werror)
+set(CUDA_FLAGS -keep --generate-line-info --resource-usage --use_fast_math)
+string(REPLACE ";" "," CUDA_HOST_FLAGS "${HOST_FLAGS}")
 
-# Define the source files.
-set(SOURCES
-        ${CMAKE_CURRENT_SOURCE_DIR}/kernel_test.cu
+target_compile_options(Cosmica PRIVATE $<$<COMPILE_LANGUAGE:CXX>:${HOST_FLAGS}>)
+target_compile_options(Cosmica PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:${CUDA_FLAGS}>)
+target_compile_options(Cosmica PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=${CUDA_HOST_FLAGS}>)
+
+#-----------------------------------------------------------------------------
+# Link OpenMP libraries to resolve undefined references.
+target_link_libraries(Cosmica PRIVATE OpenMP::OpenMP_CXX)
+
+#-----------------------------------------------------------------------------
+# Optionally, set the output directory for the executable.
+set_target_properties(Cosmica PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/exefiles
+)
+
+#-----------------------------------------------------------------------------
+# MOCK BUILD TARGET FOR CLION
+add_executable(IgnoreThisTarget ${CMAKE_CURRENT_SOURCE_DIR}/kernel_test.cu
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/DiffusionModel.cu
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/EventSequence.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/GenComputation.cu
@@ -40,30 +66,10 @@ set(SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/SolarWind.cu
 )
 
-# Create the executable target.
-add_executable(Cosmica ${SOURCES})
-
-# Specify the output directory (matching the NVCC -o option).
-set_target_properties(Cosmica PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/exefiles
-        # Enable relocatable device code; equivalent to "-rdc=true".
-        CUDA_SEPARABLE_COMPILATION ON
+set_target_properties(IgnoreThisTarget PROPERTIES
+        CXX_STANDARD 20
+        CUDA_STANDARD 20
 )
 
-# Add NVCC-specific compiler options.
-target_compile_options(Cosmica
-        PRIVATE
-        $<$<COMPILE_LANGUAGE:CUDA>:--ptxas-options=-v>
-        $<$<COMPILE_LANGUAGE:CUDA>:--resource-usage>
-        $<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math>
-        $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler>
-        $<$<COMPILE_LANGUAGE:CUDA>:-fopenmp>
-)
-
-# Instruct NVLink to use dynamic linking for libraries (fixes the libpthread error).
-#target_link_options(Cosmica PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-Xnvlink;-Bdynamic>)
-
-# (Optional) Link OpenMP libraries so that host code compiles with OpenMP support.
-if(OpenMP_FOUND)
-    target_link_libraries(Cosmica PRIVATE OpenMP::OpenMP_CXX)
-endif()
+target_include_directories(IgnoreThisTarget PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/headers)
+target_compile_definitions(IgnoreThisTarget PRIVATE UNIFIED_COMPILE)
