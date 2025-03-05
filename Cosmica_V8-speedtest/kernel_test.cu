@@ -149,9 +149,9 @@ int main(int argc, char *argv[]) {
 
     auto Results = SimParameters.Results = AllocateResults(SimParameters.NT, NParts);
 
-    std::string init_filename = SimParameters.output_file_name + "_prop_in.txt";
-    std::string final_filename = SimParameters.output_file_name + "_prop_out.txt";
-    std::string histo_filename = SimParameters.output_file_name + "_R_histo.txt";
+    std::string init_filename = SimParameters.output_file + "_prop_in.txt";
+    std::string final_filename = SimParameters.output_file + "_prop_out.txt";
+    std::string histo_filename = SimParameters.output_file + "_R_histo.txt";
 
     if (std::remove(init_filename.c_str()) != 0 || std::remove(final_filename.c_str()) != 0) {
         spdlog::warn("Error deleting old propagation files or they do not exist");
@@ -317,7 +317,7 @@ int main(int argc, char *argv[]) {
     ////////////////////////////////////////////////////////////////
 
     // Generate the YAML file name, following the old naming convention:
-    std::string yamlFilename = fmt::format("{}_matrix_{}.yaml", SimParameters.output_file_name, getpid());
+    std::string yamlFilename = fmt::format("{}_matrix_{}.yaml", SimParameters.output_file, getpid());
 
     try {
         write_results_yaml(yamlFilename, SimParameters);
@@ -338,7 +338,7 @@ int main(int argc, char *argv[]) {
 
     /* save results to file .dat */
     FILE *pFile_Matrix = nullptr;
-    std::string datFilename = fmt::format("{}_matrix_{}.dat", SimParameters.output_file_name, getpid());
+    std::string datFilename = fmt::format("{}_matrix_{}.dat", SimParameters.output_file, getpid());
 
     spdlog::debug("Writing Output File: {}", datFilename);
     pFile_Matrix = fopen(datFilename.c_str(), "w");

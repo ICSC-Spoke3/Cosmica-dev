@@ -71,7 +71,7 @@ struct SimulationConstants_t {
 };
 
 struct SimConfiguration_t {
-    std::string output_file_name;
+    std::string output_file;
     unsigned long RandomSeed = 0;
     unsigned Npart = 5000; // number of event to be simulated
     unsigned NT; // number of bins of energies to be simulated

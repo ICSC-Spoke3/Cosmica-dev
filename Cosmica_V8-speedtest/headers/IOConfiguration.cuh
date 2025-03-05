@@ -21,13 +21,12 @@ struct InputHeliosphericParameters_t {
 
 struct cli_options {
     std::string input_file;
-    spdlog::level::level_enum log_level;
+    std::string output_dir;
+    spdlog::level::level_enum log_level = spdlog::level::info;
 };
 
 
 cli_options parse_cli_options(int, const char **);
-
-[[noreturn]] void usage(const char *);
 
 void kill_me(const char *);
 

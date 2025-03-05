@@ -36,40 +36,37 @@ using std::vector, std::string, std::pair, std::unordered_map;
  * @return the parsed options
  */
 cli_options parse_cli_options(int argc, char *argv[]) {
+    bool help;
     cli_options options;
-    options.log_level = spdlog::level::info; // Default log level
 
     auto cli = lyra::cli();
-    cli.add_argument(lyra::opt(options.input_file, "input_file")
+    cli.add_argument(lyra::opt(options.input_file, "Input file")
         .name("-i")
         .name("--input")
-        .help("Input file")
+        .help("Path of the input file (.yaml)")
         .required());
-    cli.add_argument(lyra::opt(options.log_level, "log_level")
-        .name("-v")
-        .name("--verbose")
-        .help("Verbose mode: the options are  0 (trace), 1 (debug), 2 (info), 3 (warn), 4 (err), 5 (critical), 6 (off)")
+    cli.add_argument(lyra::opt(options.output_dir, "Output directory")
+        .name("-o")
+        .name("--output_dir")
+        .help("Path of the output directory, ending with \"/\"")
         .optional());
+    cli.add_argument(lyra::opt(options.log_level, "Log level")
+        .name("-v")
+        .name("--verbosity")
+        .help("Verbose mode: the options are: trace, debug, info, warn, err, critical, off")
+        .optional());
+    cli.add_argument(lyra::help(help));
 
     if (const auto results = cli.parse({argc, argv}); !results) {
-        std::cerr << results.message() << std::endl;
-        usage(argv[0]);
+        spdlog::critical(results.message());
+        std::cout << cli << std::endl;
+        exit(EXIT_SUCCESS);
+    }
+    if (help) {
+        std::cout << cli << std::endl;
+        exit(EXIT_SUCCESS);
     }
     return options;
-}
-
-
-
-/**
- * @brief Print the usage message
- * @param progname the name of the program
- *
- * @note noreturn: the function will never return a value
- */
-[[noreturn]] void usage(const char *progname) {
-    fprintf(stderr, USAGE_MESSAGE);
-    fprintf(stderr, USAGE_FMT, progname ? progname : DEFAULT_PROGNAME);
-    exit(EXIT_FAILURE);
 }
 
 /**
@@ -217,7 +214,7 @@ consteval unsigned long operator""_(const char *str, const size_t len) {
  * @param verbose the verbosity level
  * @return EXIT_SUCCESS if the configuration was loaded successfully, EXIT_FAILURE otherwise
  */
-int LoadConfigFile(const cli_options& options, SimConfiguration_t &SimParameters, int verbose) {
+int LoadConfigFile(const cli_options &options, SimConfiguration_t &SimParameters, int verbose) {
     if (options.input_file.ends_with(".yaml")) return LoadConfigYaml(options, SimParameters, verbose);
 
     std::ifstream file(options.input_file);
@@ -236,7 +233,7 @@ int LoadConfigFile(const cli_options& options, SimConfiguration_t &SimParameters
                     SimParameters.RandomSeed = std::stol(value);
                     break;
                 case "OutputFilename"_:
-                    SimParameters.output_file_name = value;
+                    SimParameters.output_file = options.output_dir + value;
                     break;
                 case "Tcentr"_:
                     Ts = SplitCSV(value);
@@ -387,7 +384,7 @@ int LoadConfigFile(const cli_options& options, SimConfiguration_t &SimParameters
             fprintf(stderr, "  Init Pos (real) - theta : %.2f \n", SimParameters.InitialPositions.th[i]);
             fprintf(stderr, "  Init Pos (real) - phi   : %.2f \n", SimParameters.InitialPositions.phi[i]);
         }
-        fprintf(stderr, "output_file_name        : %s \n", SimParameters.output_file_name.c_str());
+        fprintf(stderr, "output_file_name        : %s \n", SimParameters.output_file.c_str());
         fprintf(stderr, "number of input energies: %d \n", SimParameters.NT);
         fprintf(stderr, "input energies          : ");
         for (unsigned i = 0; i < SimParameters.NT; ++i) {
@@ -638,13 +635,13 @@ vector<HeliosheatProperties_t> node_to_heliosheat(const fkyaml::node &node, cons
  * @param verbose the verbosity level
  * @return EXIT_SUCCESS if the configuration was loaded successfully, EXIT_FAILURE otherwise
  */
-int LoadConfigYaml(const cli_options& options, SimConfiguration_t &config, int verbose) {
+int LoadConfigYaml(const cli_options &options, SimConfiguration_t &config, int verbose) {
     std::ifstream file(options.input_file);
 
     auto node = fkyaml::node::deserialize(file);
 
     auto random_seed = node_to_value<unsigned long>(node["random_seed"]);
-    auto output_path = node_to_value<std::string>(node["output_path"]);
+    auto output_path = options.output_dir + node_to_value<std::string>(node["output_path"]);
     auto rigidities = node_to_vector<float>(node["rigidities"]);
     auto n_particles = node_to_value<unsigned>(node["n_particles"]);
     auto n_regions = node_to_value<unsigned>(node["n_regions"]);
@@ -660,7 +657,7 @@ int LoadConfigYaml(const cli_options& options, SimConfiguration_t &config, int v
     auto heliosheat = node_to_heliosheat(node, n_sources);
     auto relative_bin_amplitude = node_to_value<float>(node["relative_bin_amplitude"]);
 
-    config.output_file_name = output_path;
+    config.output_file = output_path;
     config.RandomSeed = random_seed;
     config.Npart = n_particles;
     std::ranges::copy(rigidities, config.Tcentr = new float[config.NT = rigidities.size()]);
@@ -704,7 +701,7 @@ int LoadConfigYaml(const cli_options& options, SimConfiguration_t &config, int v
         spdlog::trace("Number of sources : {}", static_cast<int>(config.NInitialPositions));
 
 
-        spdlog::trace("Output file name: {}", config.output_file_name);
+        spdlog::trace("Output file name: {}", config.output_file);
         spdlog::trace("Number of input energies: {}", config.NT);
 
         std::string energies_concat;
