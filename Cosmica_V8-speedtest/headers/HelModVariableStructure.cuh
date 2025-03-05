@@ -2,6 +2,7 @@
 #define HelModVariableStructure
 #include <vector>
 #include <string>
+#include <spdlog/common.h>
 
 #include "VariableStructure.cuh"
 
@@ -86,15 +87,17 @@ struct SimConfiguration_t {
     std::vector<std::string> isotopes_names;
 };
 
-#include <spdlog/common.h>
-
 inline std::istream& operator>>(std::istream& is, spdlog::level::level_enum& level) {
     std::string token;
     is >> token;
-    level = spdlog::level::from_str(token);  // Convert string to spdlog::level::level_enum
+    level = spdlog::level::from_str(token);
     return is;
 }
 
+inline std::ostream& operator<<(std::ostream& os, const spdlog::level::level_enum& level) {
+    os << to_string_view(level).data();
+    return os;
+}
 
 #endif
 

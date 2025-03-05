@@ -113,10 +113,10 @@ int main(int argc, char *argv[]) {
     cli_options options = parse_cli_options(argc, argv);
     spdlog::set_level(options.log_level);
 
+    spdlog::info("Verbosity Level: {}", to_string_view(options.log_level));
     spdlog::info("Input file: {}", options.input_file);
-    spdlog::info("Verbosity Level: {}", static_cast<int>(options.log_level));
+    spdlog::info("Output directory: {}", options.output_dir);
 
-    // spdlog::set_level(spdlog::level::trace);
     spdlog::info("Simulation started");
 
     const int NGPUs = AvailableGPUs();

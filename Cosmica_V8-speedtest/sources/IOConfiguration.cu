@@ -39,23 +39,14 @@ cli_options parse_cli_options(int argc, char *argv[]) {
     bool help;
     cli_options options;
 
-    auto cli = lyra::cli();
-    cli.add_argument(lyra::opt(options.input_file, "Input file")
-        .name("-i")
-        .name("--input")
-        .help("Path of the input file (.yaml)")
-        .required());
-    cli.add_argument(lyra::opt(options.output_dir, "Output directory")
-        .name("-o")
-        .name("--output_dir")
-        .help("Path of the output directory, ending with \"/\"")
-        .optional());
-    cli.add_argument(lyra::opt(options.log_level, "Log level")
-        .name("-v")
-        .name("--verbosity")
-        .help("Verbose mode: the options are: trace, debug, info, warn, err, critical, off")
-        .optional());
-    cli.add_argument(lyra::help(help));
+    const auto cli = lyra::help(help)
+                     | lyra::opt(options.input_file, "Input file")
+                     ["-i"]["--input"]("Path of the input file (.yaml)").required()
+                     | lyra::opt(options.output_dir, "Output directory")
+                     ["-o"]["--output_dir"]("Path of the output directory, ending with \"/\"").optional()
+                     | lyra::opt(options.log_level, "Log level")
+                     ["-v"]["--verbosity"]("Verbosity options: trace, debug, info, warn, err, critical, off").
+                     optional();
 
     if (const auto results = cli.parse({argc, argv}); !results) {
         spdlog::critical(results.message());
