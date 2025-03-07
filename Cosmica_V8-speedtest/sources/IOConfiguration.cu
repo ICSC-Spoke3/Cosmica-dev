@@ -12,6 +12,7 @@
 #include "DiffusionModel.cuh"
 #include "MagneticDrift.cuh"
 #include <LoadConfiguration.cuh>
+#include <spdlog/spdlog.h>
 // Define load function parameteres
 #define ERR_Load_Configuration_File "Error while loading simulation parameters \n"
 #define LOAD_CONF_FILE_SiFile "Configuration file loaded \n"
@@ -39,7 +40,7 @@ cli_options parse_cli_options(int argc, char *argv[]) {
 
     const auto cli = lyra::help(help)
                      | lyra::opt(options.input_file, "path").optional()
-                     ["-i"]["--input"]("Path of the input file (.yaml)")
+                     ["-i"]["--input"]("Path of the input file")
                      | lyra::opt(options.output_dir, "path").optional()
                      ["-o"]["--output_dir"]("Path of the output directory, ending with \"/\"")
                      | lyra::opt(options.log_level, "level").optional()
@@ -47,9 +48,11 @@ cli_options parse_cli_options(int argc, char *argv[]) {
                      | lyra::opt(options.log_file, "path").optional()
                      ["--log_file"]("Logs destination instead of stdout")
                      | lyra::opt(options.use_stdin).optional()
-                     ["--stdin"]("If enabled, uses stdin for input (yaml only) (input file is ignored)")
+                     ["--stdin"]("Use stdin for input (yaml only) (input file is ignored)")
                      | lyra::opt(options.use_stdout).optional()
-                     ["--stdout"]("If enabled, uses stdout for output (yaml only) (this disables stdout logging)");
+                     ["--stdout"]("Use stdout for output (yaml only) (this disables stdout logging)")
+                     | lyra::opt(options.legacy).optional()
+                     ["--legacy"]("Use legacy .txt input and .dat output");
 
     if (const auto results = cli.parse({argc, argv}); !results) {
         spdlog::critical(results.message());
@@ -87,11 +90,19 @@ int PrintError(const char *var, char *value, const int zone) {
 }
 
 int LoadConfigFile(const cli_options &options, SimConfiguration_t &params) {
+    if (options.use_stdin) {
+        const auto ret = options.legacy
+                             ? LoadConfigTxt(&std::cin, options, params)
+                             : LoadConfigYaml(&std::cin, options, params);
+        spdlog::info("Config read from stdin");
+        return ret;
+    }
     std::ifstream file(options.input_file);
-    std::istream *stream = options.use_stdin ? &std::cin : &file;
-    const int ret = options.input_file.ends_with(".yaml") || options.use_stdin
-                        ? LoadConfigYaml(stream, options, params)
-                        : LoadConfigTxt(stream, options, params);
+    if (!file.is_open()) return EXIT_FAILURE;
+    const auto ret = options.legacy
+                         ? LoadConfigTxt(&file, options, params)
+                         : LoadConfigYaml(&file, options, params);
+    spdlog::info("Config read from file: {}", options.input_file);
     return ret;
 }
 
@@ -374,80 +385,81 @@ int LoadConfigTxt(std::istream *stream, const cli_options &options, SimConfigura
 
     SimParameters.Npart = ceil_int_div(SimParameters.Npart, SimParameters.NInitialPositions);
 
-    if (spdlog::get_level() <= spdlog::level::debug) {
-        fprintf(stderr, "----- Recap of Simulation parameters ----\n");
-        fprintf(stderr, "NucleonRestMass         : %.3f Gev/n \n",
-                SimParameters.simulation_constants.Isotopes[0].T0);
-        fprintf(stderr, "MassNumber              : %.1f \n", SimParameters.simulation_constants.Isotopes[0].A);
-        fprintf(stderr, "Charge                  : %.1f \n", SimParameters.simulation_constants.Isotopes[0].Z);
-        fprintf(stderr, "Number of sources       : %hhu \n", SimParameters.NInitialPositions);
-        for (unsigned i = 0; i < SimParameters.NInitialPositions; ++i) {
-            fprintf(stderr, "position              :%d \n", i);
-            fprintf(stderr, "  Init Pos (real) - r     : %.2f \n", SimParameters.InitialPositions.r[i]);
-            fprintf(stderr, "  Init Pos (real) - theta : %.2f \n", SimParameters.InitialPositions.th[i]);
-            fprintf(stderr, "  Init Pos (real) - phi   : %.2f \n", SimParameters.InitialPositions.phi[i]);
-        }
-        fprintf(stderr, "output_file_name        : %s \n", SimParameters.output_file.c_str());
-        fprintf(stderr, "number of input energies: %d \n", SimParameters.NT);
-        fprintf(stderr, "input energies          : ");
-        for (unsigned i = 0; i < SimParameters.NT; ++i) {
-            fprintf(stderr, "%.2f ", SimParameters.Tcentr[i]);
-        }
-        fprintf(stderr, "\n");
-        fprintf(stderr, "Events to be generated  : %u \n", SimParameters.Npart);
-        //fprintf(stderr,"Warp per Block          : %d \n",WarpPerBlock);
-
-        fprintf(stderr, "\n");
-        fprintf(stderr, "for each simulated periods:\n");
-        for (unsigned i = 0; i < SimParameters.NInitialPositions; ++i) {
-            fprintf(stderr, "position              :%d \n", i);
-            fprintf(stderr, "  IsHighActivityPeriod    : %s \n",
-                    SimParameters.simulation_constants.IsHighActivityPeriod[i] ? "true" : "false");
-            fprintf(stderr, "  Rts nose direction      : %.2f AU\n",
-                    SimParameters.simulation_constants.RadBoundary_real[i].Rts_nose);
-            fprintf(stderr, "  Rts tail direction      : %.2f AU\n",
-                    SimParameters.simulation_constants.RadBoundary_real[i].Rts_tail);
-            fprintf(stderr, "  Rhp nose direction      : %.2f AU\n",
-                    SimParameters.simulation_constants.RadBoundary_real[i].Rhp_nose);
-            fprintf(stderr, "  Rhp tail direction      : %.2f AU\n",
-                    SimParameters.simulation_constants.RadBoundary_real[i].Rhp_tail);
-        }
-        fprintf(stderr, "Heliosphere Parameters ( %d regions ): \n", SimParameters.simulation_constants.Nregions);
-
-        for (unsigned i = 0; i < SimParameters.simulation_constants.Nregions + SimParameters.NInitialPositions - 1; ++
-             i) {
-            fprintf(stderr, "- Region %d \n", i);
-            fprintf(stderr, "-- V0         %e AU/s\n", SimParameters.simulation_constants.heliosphere_properties[i].V0);
-            fprintf(stderr, "-- k0_paral   [%e,%e] \n",
-                    SimParameters.simulation_parametrization.params[0].heliosphere[i].k0_paral[0],
-                    SimParameters.simulation_parametrization.params[0].heliosphere[i].k0_paral[1]);
-            fprintf(stderr, "-- k0_perp    [%e,%e] \n",
-                    SimParameters.simulation_parametrization.params[0].heliosphere[i].k0_perp[0],
-                    SimParameters.simulation_parametrization.params[0].heliosphere[i].k0_perp[1]);
-            fprintf(stderr, "-- GaussVar   [%.4f,%.4f] \n",
-                    SimParameters.simulation_parametrization.params[0].heliosphere[i].GaussVar[0],
-                    SimParameters.simulation_parametrization.params[0].heliosphere[i].GaussVar[1]);
-            fprintf(stderr, "-- g_low      %.4f \n",
-                    SimParameters.simulation_constants.heliosphere_properties[i].g_low);
-            fprintf(stderr, "-- rconst     %.3f \n",
-                    SimParameters.simulation_constants.heliosphere_properties[i].rconst);
-            fprintf(stderr, "-- tilt angle %.3f rad\n",
-                    SimParameters.simulation_constants.heliosphere_properties[i].TiltAngle);
-            fprintf(stderr, "-- Asun       %e \n", SimParameters.simulation_constants.heliosphere_properties[i].Asun);
-            fprintf(stderr, "-- P0d        %e GV \n", SimParameters.simulation_constants.heliosphere_properties[i].P0d);
-            fprintf(stderr, "-- P0dNS      %e GV \n",
-                    SimParameters.simulation_constants.heliosphere_properties[i].P0dNS);
-        }
-        fprintf(stderr, "Heliosheat parameters ( %d periods ): \n", SimParameters.NInitialPositions);
-        for (unsigned ipos = 0; ipos < SimParameters.NInitialPositions; ++ipos) {
-            fprintf(stderr, "-period              :%d \n", ipos);
-            fprintf(stderr, "-- V0 %e AU/s\n", SimParameters.simulation_constants.heliosheat_properties[ipos].V0);
-            fprintf(stderr, "-- k0 %e \n", SimParameters.simulation_constants.heliosheat_properties[ipos].k0);
-        }
-        fprintf(stderr, "----------------------------------------\n");
-    }
+    LogConfig(SimParameters);
 
     return EXIT_SUCCESS;
+}
+
+void LogConfig(const SimConfiguration_t &config) {
+    spdlog::trace("Loaded config:");
+    spdlog::trace("Nucleon Rest Mass : {:.3f}", config.simulation_constants.Isotopes[0].T0);
+    spdlog::trace("Mass Number       : {:.1f}", config.simulation_constants.Isotopes[0].A);
+    spdlog::trace("Charge            : {:.1f}", config.simulation_constants.Isotopes[0].Z);
+    spdlog::trace("Number of sources : {}", static_cast<int>(config.NInitialPositions));
+
+
+    spdlog::trace("Output file name: {}", config.output_file);
+    spdlog::trace("Number of input energies: {}", config.NT);
+
+    std::string energies_concat;
+    for (const auto &T: std::span(config.Tcentr, config.NT)) {
+        energies_concat += fmt::format("{:.2f} ", T);
+    }
+    spdlog::trace("Input energies: {}", energies_concat);
+
+
+    spdlog::trace("Events to be generated: {}", config.Npart);
+    spdlog::trace("For each simulated period:");
+
+    for (unsigned i = 0; i < config.NInitialPositions; ++i) {
+        spdlog::trace(
+            "Position {:02}: (r: {:.2f}, theta: {:.2f}, phi: {:.2f}) {{{}, Rts: ({:.2f}, {:.2f}), Rhp: ({:.2f}, {:.2f})}}",
+            i,
+            config.InitialPositions.r[i], config.InitialPositions.th[i],
+            config.InitialPositions.phi[i],
+            config.simulation_constants.IsHighActivityPeriod[i] ? "High Activity" : "Low Activity",
+            config.simulation_constants.RadBoundary_real[i].Rts_nose,
+            config.simulation_constants.RadBoundary_real[i].Rts_tail,
+            config.simulation_constants.RadBoundary_real[i].Rhp_nose,
+            config.simulation_constants.RadBoundary_real[i].Rhp_tail);
+    }
+
+
+    spdlog::trace("Heliosphere Parameters ({} regions, {} sources, {} total):",
+                  config.simulation_constants.Nregions, config.NInitialPositions,
+                  config.simulation_constants.Nregions + config.NInitialPositions - 1);
+
+    spdlog::trace("#Region: {{V0, k0_paral[], k0_perp[], GaussVar[], g_low, rconst, TiltAngle, Asun, P0d, P0dNS}}");
+
+    for (unsigned i = 0; i < config.simulation_constants.Nregions + config.NInitialPositions - 1; ++i) {
+        spdlog::trace(
+            "{:02}: {{{:.3e}, [{:.3e}, {:.3e}], [{:.3e}, {:.3e}], [{:.3e}, {:.3e}], {:.3e}, {:.3e}, {:.3e}, {:.3e}, {:.3e}, {:.3e}}}",
+            i,
+            config.simulation_constants.heliosphere_properties[i].V0,
+            config.simulation_parametrization.params[0].heliosphere[i].k0_paral[0],
+            config.simulation_parametrization.params[0].heliosphere[i].k0_paral[1],
+            config.simulation_parametrization.params[0].heliosphere[i].k0_perp[0],
+            config.simulation_parametrization.params[0].heliosphere[i].k0_perp[1],
+            config.simulation_parametrization.params[0].heliosphere[i].GaussVar[0],
+            config.simulation_parametrization.params[0].heliosphere[i].GaussVar[1],
+            config.simulation_constants.heliosphere_properties[i].g_low,
+            config.simulation_constants.heliosphere_properties[i].rconst,
+            config.simulation_constants.heliosphere_properties[i].TiltAngle,
+            config.simulation_constants.heliosphere_properties[i].Asun,
+            config.simulation_constants.heliosphere_properties[i].P0d,
+            config.simulation_constants.heliosphere_properties[i].P0dNS);
+    }
+
+    spdlog::trace("Heliosheat Parameters ({} periods):", config.NInitialPositions);
+    spdlog::trace("Period: {{V0, k0}}");
+    for (unsigned ipos = 0; ipos < config.NInitialPositions; ++ipos) {
+        spdlog::trace(
+            "{:02}: {{{:.6e}, {:.6e}}}",
+            ipos,
+            config.simulation_constants.heliosheat_properties[ipos].V0,
+            config.simulation_constants.heliosheat_properties[ipos].k0
+        );
+    }
 }
 
 /**
@@ -695,98 +707,81 @@ int LoadConfigYaml(std::istream *stream, const cli_options &options, SimConfigur
     std::ranges::copy(heliosphere, config.simulation_constants.heliosphere_properties);
     std::ranges::copy(heliosheat, config.simulation_constants.heliosheat_properties);
 
-    spdlog::trace("Nucleon Rest Mass : {:.3f}", config.simulation_constants.Isotopes[0].T0);
-    spdlog::trace("Mass Number       : {:.1f}", config.simulation_constants.Isotopes[0].A);
-    spdlog::trace("Charge            : {:.1f}", config.simulation_constants.Isotopes[0].Z);
-    spdlog::trace("Number of sources : {}", static_cast<int>(config.NInitialPositions));
+    LogConfig(config);
 
-
-    spdlog::trace("Output file name: {}", config.output_file);
-    spdlog::trace("Number of input energies: {}", config.NT);
-
-    std::string energies_concat;
-    for (const auto &T: std::span(config.Tcentr, config.NT)) {
-        energies_concat += fmt::format("{:.2f} ", T);
-    }
-    spdlog::trace("Input energies: {}", energies_concat);
-
-
-    spdlog::trace("Events to be generated: {}", config.Npart);
-    spdlog::trace("For each simulated period:");
-
-    for (unsigned i = 0; i < config.NInitialPositions; ++i) {
-        spdlog::trace(
-            "Position {:02}: (r: {:.2f}, theta: {:.2f}, phi: {:.2f}) {{{}, Rts: ({:.2f}, {:.2f}), Rhp: ({:.2f}, {:.2f})}}",
-            i,
-            config.InitialPositions.r[i], config.InitialPositions.th[i],
-            config.InitialPositions.phi[i],
-            config.simulation_constants.IsHighActivityPeriod[i] ? "High Activity" : "Low Activity",
-            config.simulation_constants.RadBoundary_real[i].Rts_nose,
-            config.simulation_constants.RadBoundary_real[i].Rts_tail,
-            config.simulation_constants.RadBoundary_real[i].Rhp_nose,
-            config.simulation_constants.RadBoundary_real[i].Rhp_tail);
-    }
-
-
-    spdlog::trace("Heliosphere Parameters ({} regions, {} sources, {} total):",
-                  config.simulation_constants.Nregions, config.NInitialPositions,
-                  config.simulation_constants.Nregions + config.NInitialPositions - 1);
-
-    spdlog::trace("#Region: {{V0, k0_paral[], k0_perp[], GaussVar[], g_low, rconst, TiltAngle, Asun, P0d, P0dNS}}");
-
-    for (unsigned i = 0; i < config.simulation_constants.Nregions + config.NInitialPositions - 1; ++i) {
-        spdlog::trace(
-            "{:02}: {{{:.3e}, [{:.3e}, {:.3e}], [{:.3e}, {:.3e}], [{:.3e}, {:.3e}], {:.3e}, {:.3e}, {:.3e}, {:.3e}, {:.3e}, {:.3e}}}",
-            i,
-            config.simulation_constants.heliosphere_properties[i].V0,
-            config.simulation_parametrization.params[0].heliosphere[i].k0_paral[0],
-            config.simulation_parametrization.params[0].heliosphere[i].k0_paral[1],
-            config.simulation_parametrization.params[0].heliosphere[i].k0_perp[0],
-            config.simulation_parametrization.params[0].heliosphere[i].k0_perp[1],
-            config.simulation_parametrization.params[0].heliosphere[i].GaussVar[0],
-            config.simulation_parametrization.params[0].heliosphere[i].GaussVar[1],
-            config.simulation_constants.heliosphere_properties[i].g_low,
-            config.simulation_constants.heliosphere_properties[i].rconst,
-            config.simulation_constants.heliosphere_properties[i].TiltAngle,
-            config.simulation_constants.heliosphere_properties[i].Asun,
-            config.simulation_constants.heliosphere_properties[i].P0d,
-            config.simulation_constants.heliosphere_properties[i].P0dNS);
-    }
-
-    spdlog::trace("Heliosheat Parameters ({} periods):", config.NInitialPositions);
-    spdlog::trace("Period: {{V0, k0}}");
-    for (unsigned ipos = 0; ipos < config.NInitialPositions; ++ipos) {
-        spdlog::trace(
-            "{:02}: {{{:.6e}, {:.6e}}}",
-            ipos,
-            config.simulation_constants.heliosheat_properties[ipos].V0,
-            config.simulation_constants.heliosheat_properties[ipos].k0
-        );
-    }
     return EXIT_SUCCESS;
 }
+
+int StoreResults(const cli_options &options, const SimConfiguration_t &config) {
+    if (options.use_stdout) {
+        const auto ret = options.legacy
+                             ? StoreResultsDat(&std::cout, options, config)
+                             : StoreResultsYaml(&std::cout, options, config);
+        spdlog::info("Results written to stdout");
+        return ret;
+    }
+    const std::string filename = fmt::format("{}_matrix_{}.{}", config.output_file, getpid(),
+                                             options.legacy ? "dat" : "yaml");
+    std::ofstream file(filename);
+    if (!file.is_open()) return EXIT_FAILURE;
+    const auto ret = options.legacy
+                         ? StoreResultsDat(&file, options, config)
+                         : StoreResultsYaml(&file, options, config);
+    spdlog::info("Results saved to file: {}", filename);
+    return ret;
+}
+
+
+int StoreResultsDat(std::ostream *stream, [[maybe_unused]] const cli_options &options,
+                    const SimConfiguration_t &config) {
+    const std::string histo_filename = config.output_file + "_R_histo.txt";
+    for (unsigned iR = 0; iR < config.NT; ++iR) {
+        SaveTxt_histo(histo_filename.c_str(), config.Results[iR][0].Nbins, config.Results[iR][0]);
+    }
+
+    *stream << "# COSMICA \n";
+    *stream << "# Number of Input energies;\n";
+    *stream << config.NT << '\n';
+
+    for (unsigned itemp = 0; itemp < config.NT; ++itemp) {
+        *stream << "######  Bin " << itemp << '\n';
+        *stream <<
+                "# Egen, Npart Gen., Npart Registered, Nbin output, log10(lower edge bin 0), Bin amplitude (in log scale)\n";
+
+        *stream << std::fixed << config.Tcentr[itemp] << " "
+                << config.Npart << " "
+                << config.Results[itemp][0].Nregistered << " "
+                << config.Results[itemp][0].Nbins << " "
+                << config.Results[itemp][0].LogBin0_lowEdge << " "
+                << config.Results[itemp][0].DeltaLogR << '\n';
+
+        *stream << "# output distribution \n";
+
+        *stream << std::scientific; // Ensure scientific notation for floating-point values
+        for (int itNB = 0; itNB < config.Results[itemp][0].Nbins; itNB++) {
+            *stream << config.Results[itemp][0].BoundaryDistribution[itNB] << " ";
+        }
+
+        *stream << "\n#\n";
+    }
+
+    return EXIT_SUCCESS;
+}
+
 
 /**
  * @brief Writes simulation results to a YAML file using fkYAML.
  *
  * This function builds a YAML document representing the simulation results stored in a 2D array
  * of MonteCarloResult_t structures.
+ * @param stream
  * @param options
  * @param config    The simulation configuration containing the results to write.
  *
  * @return 0 on success, -1 on failure.
  */
-std::string write_results_yaml(const cli_options &options, const SimConfiguration_t &config) {
-    std::string filename = fmt::format("{}_matrix_{}.yaml", config.output_file, getpid());
-
-    std::ofstream file(filename);
-    std::ostream *stream = options.use_stdout ? &std::cout : &file;
-
-    if (!options.use_stdout && !file.is_open()) {
-        spdlog::critical("Cannot open file {} for writing", filename);
-        exit(EXIT_FAILURE);
-    }
-
+int StoreResultsYaml(std::ostream *stream, [[maybe_unused]] const cli_options &options,
+                     const SimConfiguration_t &config) {
     const unsigned NIsotopes = config.simulation_constants.NIsotopes;
     auto root = fkyaml::node::mapping();
     auto &hist_seq = (root["histograms"] = fkyaml::node::sequence()).as_seq();
@@ -811,5 +806,5 @@ std::string write_results_yaml(const cli_options &options, const SimConfiguratio
 
     *stream << root;
 
-    return options.use_stdout ? "stdout" : filename;
+    return EXIT_SUCCESS;
 }

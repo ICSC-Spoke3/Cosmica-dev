@@ -119,8 +119,11 @@ int main(int argc, char *argv[]) {
     spdlog::set_level(options.log_level);
 
     spdlog::info("Verbosity Level: {}", to_string_view(options.log_level));
-    spdlog::info("Input file: {}", options.input_file);
-    spdlog::info("Output directory: {}", options.output_dir);
+    if (options.use_stdin) spdlog::info("Using stdin");
+    else spdlog::info("Input file: {}", options.input_file);
+    if (options.use_stdout) spdlog::info("Using stdout");
+    else spdlog::info("Output directory: {}", options.output_dir);
+    if (options.legacy) spdlog::info("Using LEGACY formats");
 
     spdlog::info("Simulation started");
 
@@ -253,7 +256,7 @@ int main(int argc, char *argv[]) {
 
             THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Particles Data Allocated");
 
-            if constexpr (INITSAVE) {
+            if constexpr (INITSAVE && options.legacy) {
                 SaveTxt_part(init_filename.c_str(), NParts, QuasiParts, Maxs[0]);
                 THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Initial State Stored");
             }
@@ -266,7 +269,7 @@ int main(int argc, char *argv[]) {
 
             THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Propagation Completed");
 
-            if constexpr (FINALSAVE) {
+            if constexpr (FINALSAVE && options.legacy) {
                 SaveTxt_part(final_filename.c_str(), NParts, QuasiParts, Maxs[0]);
                 THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Final State Stored");
             }
@@ -322,58 +325,10 @@ int main(int argc, char *argv[]) {
     ////////////////////////////////////////////////////////////////
 
     // Generate the YAML file name, following the old naming convention:
-    spdlog::info("Results saved to file: {}", write_results_yaml(options, SimParameters));
-
-    //  Save the summary histogram
-    //  Free the dynamic memory
-
-    // Save the rigidity histograms to txt file
-    for (unsigned iR = 0; iR < SimParameters.NT; ++iR) {
-        SaveTxt_histo(histo_filename.c_str(), Results[iR][0].Nbins, Results[iR][0]);
-    }
-
-    /* save results to file .dat */
-    FILE *pFile_Matrix = nullptr;
-    std::string datFilename = fmt::format("{}_matrix_{}.dat", SimParameters.output_file, getpid());
-
-    spdlog::debug("Writing Output File: {}", datFilename);
-    pFile_Matrix = fopen(datFilename.c_str(), "w");
-
-    if (pFile_Matrix == nullptr) {
-        spdlog::critical("Error, no output file");
+    if (StoreResults(options, SimParameters) != EXIT_SUCCESS) {
+        spdlog::critical("Error while storing simulation results");
         exit(EXIT_FAILURE);
     }
-
-    fprintf(pFile_Matrix, "# COSMICA \n");
-    if constexpr (VERBOSE) fprintf(pFile_Matrix, "# Number of Input energies;\n");
-    fprintf(pFile_Matrix, "%d \n", SimParameters.NT);
-
-    for (unsigned itemp = 0; itemp < SimParameters.NT; ++itemp) {
-        if constexpr (VERBOSE) {
-            fprintf(pFile_Matrix, "######  Bin %d \n", itemp);
-            fprintf(pFile_Matrix,
-                    "# Egen, Npart Gen., Npart Registered, Nbin output, log10(lower edge bin 0), Bin amplitude (in log scale)\n");
-        }
-
-        fprintf(pFile_Matrix, "%f %u %u %d %f %f \n", SimParameters.Tcentr[itemp],
-                SimParameters.Npart,
-                Results[itemp][0].Nregistered,
-                Results[itemp][0].Nbins,
-                Results[itemp][0].LogBin0_lowEdge,
-                Results[itemp][0].DeltaLogR);
-        if constexpr (VERBOSE) fprintf(pFile_Matrix, "# output distribution \n");
-
-        for (int itNB = 0; itNB < Results[itemp][0].Nbins; itNB++) {
-            fprintf(pFile_Matrix, "%e ", Results[itemp][0].BoundaryDistribution[itNB]);
-        }
-
-
-        fprintf(pFile_Matrix, "\n");
-        fprintf(pFile_Matrix, "#\n"); // <--- dummy line to separate results
-    }
-
-    fflush(pFile_Matrix);
-    fclose(pFile_Matrix);
 
     delete[] SimParameters.InitialPositions.r;
     delete[] SimParameters.InitialPositions.th;
