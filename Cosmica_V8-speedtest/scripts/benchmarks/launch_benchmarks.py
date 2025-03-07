@@ -1,10 +1,12 @@
+import copy
 import subprocess
+import time
 
 import numpy as np
 import yaml
 from pathlib import Path
 
-from matplotlib import pyplot as plt
+yaml.Dumper.ignore_aliases = lambda self, data: True
 
 
 def run_cosmica(input_string, cosmica_executable, log_file, output_dir):
@@ -33,8 +35,10 @@ def run_cosmica(input_string, cosmica_executable, log_file, output_dir):
         print(f"An error occurred: {e}")
         return None, None, -1
 
+
 def load_baselines():
     names = ['V6', 'V8.0', 'V8.1']
+
     def to_arrays(s):
         return list(map(lambda x: np.array(x.strip().split(' '), dtype=float),
                         filter(lambda x: x and not x.startswith('#'), s.split('\n'))))
@@ -54,35 +58,40 @@ def parse_simple(stdout):
         histos.append(np.array(bins))
     return histos
 
+
+def run_simulation(seed, particles, nk0, input_yaml, cosmica_executable, log_file, output_dir):
+    input_yaml = copy.deepcopy(input_yaml)
+    input_yaml['random_seed'] = seed
+    input_yaml['n_particles'] = particles
+    input_yaml['dynamic']['heliosphere']['k0'] *= nk0
+    input_string = yaml.dump(input_yaml, Dumper=yaml.Dumper)
+
+    st = time.time()
+    stdout, stderr, returncode = run_cosmica(input_string, cosmica_executable, log_file, output_dir)
+    et = time.time()
+
+    assert returncode == 0, f"Cosmica execution failed with return code {returncode}"
+
+    return et - st
+
+
 if __name__ == "__main__":
-    directory = Path(__file__).parent.parent
+    directory = Path(__file__).parent.parent.parent
     cosmica_executable = directory / "exefiles" / "Cosmica"
     log_file = directory / "outputs" / "cosmica.log"
     output_dir = directory / "outputs"
     with open(directory / "runned_tests/AMS-02_PRL2015/Input_Proton_TKO_20110509_20131121_r00100_lat00000.yaml") as f:
-        input_data = f.read()
+        input_yaml = yaml.load(f, Loader=yaml.FullLoader)
 
-    stdout, stderr, returncode = run_cosmica(input_data, cosmica_executable, log_file, output_dir)
+    results = []
 
-    with open(directory / "outputs/tmp.yaml", "w") as f:
-        f.write(stdout)
-
-    if stdout is not None:
-        print("Cosmica Output (stdout):\n", stdout)
-        print("Cosmica Error Output (stderr):\n", stderr)
-        print(f"Cosmica Return Code: {returncode}")
-    else:
-        print("Cosmica execution failed.")
-
-    bss = list(load_baselines())
-    r = parse_simple(stdout)
-
-    for i, (x1, x2, x3, x4) in enumerate(zip(*bss, r)):
-        plt.plot(x1, label='V6')
-        plt.plot(x2, label='V8.0')
-        plt.plot(x3, label='V8.1')
-        plt.plot(x4, label='V8 latest')
-        plt.legend()
-        plt.savefig(Path(__file__).parent / "plots" / f"p{i}.png")
-        plt.close()
-
+    for nk0 in range(125, 201, 25):
+        nk0 = max(1, nk0)
+        t = []
+        for i in range(5):
+            print(nk0, i)
+            t.append(run_simulation(0, 144, nk0, input_yaml, cosmica_executable, log_file, output_dir))
+            print(t[-1])
+        results.append((nk0, *t))
+        with open(Path(__file__).parent / "nk0_times.csv", "a+") as f:
+            f.write(f'{nk0}, {", ".join(map(str, t))}\n')
