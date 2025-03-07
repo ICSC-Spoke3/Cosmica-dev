@@ -652,7 +652,9 @@ vector<HeliosheatProperties_t> node_to_heliosheat(const fkyaml::node &node, cons
  * @return EXIT_SUCCESS if the configuration was loaded successfully, EXIT_FAILURE otherwise
  */
 int LoadConfigYaml(std::istream *stream, const cli_options &options, SimConfiguration_t &config) {
-    auto node = fkyaml::node::deserialize(*stream);
+    // ReSharper disable once CppTemplateArgumentsCanBeDeduced
+    std::string s(std::istreambuf_iterator<char>(*stream), {});
+    auto node = fkyaml::node::deserialize(s);
 
     auto random_seed = node_to_value<unsigned long>(node["random_seed"]);
     auto output_path = options.output_dir + node_to_value<std::string>(node["output_path"]);
