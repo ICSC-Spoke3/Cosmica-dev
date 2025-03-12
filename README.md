@@ -4,6 +4,10 @@
 
 COde for a Speedy Montecarlo Involving Cuda Architecture (COSMICA) is a speedy and high precision Montecarlo simulator of CR modulation, which solve the system of Stochastic Differential Equations (SDE) equivalent to the Parker Transport Equation (PTE). A sample of virtual particles is independently stochastic propagated backward in time from the detection position through the heliosphere to the external boundary. GPU parallelization of COSMICA code is a game changer in this field because it improves the computational time for a standard simulation from order of hundred of minutes to few of them. Furthermore, the code is capable of distributing the computations on clusters of machines with multiple GPUs, opening the way for scaling.
 
+## License
+
+Distributed under the GNU Affero General Public License v3.0 License. See (LICENSE)[https://github.com/ICSC-Spoke3/Cosmica-dev/blob/main/LICENSE] for more information.
+
 ## Contains:
 
 - the folders of code versions with following optimizations
@@ -82,3 +86,6 @@ The execution of the Cosmica_1D follow the subsiquent pipeline:
   - Radial Position: 1
   - Lat. Position: 0
   - Long. Position: 0
+
+## Acknowledgement
+This activity is supportedbyFondazione ICSC , Spoke 3Astrophysics andCosmosObservations.National RecoveryandResiliencePlan (PianoNazionalediRipresaeResilienza, PNRR)Project IDCN00000013.MG, SDTandGLVaresupportedbyINFNandASIunderASI-INFNAgreementNo.2019-19-HH.0anditsamendments.
