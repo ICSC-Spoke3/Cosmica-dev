@@ -6,7 +6,7 @@ COde for a Speedy Montecarlo Involving Cuda Architecture (COSMICA) is a speedy a
 
 ## License
 
-Distributed under the GNU Affero General Public License v3.0 License. See [LICENSE](tps://github.com/ICSC-Spoke3/Cosmica-dev/blob/main/LICENSE) for more information.
+Distributed under the GNU Affero General Public License v3.0 License. See [LICENSE](https://github.com/ICSC-Spoke3/Cosmica-dev/blob/main/LICENSE) for more information.
 
 ## Contains:
 
