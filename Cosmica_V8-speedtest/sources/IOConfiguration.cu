@@ -44,7 +44,8 @@ cli_options parse_cli_options(int argc, char *argv[]) {
                      | lyra::opt(options.output_dir, "path").optional()
                      ["-o"]["--output_dir"]("Path of the output directory, ending with \"/\"")
                      | lyra::opt(options.log_level, "level").optional()
-                     ["-v"]["--verbosity"]("Verbosity options: trace, debug, info, warn, err, critical, off")
+                     ["-v"]["--verbosity"](
+                         "Verbosity options (from most to least): trace, debug, info, warn, err, critical, off")
                      | lyra::opt(options.log_file, "path").optional()
                      ["--log_file"]("Logs destination instead of stdout")
                      | lyra::opt(options.use_stdin).optional()
@@ -658,7 +659,8 @@ int LoadConfigYaml(std::istream *stream, const cli_options &options, SimConfigur
 
     auto random_seed = node_to_value<unsigned long>(node["random_seed"]);
     auto output_path = options.output_dir + node_to_value<std::string>(node["output_path"]);
-    auto rigidities = node_to_vector<float>(node["rigidities"]);
+    auto using_energy = node.contains("energies");
+    auto en_rigi = node_to_vector<float>(node[using_energy ? "energies" : "rigidities"]);
     auto n_particles = node_to_value<unsigned>(node["n_particles"]);
     auto n_regions = node_to_value<unsigned>(node["n_regions"]);
     auto [isotopes_names, isotopes] = node_to_map<PartDescription_t>(node["isotopes"]);
@@ -676,7 +678,8 @@ int LoadConfigYaml(std::istream *stream, const cli_options &options, SimConfigur
     config.output_file = output_path;
     config.RandomSeed = random_seed;
     config.Npart = n_particles;
-    std::ranges::copy(rigidities, config.Tcentr = new float[config.NT = rigidities.size()]);
+    config.UsingEnergy = using_energy;
+    std::ranges::copy(en_rigi, config.Tcentr = new float[config.NT = en_rigi.size()]);
 
     config.NInitialPositions = n_sources;
     std::ranges::copy(source_r, config.InitialPositions.r = new float[n_sources]);
@@ -788,14 +791,19 @@ int StoreResultsYaml(std::ostream *stream, [[maybe_unused]] const cli_options &o
     auto root = fkyaml::node::mapping();
     auto &hist_seq = (root["histograms"] = fkyaml::node::sequence()).as_seq();
 
-    for (unsigned i_rig = 0; i_rig < config.NT; ++i_rig) {
-        auto &rig_entry = hist_seq.emplace_back(fkyaml::node{{"rigidity", config.Tcentr[i_rig]}});
-        auto &isotopes = rig_entry["isotopes"] = fkyaml::node::mapping();
+    for (unsigned i_param = 0; i_param < config.simulation_parametrization.Nparams; ++i_param) {
+        auto &param = hist_seq.emplace_back(fkyaml::node::mapping());
         for (unsigned i_iso = 0; i_iso < NIsotopes; ++i_iso) {
-            auto &params = (isotopes[config.isotopes_names[i_iso]] = fkyaml::node::sequence()).as_seq();
-            for (unsigned i_param = 0; i_param < config.simulation_parametrization.Nparams; ++i_param) {
+            auto &iso = (param[config.isotopes_names[i_iso]] = fkyaml::node::sequence()).as_seq();
+            for (unsigned i_rig = 0; i_rig < config.NT; ++i_rig) {
                 const auto &[n_reg, n_bins, low_b, ampl, bins] = config.Results[i_rig][i_param * NIsotopes + i_iso];
-                params.emplace_back(fkyaml::node{
+                iso.emplace_back(fkyaml::node{
+                    {
+                        "rigidity",
+                        config.UsingEnergy
+                            ? Rigidity(config.Tcentr[i_rig], config.simulation_constants.Isotopes[i_iso])
+                            : config.Tcentr[i_rig]
+                    },
                     {"n_part", static_cast<int>(config.NInitialPositions * config.Npart)},
                     {"n_reg", static_cast<int>(n_reg)},
                     {"lower_bound", low_b},

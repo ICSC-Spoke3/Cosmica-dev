@@ -146,9 +146,12 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    unsigned NParams = SimParameters.simulation_parametrization.Nparams, NPositions = SimParameters.NInitialPositions,
-            NIsotopes = SimParameters.simulation_constants.NIsotopes, NRep = SimParameters.Npart;
-    unsigned NInstances = NParams * NIsotopes, NPartsPerInstance = NPositions * NRep;
+    unsigned NParams = SimParameters.simulation_parametrization.Nparams,
+            NPositions = SimParameters.NInitialPositions,
+            NIsotopes = SimParameters.simulation_constants.NIsotopes,
+            NRep = SimParameters.Npart;
+    unsigned NInstances = NParams * NIsotopes,
+            NPartsPerInstance = NPositions * NRep;
     unsigned NParts = NInstances * NPartsPerInstance;
     spdlog::info("Simulation parameters loaded:");
     spdlog::info("# of instances: {}", NInstances);
@@ -246,7 +249,13 @@ int main(int argc, char *argv[]) {
                 QuasiParts.r[iPart] = SimParameters.InitialPositions.r[indexes.period[iPart]];
                 QuasiParts.th[iPart] = SimParameters.InitialPositions.th[indexes.period[iPart]];
                 QuasiParts.phi[iPart] = SimParameters.InitialPositions.phi[indexes.period[iPart]];
-                QuasiParts.R[iPart] = SimParameters.Tcentr[iR]; // TODO: dynamic rigidity based on isotope
+                if (SimParameters.UsingEnergy) {
+                    unsigned i_inst = iPart / NPartsPerInstance;
+                    unsigned i_iso = i_inst % NIsotopes;
+                    QuasiParts.R[iPart] = Rigidity(SimParameters.Tcentr[iR], SimParameters.simulation_constants.Isotopes[i_iso]);
+                } else {
+                    QuasiParts.R[iPart] = SimParameters.Tcentr[iR];
+                }
                 QuasiParts.t_fly[iPart] = 0;
             }
 

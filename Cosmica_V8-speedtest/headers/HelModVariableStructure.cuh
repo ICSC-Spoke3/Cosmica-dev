@@ -76,6 +76,7 @@ struct SimConfiguration_t {
     unsigned long RandomSeed = 0;
     unsigned Npart = 5000; // number of event to be simulated
     unsigned NT; // number of bins of energies to be simulated
+    bool UsingEnergy = false;
     unsigned NInitialPositions = 0;
     float *Tcentr; // array of energies to be simulated
     float RelativeBinAmplitude = 0.00855;
