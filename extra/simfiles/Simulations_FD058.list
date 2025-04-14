@@ -1,0 +1,41 @@
+#SimulationName	| Ion/Isotope	| Energy Bin/Exp data File Name	| Initial Simulation Date	| Final Simulation Date	| Radial Position	| Lat. Position	| Long. Position	| other custom fields
+AMS-02Daily_20140223	| Helium     	| Rigidity_AMS-02Daily_20140223_Helium.dat	| 20140223	| 20140223	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140224	| Helium     	| Rigidity_AMS-02Daily_20140224_Helium.dat	| 20140224	| 20140224	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140225	| Helium     	| Rigidity_AMS-02Daily_20140225_Helium.dat	| 20140225	| 20140225	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140226	| Helium     	| Rigidity_AMS-02Daily_20140226_Helium.dat	| 20140226	| 20140226	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140227	| Helium     	| Rigidity_AMS-02Daily_20140227_Helium.dat	| 20140227	| 20140227	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140228	| Helium     	| Rigidity_AMS-02Daily_20140228_Helium.dat	| 20140228	| 20140228	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140301	| Helium     	| Rigidity_AMS-02Daily_20140301_Helium.dat	| 20140301	| 20140301	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140302	| Helium     	| Rigidity_AMS-02Daily_20140302_Helium.dat	| 20140302	| 20140302	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140303	| Helium     	| Rigidity_AMS-02Daily_20140303_Helium.dat	| 20140303	| 20140303	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140304	| Helium     	| Rigidity_AMS-02Daily_20140304_Helium.dat	| 20140304	| 20140304	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140305	| Helium     	| Rigidity_AMS-02Daily_20140305_Helium.dat	| 20140305	| 20140305	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140306	| Helium     	| Rigidity_AMS-02Daily_20140306_Helium.dat	| 20140306	| 20140306	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140307	| Helium     	| Rigidity_AMS-02Daily_20140307_Helium.dat	| 20140307	| 20140307	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140308	| Helium     	| Rigidity_AMS-02Daily_20140308_Helium.dat	| 20140308	| 20140308	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140309	| Helium     	| Rigidity_AMS-02Daily_20140309_Helium.dat	| 20140309	| 20140309	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140310	| Helium     	| Rigidity_AMS-02Daily_20140310_Helium.dat	| 20140310	| 20140310	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140311	| Helium     	| Rigidity_AMS-02Daily_20140311_Helium.dat	| 20140311	| 20140311	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140312	| Helium     	| Rigidity_AMS-02Daily_20140312_Helium.dat	| 20140312	| 20140312	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140313	| Helium     	| Rigidity_AMS-02Daily_20140313_Helium.dat	| 20140313	| 20140313	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+#
+AMS-02Daily_20140223	| Proton     	| Rigidity_AMS-02Daily_20140223_Proton.dat	| 20140223	| 20140223	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140224	| Proton     	| Rigidity_AMS-02Daily_20140224_Proton.dat	| 20140224	| 20140224	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140225	| Proton     	| Rigidity_AMS-02Daily_20140225_Proton.dat	| 20140225	| 20140225	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140226	| Proton     	| Rigidity_AMS-02Daily_20140226_Proton.dat	| 20140226	| 20140226	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140227	| Proton     	| Rigidity_AMS-02Daily_20140227_Proton.dat	| 20140227	| 20140227	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140228	| Proton     	| Rigidity_AMS-02Daily_20140228_Proton.dat	| 20140228	| 20140228	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140301	| Proton     	| Rigidity_AMS-02Daily_20140301_Proton.dat	| 20140301	| 20140301	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140302	| Proton     	| Rigidity_AMS-02Daily_20140302_Proton.dat	| 20140302	| 20140302	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140303	| Proton     	| Rigidity_AMS-02Daily_20140303_Proton.dat	| 20140303	| 20140303	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140304	| Proton     	| Rigidity_AMS-02Daily_20140304_Proton.dat	| 20140304	| 20140304	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140305	| Proton     	| Rigidity_AMS-02Daily_20140305_Proton.dat	| 20140305	| 20140305	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140306	| Proton     	| Rigidity_AMS-02Daily_20140306_Proton.dat	| 20140306	| 20140306	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140307	| Proton     	| Rigidity_AMS-02Daily_20140307_Proton.dat	| 20140307	| 20140307	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140308	| Proton     	| Rigidity_AMS-02Daily_20140308_Proton.dat	| 20140308	| 20140308	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140309	| Proton     	| Rigidity_AMS-02Daily_20140309_Proton.dat	| 20140309	| 20140309	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140310	| Proton     	| Rigidity_AMS-02Daily_20140310_Proton.dat	| 20140310	| 20140310	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140311	| Proton     	| Rigidity_AMS-02Daily_20140311_Proton.dat	| 20140311	| 20140311	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140312	| Proton     	| Rigidity_AMS-02Daily_20140312_Proton.dat	| 20140312	| 20140312	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+AMS-02Daily_20140313	| Proton     	| Rigidity_AMS-02Daily_20140313_Proton.dat	| 20140313	| 20140313	|1	| 0	| 0	| short_ref:PRL 127 (2021) | DOI:https://doi.org/10.1103/PhysRevLett.127.271102 
+#

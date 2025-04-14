@@ -5,7 +5,7 @@ import numpy as np
 
 from extra.k0search.files_utils import load_experimental_data, load_lis
 from extra.k0search.fitness import evaluate_output
-from extra.k0search.physics_utils import initialize_output_dict
+# from extra.k0search.physics_utils import initialize_output_dict
 from extra.k0search.tasks import submit_sims
 from extra.k0search.files_utils import load_simulation_list, load_heliospheric_parameters
 from extra.k0search.grid import k0_grid_from_estimate
