@@ -187,7 +187,7 @@ def create_input_file(k0vals, h_par, exp_data, input_dir, sim_el, random_seed, t
                     'phi': InlineList(np_lon.tolist()),
                 },
                 'relative_bin_amplitude': 0.00855,
-                'n_particles': tot_npart_per_bin,
+                'n_particles': tot_npart_per_bin * 10, #TODO: REMOVE
                 'n_regions': n_heliosphere_regions,
                 'dynamic': {'heliosphere': {'k0': [InlineList([k0val] + [0.0] * hp.shape[0])]}},
                 'static': {
@@ -219,7 +219,7 @@ def make_input_from_sim(ROOTDIR, input_dir, sim_el, k0_array):
 
     exp_data = load_experimental_data(pexp, sim_el[2], (0, 100), ncols=2)
 
-    sims_dict = create_input_file(k0_array, h_par, exp_data, input_dir, sim_el, 123, force_execute=True)
+    sims_dict = create_input_file(k0_array, h_par, exp_data, input_dir, sim_el, 42, force_execute=True)
 
     return sims_dict
 

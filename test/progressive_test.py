@@ -1,3 +1,5 @@
+import subprocess
+import time
 from glob import glob
 from os.path import join as pjoin, dirname
 import numpy as np
@@ -106,6 +108,9 @@ def evaluate_output(outputs, experimental_data, lis, plot_path=None):
     return rmses, diffs
 
 def get_out(outputs, init_date):
+    if len(outputs) == 0:
+        return None
+
     if outputs[0].endswith('.dat'):
         proton_res = next(filter(lambda f: init_date in f and 'Proton' in f, outputs), None)
         deuteron_res = next(filter(lambda f: init_date in f and 'Deuteron' in f, outputs), None)
@@ -119,14 +124,40 @@ def get_out(outputs, init_date):
         res = load_simulation_outputs(proton_deuteron_res, yaml=True)
     return res
 
+def run_cosmica(cosmica_executable, input_file, output_dir):
+    try:
+        start = time.time()
+
+        command = [
+            str(cosmica_executable),
+            "-i",
+            input_file,
+            "--legacy" if 'V8' in cosmica_executable else "",
+        ]
+        print(f"Executing command: {' '.join(command)}")
+
+        process = subprocess.run(command, cwd=output_dir, capture_output=True, text=True)
+
+        print('Time:', time.time() - start)
+
+        return process.stdout, process.stderr, process.returncode
+
+    except FileNotFoundError as f:
+        print(f)
+        print(f"Error: Cosmica executable not found at {cosmica_executable}")
+        return None, None, -1
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None, None, -1
 
 if __name__ == "__main__":
     ROOTDIR = pjoin(dirname(__file__), 'data')
+    pcosmica = pjoin(dirname(dirname(__file__)), 'Cosmica_V8-speedtest', 'exefiles', 'Cosmica')
     plis = pjoin(ROOTDIR, 'LIS_Default2020_Proton')
     pinputs = pjoin(ROOTDIR, 'inputs')
 
     poutputs_a = pjoin(ROOTDIR, 'outputs', 'v6', '*.dat')
-    poutputs_b = pjoin(ROOTDIR, 'outputs', 'v8', '*.yaml')
+    poutputs_b = pjoin(ROOTDIR, 'outputs', 'v8', '*.dat')
 
     pexp = pjoin(ROOTDIR, 'raw')
     psims = pjoin(ROOTDIR, f'Simulations.list')
@@ -136,16 +167,22 @@ if __name__ == "__main__":
     lis = load_lis(plis)
 
     outputs_a = sorted(glob(poutputs_a), reverse=True)
+    # outputs_a = sorted(glob(pjoin(poutputs_a, '*.yaml')), reverse=True)
     outputs_b = sorted(glob(poutputs_b), reverse=True)
+    # outputs_b = sorted(glob(pjoin(poutputs_b, '*.yaml')), reverse=True)
 
     diffs = []
     for sim_name, ions, file_name, init_date, end_date, rad, lat, lon in sim_list:
         print(sim_name, init_date)
         res_a = get_out(outputs_a, init_date)
         res_b = get_out(outputs_b, init_date)
-        if res_a is None or res_b is None:
-            print(res_a is None, res_b is None)
+        if res_a is None:
             continue
+        if res_b is None:
+            for inpt in filter(lambda f: init_date in f, glob(pjoin(pinputs, '*.txt'))):
+                print(run_cosmica(pcosmica, inpt, dirname(poutputs_b)))
+            outputs_b = sorted(glob(poutputs_b), reverse=True)
+            res_b = get_out(outputs_b, init_date)
 
         exp_data = load_experimental_data(pexp, file_name, (0, 100), ncols=2)
         rmse, diff = evaluate_output([res_a, res_b], exp_data, lis, pjoin(pplots, f'{sim_name}.png'))
