@@ -68,5 +68,7 @@ __global__ void HeliosphericProp(ThreadQuasiParticles_t QuasiParts_out, const Th
     QuasiParts_out.R[id] = qp.R;
     QuasiParts_out.t_fly[id] = qp.t_fly;
 
+    CudaState[id] = randState;
+
     atomicMax(&RMaxs[index.instance(Constants.NIsotopes)], qp.R);
 }
