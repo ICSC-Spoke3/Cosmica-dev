@@ -60,8 +60,6 @@ def evaluate_modulation(outputs, ion_lis):
     for z, a, t0, isotope in isotopes_list:
         lis_spectrum = get_lis(ion_lis, z, a)
         energy_binning, j_mod, j_lis, _ = spectra(outputs[isotope], lis_spectrum, z, a, t0)
-        # print('input', outputs[isotope]['InputEnergy'])
-        # print('spectra', energy_binning)
 
         # If the first isotope, initialize the output
         if sim_en_rig is None:

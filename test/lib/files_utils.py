@@ -233,9 +233,7 @@ def load_simulation_output(file_name, debug=False):
     }, warning_list
 
 
-def load_simulation_outputs_yaml(file_names, debug=False):
-    with open(file_names) as f:
-        yml = yaml.load(f, Loader=yaml.SafeLoader)
+def load_simulation_outputs_yaml(yml, debug=False):
     out = {}
     for iso, hists in yml['histograms'][0].items():
         input_energy = []
@@ -257,8 +255,13 @@ def load_simulation_outputs_yaml(file_names, debug=False):
         }
     return out
 
+def load_simulation_outputs_yaml_file(file_names, debug=False):
+    with open(file_names) as f:
+        yml = yaml.load(f, Loader=yaml.SafeLoader)
+    return load_simulation_outputs_yaml(yml, debug=debug)
+
 
 def load_simulation_outputs(file_names, yaml=False, debug=False):
     if not yaml:
         return {basename(fn).split('_')[0]: load_simulation_output(fn, debug)[0] for fn in file_names}
-    return load_simulation_outputs_yaml(file_names, debug)
+    return load_simulation_outputs_yaml_file(file_names, debug)
