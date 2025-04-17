@@ -213,11 +213,11 @@ def create_input_file(k0vals, h_par, exp_data, input_dir, sim_el, random_seed, t
 def make_input_from_sim(ROOTDIR, input_dir, sim_el, k0_array):
     ppastpar = pjoin(ROOTDIR, 'heliospheric_parameters', 'ParameterListALL_v12.txt')
     pfrcpar = pjoin(ROOTDIR, 'heliospheric_parameters', 'Frcst_param.txt')
-    pexp = pjoin(ROOTDIR, 'raw')
+    pexp = pjoin(ROOTDIR, 'outfile')
 
     h_par = load_heliospheric_parameters(ppastpar, pfrcpar)
 
-    exp_data = load_experimental_data(pexp, sim_el[2], (0, 100), ncols=2)
+    exp_data = load_experimental_data(pexp, sim_el[2], cols=(2, 3), rig_range=(0, 100), to_rig=(1, 1))
 
     sims_dict = create_input_file(k0_array, h_par, exp_data, input_dir, sim_el, 42, force_execute=True)
 

@@ -4,6 +4,8 @@ from os.path import basename, join as pjoin
 import astropy.io.fits as pyfits
 import yaml
 
+from .physics_utils import en_to_rig, rig_to_en_flux_factor
+
 
 def load_simulation_list(list_path: str, debug=False):
     """
@@ -74,24 +76,36 @@ def load_heliospheric_parameters(pastpar_path: str, frcpar_path: str, debug=Fals
     return h_par
 
 
-def load_experimental_data(exp_path: str, file: str, rig_range=(3, 11), ncols=4, debug=False):
+def load_experimental_data(exp_path: str, file: str, cols=(0, 1), rig_range=(3, 11), to_rig=None):
     """
     Load the experimental data and filter in rigidity range
     :param exp_path: directory of experimental data
     :param file: name of file
+    :param cols: columns to include in data
     :param rig_range: range of rigidity to filter in
-    :param debug: if True, more verbosproton_deuteron_res8e output will be printed
+    :param to_rig: if input in energy, (mass_number, z) for conversion
     :return: matrix of experimental data (rig, flux, flux_inf, flux_sup)
     """
+    assert rig_range[0] < rig_range[1]
+    assert len(cols) >= 2
+    assert to_rig is not None or isinstance(to_rig, (tuple, list)) and len(to_rig) == 2
+
+    rig_col = cols[0]
     rig_low, rig_high = rig_range
+
     fname = pjoin(exp_path, file)
-    exp_data = np.loadtxt(fname, usecols=list(range(ncols)))
-    if debug:
-        print(f'Loaded experimental data from {fname}: {exp_data.shape}')
-    exp_data = exp_data[(rig_low <= exp_data[:, 0]) & (exp_data[:, 0] <= rig_high)]
-    if debug:
-        print(f'Filtered experimental data: {exp_data.shape}')
-    return exp_data
+    exp_data = np.loadtxt(fname)
+
+    if to_rig is not None:
+        mass_number, z = to_rig
+        tkin = exp_data[:, rig_col]
+        rigi = en_to_rig(tkin, mass_number, z)
+        factors = rig_to_en_flux_factor(tkin, rigi, z, mass_number)
+        for c in cols[1:]:
+            exp_data[:, c] *= factors
+        exp_data[:, rig_col] = rigi
+
+    return exp_data[(rig_low <= exp_data[:, rig_col]) & (exp_data[:, rig_col] <= rig_high)][:, cols]
 
 
 def load_lis(lis_path):

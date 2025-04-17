@@ -49,7 +49,7 @@ def evaluate_output(outputs, experimental_data, lis, plot_path=None):
 
     # sim_en_rig, sim_j_mod, j_lis = evaluate_modulation(outputs, lis)
     mods = [evaluate_modulation(o, lis) for o in outputs]
-    exp_en_rig, exp_j_mod = experimental_data.T[:2]
+    exp_en_rig, exp_j_mod, exp_inf, exp_sup = experimental_data.T
 
     rmses = []
     for i, (sim_en_rig, sim_j_mod, j_lis) in enumerate(mods):
@@ -74,10 +74,10 @@ def evaluate_output(outputs, experimental_data, lis, plot_path=None):
                 color='navy', linestyle='--', linewidth=1.5)
 
         # Plot experimental data with error bars
-        # ax.errorbar(exp_en_rig, exp_j_mod, yerr=[exp_inf, exp_sup], fmt='o',
-        #             label=r'$\text{Experimental Data}$', color='crimson', markersize=5, capsize=4, elinewidth=1)
-        ax.scatter(exp_en_rig, exp_j_mod, marker='o',
-                   label=r'$\text{Experimental Data}$', color='crimson', s=5)
+        ax.errorbar(exp_en_rig, exp_j_mod, yerr=[exp_inf, exp_sup], fmt='o',
+                    label=r'$\text{Experimental Data}$', color='crimson', markersize=5, capsize=4, elinewidth=1)
+        # ax.scatter(exp_en_rig, exp_j_mod, marker='o',
+        #            label=r'$\text{Experimental Data}$', color='crimson', s=5)
 
         ax.set_xscale('log')
         ax.set_yscale('log')
@@ -126,9 +126,10 @@ if __name__ == "__main__":
     pinputs = pjoin(ROOTDIR, 'inputs')
 
     poutputs_a = pjoin(ROOTDIR, 'outputs', 'v6', '*.dat')
+    # poutputs_b = pjoin(ROOTDIR, 'outputs', 'v6.1', '*.dat')
     poutputs_b = pjoin(ROOTDIR, 'outputs', 'v8', '*.yaml')
 
-    pexp = pjoin(ROOTDIR, 'raw')
+    pexp = pjoin(ROOTDIR, 'outfile')
     psims = pjoin(ROOTDIR, f'Simulations.list')
     pplots = pjoin(dirname(__file__), 'plots')
 
@@ -147,7 +148,7 @@ if __name__ == "__main__":
             print(res_a is None, res_b is None)
             continue
 
-        exp_data = load_experimental_data(pexp, file_name, (0, 100), ncols=2)
+        exp_data = load_experimental_data(pexp, file_name, cols=(2, 3, 4, 5), rig_range=(0, 100), to_rig=(1, 1))
         rmse, diff = evaluate_output([res_a, res_b], exp_data, lis, pjoin(pplots, f'{sim_name}.png'))
         diffs.append(diff)
         print(rmse)

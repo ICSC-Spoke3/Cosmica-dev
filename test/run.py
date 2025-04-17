@@ -1,18 +1,7 @@
-import time
-from collections import defaultdict
-from math import ceil
-from os.path import join as pjoin, dirname
-
-import numpy as np
-import yaml
-
-from lib.files_utils import load_simulation_list, load_heliospheric_parameters, load_experimental_data
-from lib.isotopes import find_ion_or_isotope
-from lib.physics_utils import rig_to_en
-
-from glob import glob
-
 import subprocess
+import time
+from glob import glob
+from os.path import join as pjoin, dirname
 
 
 def run_cosmica(cosmica_executable, input_file, output_dir):

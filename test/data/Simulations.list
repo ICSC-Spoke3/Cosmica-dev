@@ -1,7 +1,7 @@
 #SimulationName	| Ion/Isotope	| Energy Bin/Exp data File Name	| Initial Simulation Date	| Final Simulation Date	| Radial Position	| Lat. Position	| Long. Position	| other custom fields
-AMS-02_PhysRep2011	| Proton     	| Sim_ModData_Proton_AMS-02_PRL1272021271102_20111116_20111212_Rigi_RawPar_HelMod4_FIN.txt	| 20111116	| 20111212	|1	| 0	| 0	| short_ref:PRL 127 (2021)
-AMS-02_PhysRep2014	| Proton     	| Sim_ModData_Proton_AMS-02_PRL1272021271102_20140917_20141014_Rigi_RawPar_HelMod4_FIN.txt	| 20140917	| 20141014	|1	| 0	| 0	| short_ref:PRL 127 (2021)
-AMS-02_PhysRep2015	| Proton     	| Sim_ModData_Proton_AMS-02_PRL1272021271102_20150907_20151003_Rigi_RawPar_HelMod4_FIN.txt	| 20150907	| 20151003	|1	| 0	| 0	| short_ref:PRL 127 (2021)
-AMS-02_PhysRep2016	| Proton     	| Sim_ModData_Proton_AMS-02_PRL1272021271102_20160827_20160922_Rigi_RawPar_HelMod4_FIN.txt	| 20160827	| 20160922	|1	| 0	| 0	| short_ref:PRL 127 (2021)
-AMS-02_PhysRep2017	| Proton     	| Sim_ModData_Proton_AMS-02_PRL1272021271102_20170623_20170719_Rigi_RawPar_HelMod4_FIN.txt	| 20170623	| 20170719	|1	| 0	| 0	| short_ref:PRL 127 (2021)
-AMS-02_PhysRep2018	| Proton     	| Sim_ModData_Proton_AMS-02_PRL1272021271102_20180929_20181025_Rigi_RawPar_HelMod4_FIN.txt	| 20180929	| 20181025	|1	| 0	| 0	| short_ref:PRL 127 (2021)
+AMS-02_PhysRep2011	| Proton     	| Proton_AMS-02_PRL1272021271102_20111116_20111212.dat	| 20111116	| 20111212	|1	| 0	| 0	| short_ref:PRL 127 (2021)
+AMS-02_PhysRep2014	| Proton     	| Proton_AMS-02_PRL1272021271102_20140917_20141014.dat	| 20140917	| 20141014	|1	| 0	| 0	| short_ref:PRL 127 (2021)
+AMS-02_PhysRep2015	| Proton     	| Proton_AMS-02_PRL1272021271102_20150907_20151003.dat	| 20150907	| 20151003	|1	| 0	| 0	| short_ref:PRL 127 (2021)
+AMS-02_PhysRep2016	| Proton     	| Proton_AMS-02_PRL1272021271102_20160827_20160922.dat	| 20160827	| 20160922	|1	| 0	| 0	| short_ref:PRL 127 (2021)
+AMS-02_PhysRep2017	| Proton     	| Proton_AMS-02_PRL1272021271102_20170623_20170719.dat	| 20170623	| 20170719	|1	| 0	| 0	| short_ref:PRL 127 (2021)
+AMS-02_PhysRep2018	| Proton     	| Proton_AMS-02_PRL1272021271102_20180929_20181025.dat	| 20180929	| 20181025	|1	| 0	| 0	| short_ref:PRL 127 (2021)
