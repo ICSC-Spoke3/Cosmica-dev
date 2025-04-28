@@ -1,8 +1,12 @@
-# COSMICA Develpment folder
+# COSMICA Development folder
 
 ## Description
 
-COde for a Speedy Montecarlo Involving Cuda Architecture (COSMICA) is a speedy and high precision Montecarlo simulator of CR modulation, which solve the system of Stochastic Differential Equations (SDE) equivalent to the Parker Transport Equation (PTE). A sample of virtual particles is independently stochastic propagated backward in time from the detection position through the heliosphere to the external boundary. GPU parallelization of COSMICA code is a game changer in this field because it improves the computational time for a standard simulation from order of hundred of minutes to few of them. Furthermore, the code is capable of distributing the computations on clusters of machines with multiple GPUs, opening the way for scaling.
+COde for a Speedy Montecarlo Involving Cuda Architecture (COSMICA) is a speedy and high precision Monte Carlo simulator of CR modulation, which solve the system of Stochastic Differential Equations (SDE) equivalent to the Parker Transport Equation (PTE). A sample of virtual particles is independently stochastic propagated backward in time from the detection position through the heliosphere to the external boundary. GPU parallelization of COSMICA code is a game changer in this field because it improves the computational time for a standard simulation from order of hundred of minutes to few of them. Furthermore, the code is capable of distributing the computations on clusters of machines with multiple GPUs, opening the way for scaling.
+
+## License
+
+Distributed under the GNU Affero General Public License v3.0 License. See [LICENSE](https://github.com/ICSC-Spoke3/Cosmica-dev/blob/main/LICENSE) for more information.
 
 ## Contains:
 
@@ -15,19 +19,19 @@ COde for a Speedy Montecarlo Involving Cuda Architecture (COSMICA) is a speedy a
 
 - V1 Milestone 7 version of the code
   - Use of struct of arrays instead of array of structs (synchronous broadcasting of memory access)
-  - Number of simulated variables is rounded to fufill the warps
+  - Number of simulated variables is rounded to fulfill the warps
   - propagation variables allocated in shared memory
   - Search of the partial block histograms maximum inside propagation kernel
 - V2 Improving internal structure
-  - USage of customized compilation flags to reduce register compilation allocation
+  - Usage of customized compilation flags to reduce register compilation allocation
   - Implementation of the best Warp number per block derived from performance tests executed on A30 and A40 NVIDIA boards
 - V3 Optimization of stochastic computations
   - Optimization of partial computations of the stochastic differential equations coefficients
-  - Reduction of the allocated variables lightening overstructures
+  - Reduction of the allocated variables lightening superstructures
 - V6 Use of the rigidity as main variable instead of kinetic energy
-  - Reformulatino of SDE in momentum form (one of whcih becomes trivial)
+  - Reformulation of SDE in momentum form (one of which becomes trivial)
 - V7 (under development) Separation of SDE coefficients computation for each coordinate
-  - Instead of using matrices of coefficients they are computed separately to relieve the register pressure
+  - Instead of using matrices of coefficients, they are computed separately to relieve the register pressure
 
 ## Test simulation set
 
@@ -39,7 +43,7 @@ COde for a Speedy Montecarlo Involving Cuda Architecture (COSMICA) is a speedy a
 
 ## Performance
 
-All performance indicators are evalueted in 'SimTimePlot_speedup.ipynb'
+All performance indicators are evaluated in 'SimTimePlot_speedup.ipynb'
 
 - Performance benchmark on A30 GPUs board
 ![plot1](test_plots/SimExeTimes_compare_codes.jpg)
@@ -48,16 +52,16 @@ All performance indicators are evalueted in 'SimTimePlot_speedup.ipynb'
 - Precision convergence test (Proton simulation)
 ![plot3](test_plots/Figure_AMS-02_PRL2015_Proton.png))
 
-## Cosmica 1D model
-Here there are the codes and building scripts of the Cosmica 1D model of Cosmic Rays (CR) propagation in the heliosphere.
-These are the simplified version of the Cosmica code, which is 2D in modelling and 3D in propagation. The main algorithm is mantaine, but the propagation and implementation is reduced to its essential 1D components.
-This version of the model can be taken as toy model to understand the algorithm and perfor some test or start to develop a different physical propagation model.
+## COSMICA 1D model
+Here there are the codes and building scripts of the COSMICA 1D model of Cosmic Rays (CR) propagation in the heliosphere.
+These are the simplified version of the COSMICA code, which is 2D in modelling and 3D in propagation. The main algorithm is maintained, but the propagation and implementation is reduced to its essential 1D components.
+This version of the model can be taken as toy model to understand the algorithm and perform some test or start to develop a different physical propagation model.
 
 ### Folder structure
 - Trivial_1D-en: base 1D algorithm with the propagation formulation written in energy units
 - Trivial_1D-rigi: base 1D algorithm with the propagation formulation written in rigidity units
-- Cosmica_1D-en: Cosmica code in its semplified 1D formulation written in energy units
-- Cosmica_1D-rigi: Cosmica code in its semplified 1D formulation written in rigidity units
+- Cosmica_1D-en: COSMICA code in its simplified 1D formulation written in energy units
+- Cosmica_1D-rigi: COSMICA code in its simplified 1D formulation written in rigidity units
 
 - DataTXT: input ion propagation test data (Protons, Positrons)
 
@@ -68,11 +72,11 @@ This version of the model can be taken as toy model to understand the algorithm 
 - Analisi: Scripts for the evaluation of the propagation outputs and plots of the modulation results
 
 ### Execution
-The execution of the Cosmica_1D follow the subsiquent pipeline:
-1. Execute CreateInputFiles_FromSimulationList_AMS_gen_test.py to generate the inputfile and the bash AllRuns to execute the simulation list (pay attention on the correctness of the paths used in the scripts, they could have to be corrected to your corresponding local paths)
-2. Launch the AllRuns.sh command for the desired code to be executed (all simulation list will be runned and added to the previous in the folder)
+The execution of the Cosmica_1D follow the subsequent pipeline:
+1. Execute CreateInputFiles_FromSimulationList_AMS_gen_test.py to generate the input file and the bash AllRuns to execute the simulation list (pay attention on the correctness of the paths used in the scripts, they could have to be corrected to your corresponding local paths)
+2. Launch the AllRuns.sh command for the desired code to be executed (all simulation list will be run and added to the previous in the folder)
 3. Run EvaluateSimulationResult.py to generate the whole modulation output (inside Analisi folder)
-4. Run EvaluateFlux.py to compute the fluxe and plot the results of the desired code versions (inside Analisi folder)
+4. Run EvaluateFlux.py to compute the fluxes and plot the results of the desired code versions (inside Analisi folder)
 
 ### 1D model test run
 - Ion: Proton
@@ -82,3 +86,7 @@ The execution of the Cosmica_1D follow the subsiquent pipeline:
   - Radial Position: 1
   - Lat. Position: 0
   - Long. Position: 0
+
+## Acknowledgement
+
+This activity is supported by Fondazione ICSC, Spoke 3 Astrophysics and Cosmos Observations. National Recovery and Resilience Plan (Piano Nazionale di Ripresa e Resilienza, PNRR) Project IDCN00000013.MG, SDT and GLV are supported by INFN and ASI under ASI-INFN Agreement No. 2019-19-HH.0 and its amendments.
