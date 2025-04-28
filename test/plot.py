@@ -55,13 +55,15 @@ def evaluate_output(outputs, experimental_data, lis, plot_path=None):
     for i, (sim_en_rig, sim_j_mod, j_lis) in enumerate(mods):
         assert np.allclose(sim_en_rig, exp_en_rig, rtol=0.02 * sim_en_rig), i
 
-        # print(np.subtract(sim_j_mod, exp_j_mod))
         rmse = np.sqrt(np.square(np.subtract(sim_j_mod, exp_j_mod)).mean())
         rmses.append(rmse)
 
     diffs = np.abs((mods[0][1] - mods[1][1]) / mods[0][1])
-    # print(diffs)
-    print(diffs.max(), diffs.mean())
+    print('diff', diffs.mean(), diffs.max())
+    err0 = np.abs(exp_j_mod - mods[0][1]) / exp_j_mod
+    print('err0', err0.mean(), err0.max())
+    err1 = np.abs(exp_j_mod - mods[1][1]) / exp_j_mod
+    print('err1', err1.mean(), err1.max())
 
     if plot_path is not None:
         fig, ax = plt.subplots(figsize=(12, 8))
@@ -104,6 +106,7 @@ def evaluate_output(outputs, experimental_data, lis, plot_path=None):
         plt.close()
 
     return rmses, diffs
+
 
 def get_out(outputs, init_date):
     if outputs[0].endswith('.dat'):
