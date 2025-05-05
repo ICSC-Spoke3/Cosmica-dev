@@ -158,7 +158,7 @@ int main(int argc, char *argv[]) {
     spdlog::info("# particles per instance: {}", NPartsPerInstance);
     spdlog::info("# total particles: {}", NParts);
 
-    auto Results = SimParameters.Results = AllocateResults(SimParameters.NT, NParts);
+    auto Results = SimParameters.Results = AllocateResults(SimParameters.NT, NInstances);
 
     std::string init_filename = SimParameters.output_file + "_prop_in.txt";
     std::string final_filename = SimParameters.output_file + "_prop_out.txt";
@@ -207,7 +207,7 @@ int main(int argc, char *argv[]) {
                                      ? getpid() + time(nullptr) + gpu_id
                                      : SimParameters.RandomSeed;
         cudaDeviceSynchronize();
-        init_rdmgenerator<<<BLOCKS, THREADS>>>(RandStates.get(), Rnd_seed);
+        init_rdmgenerator<<<BLOCKS, THREADS>>>(RandStates.get(), NParts, Rnd_seed);
         cudaDeviceSynchronize();
 
         THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Random State Initialized");
@@ -314,8 +314,8 @@ int main(int argc, char *argv[]) {
             for (unsigned inst = 0; inst < NInstances; ++inst) {
                 Results[iR][inst].Nregistered = NPartsPerInstance - Nfailed[inst];
                 spdlog::debug("* Total Events.   : {}", NPartsPerInstance);
-                spdlog::debug("* Recorded Events : {}", Nfailed[inst]);
-                spdlog::debug("* Failed Events.  : {}", Results[iR][inst].Nregistered);
+                spdlog::debug("* Failed Events : {}", Nfailed[inst]);
+                spdlog::debug("* Recorded Events.  : {}", Results[iR][inst].Nregistered);
             }
 
             THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Histograms Generated");
