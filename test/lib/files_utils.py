@@ -88,7 +88,7 @@ def load_experimental_data(exp_path: str, file: str, cols=(0, 1), rig_range=(3, 
     """
     assert rig_range[0] < rig_range[1]
     assert len(cols) >= 2
-    assert to_rig is not None or isinstance(to_rig, (tuple, list)) and len(to_rig) == 2
+    assert to_rig is None or isinstance(to_rig, (tuple, list)) and len(to_rig) == 2
 
     rig_col = cols[0]
     rig_low, rig_high = rig_range

@@ -2,14 +2,14 @@ import subprocess
 import time
 from glob import glob
 from os.path import join as pjoin, dirname
-import numpy as np
-from matplotlib import pyplot as plt
-from matplotlib import colors as mcolors
 
-from lib.files_utils import load_simulation_outputs_yaml, load_simulation_output, load_simulation_outputs, \
-    load_simulation_list, load_lis
-from lib.modulation import evaluate_modulation
+import numpy as np
+from matplotlib import colors as mcolors
+from matplotlib import pyplot as plt
+
 from lib.files_utils import load_experimental_data
+from lib.files_utils import load_simulation_outputs, load_simulation_list, load_lis
+from lib.modulation import evaluate_spectra_multiple
 
 # Setting rc params for all plots
 
@@ -50,7 +50,7 @@ def evaluate_output(outputs, experimental_data, lis, plot_path=None):
     # outputs = [load_simulation_outputs(o, y) for o, y in zip(outputs, yamls)]
 
     # sim_en_rig, sim_j_mod, j_lis = evaluate_modulation(outputs, lis)
-    mods = [evaluate_modulation(o, lis) for o in outputs]
+    mods = [evaluate_spectra_multiple(o, lis) for o in outputs]
     exp_en_rig, exp_j_mod, exp_inf, exp_sup = experimental_data.T
 
     rmses = []
@@ -107,6 +107,7 @@ def evaluate_output(outputs, experimental_data, lis, plot_path=None):
 
     return rmses, diffs
 
+
 def get_out(outputs, init_date):
     if len(outputs) == 0:
         return None
@@ -123,6 +124,7 @@ def get_out(outputs, init_date):
             return None
         res = load_simulation_outputs(proton_deuteron_res, yaml=True)
     return res
+
 
 def run_cosmica(cosmica_executable, input_file, output_dir):
     try:
@@ -149,6 +151,7 @@ def run_cosmica(cosmica_executable, input_file, output_dir):
     except Exception as e:
         print(f"An error occurred: {e}")
         return None, None, -1
+
 
 if __name__ == "__main__":
     ROOTDIR = pjoin(dirname(__file__), 'data')

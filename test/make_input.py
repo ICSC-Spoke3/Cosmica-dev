@@ -23,7 +23,7 @@ class InlineList(list):
 yaml.add_representer(InlineList, InlineList.inline_list_representer)
 
 
-def create_input_file(k0vals, h_par, exp_data, input_dir, sim_el, random_seed, tot_npart_per_bin=1200,
+def create_input_file(k0vals, h_par, exp_data, input_dir, sim_el, random_seed, tot_npart_per_bin=5024,
                       n_heliosphere_regions=15, force_execute=False):
     """
     Generates input files for the Cosmica simulation, validating parameters and handling file creation.
@@ -54,7 +54,8 @@ def create_input_file(k0vals, h_par, exp_data, input_dir, sim_el, random_seed, t
     ions = [ion.strip() for ion in ions.split(',')]
 
     # Check whether the simulation uses kinetic energy (tko) or rigidity
-    tko = "Rigi" not in file_name
+    # tko = "Rigi" not in file_name
+    tko = False #TODO: Because load exp data is always in rig
 
     # Extract start and end dates from the heliosphere parameters
     cr_ini, cr_end = h_par[:, 0], h_par[:, 1]
@@ -187,7 +188,7 @@ def create_input_file(k0vals, h_par, exp_data, input_dir, sim_el, random_seed, t
                     'phi': InlineList(np_lon.tolist()),
                 },
                 'relative_bin_amplitude': 0.00855,
-                'n_particles': tot_npart_per_bin * 10, #TODO: REMOVE
+                'n_particles': tot_npart_per_bin, #TODO: maybe * 10
                 'n_regions': n_heliosphere_regions,
                 'dynamic': {'heliosphere': {'k0': [InlineList([k0val] + [0.0] * hp.shape[0])]}},
                 'static': {
