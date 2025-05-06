@@ -58,7 +58,8 @@ int BestThreadsPerBlock(const std::string &name) {
     static const std::unordered_map<std::string, int> deviceTpB = {
         {"NVIDIA A30", 48},
         {"NVIDIA A40", 48},
-        {"NVIDIA A100", 64} // TODO: temporary
+        {"NVIDIA A100", 64}, // TODO: temporary
+        {"NVIDIA GeForce RTX 3090", 48},
     };
 
     int TpB = 32;  // Default value
