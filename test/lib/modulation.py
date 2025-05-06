@@ -15,22 +15,21 @@ def evaluate_spectra(RawMatrixFile, LIS, T0, A, Z):
 
     assert outer_rig.dtype == 'object'
 
-    lis_flux_interp = lin_log_interpolation(lis_en, lis_flux, rig_to_en(input_rig, A, Z))
+    lis_flux_rig_in = lin_log_interpolation(*en_to_rig_flux(lis_en, lis_flux, A, Z), input_rig)
 
     un_norm_flux = np.zeros(len(input_rig))
     for index_rig in range(len(input_rig)):
-        new_OuterEnRig = rig_to_en(np.asarray([a for a in outer_rig[index_rig]]), A, Z)
-        _, OLIS = en_to_rig_flux(new_OuterEnRig, lin_log_interpolation(lis_en, lis_flux, new_OuterEnRig), A, Z)
+        lis_flux_rig_out = lin_log_interpolation(*en_to_rig_flux(lis_en, lis_flux, A, Z), outer_rig[index_rig])
 
-        for indexTLIS in range(len(OLIS)):
-            EnRigLIS = outer_rig[index_rig][indexTLIS]
-            un_norm_flux[index_rig] += boundary_distribution[index_rig][indexTLIS] * OLIS[
-                indexTLIS] / EnRigLIS ** 2 / beta_eval(rig_to_en(EnRigLIS, A, Z), T0)
+        for outer_rig_bin, boundary_bin, lis_flux_bin in zip(outer_rig[index_rig], boundary_distribution[index_rig],
+                                                             lis_flux_rig_out):
+            un_norm_flux[index_rig] += boundary_bin * lis_flux_bin / outer_rig_bin ** 2 / beta_eval(
+                rig_to_en(outer_rig_bin, A, Z), T0)
 
     J_Mod = [UnFlux / Npart * beta_eval(rig_to_en(R, A, Z), T0) * R ** 2 for R, UnFlux, Npart in
              zip(input_rig, un_norm_flux, n_particles)]
 
-    return input_rig.copy(), J_Mod.copy(), lis_flux_interp.copy()
+    return input_rig.copy(), J_Mod.copy(), lis_flux_rig_in.copy()
 
 
 def evaluate_spectra_multiple(outputs, ion_lis):
@@ -59,6 +58,7 @@ def evaluate_spectra_multiple(outputs, ion_lis):
         sim_lis += j_lis
 
     return sim_en_rig, sim_flux, sim_lis
+
 
 def evaluate_modulations(ion_lis, *results):
     def assign_or_assert(s, d):
