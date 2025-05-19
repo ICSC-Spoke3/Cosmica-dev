@@ -18,7 +18,7 @@ NHELIOSPHEREREGIONS=15
 
 def init_sims_path(version, sim_list_name, HelMod_opt=False):
     #### Directory del codice sorgente
-    SOURCECODEDIR = "/home/nfsdisk/DevGC/Cosmica_1D"
+    SOURCECODEDIR = "/home/matteo.grazioso/Cosmica_1D"
     if HelMod_opt:
         SOURCECODEDIR += f"/HelMod-{version}"
     if version=="speedtest":

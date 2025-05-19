@@ -1,0 +1,344 @@
+# This is the input file for HelMod Code
+# lines starting with '#' will be ignored
+# list here the name of variables you want to Set in the format
+#  Combination 20181012 
+
+RAWMatrix: 1
+UseDynamicHeliosphere: 0
+K0Corr_Rescaling: 0
+KparCorrectionStrategy: -1
+
+OutputFilename: Bck_IterationTest
+
+Npart: 250
+EnergyBinning: 2
+Tcentr: 0.4924
+Tcentr: 0.6207
+Tcentr: 0.7637
+Tcentr: 0.9252
+Tcentr: 1.1050
+Tcentr: 1.3030
+Tcentr: 1.5230
+Tcentr: 1.7650
+Tcentr: 2.0340
+Tcentr: 2.3290
+Tcentr: 2.6520
+Tcentr: 3.0050
+Tcentr: 3.3900
+Tcentr: 3.8100
+Tcentr: 4.2720
+Tcentr: 4.7740
+Tcentr: 5.3170
+Tcentr: 5.9060
+Tcentr: 6.5460
+Tcentr: 7.2360
+Tcentr: 7.9810
+Tcentr: 8.7870
+Tcentr: 9.6530
+Tcentr: 10.6000
+Tcentr: 11.6000
+Tcentr: 12.6400
+Tcentr: 13.7900
+Tcentr: 15.0400
+Tcentr: 16.3900
+Tcentr: 17.8400
+Tcentr: 19.3800
+Tcentr: 21.0300
+Tcentr: 22.8300
+Tcentr: 24.7800
+Tcentr: 26.8300
+Tcentr: 29.0300
+Tcentr: 31.3800
+Tcentr: 33.8700
+Tcentr: 36.5700
+Tcentr: 39.4700
+Tcentr: 42.5700
+Tcentr: 45.8700
+Tcentr: 49.4200
+Tcentr: 53.2200
+Tcentr: 57.2700
+Tcentr: 61.6200
+Tcentr: 66.3200
+Tcentr: 71.3700
+Tcentr: 76.7700
+Tcentr: 82.5700
+Tcentr: 88.8200
+Tcentr: 95.5700
+Tcentr: 103.1000
+Tcentr: 111.1000
+Tcentr: 119.6000
+Tcentr: 129.1000
+Tcentr: 140.1000
+Tcentr: 152.6000
+Tcentr: 166.6000
+Tcentr: 182.6000
+Tcentr: 200.6000
+Tcentr: 221.1000
+Tcentr: 245.1000
+Tcentr: 274.1000
+Tcentr: 309.6000
+Tcentr: 353.6000
+Tcentr: 409.1000
+Tcentr: 482.1000
+Tcentr: 583.1000
+Tcentr: 731.6000
+Tcentr: 975.1000
+Tcentr: 1464.0000
+EnableHeliosHeath: 1
+L_tl: 0.09
+s_tl: 2.70
+K0HS: 3.000e-05
+VswHSr2: 1
+HS_HighEnergyTransparency: 0
+HPBarrier: 1
+HPB_SupK: 5.000e+01
+HP_width: 2.000e+00
+HP_SupSmooth: 3.000e-02
+
+Spectra: 0
+LIS_Filename:/afs/cern.ch/work/g/glavacca/SimulazHelMod/HelModArchives_v004_Oct2021/Parameters/LIS_fake.txt
+Particle_Charge: 1.000000
+Particle_MassNumber: 1
+Particle_NucleonRestMass: 9.382720e-01
+
+NumberHelioZones: 15
+
+SourcePos_theta: 1.570796326
+
+SourcePos_phi: 0
+
+#Zone 1 - 20180929-20181026
+SSN: 6.82
+VSW: 421.30
+NMCR: 281.58
+TiltAngle: 26.30
+EarthMagField: 4.30
+Polarity: 1
+SolarPhase: 1
+TiltAngleSmooth: 21.48
+
+#Zone 2 - 20180902-20180929
+SSN: 6.88
+VSW: 437.07
+NMCR: 283.17
+TiltAngle: 23.80
+EarthMagField: 4.58
+Polarity: 1
+SolarPhase: 1
+TiltAngleSmooth: 21.80
+
+#Zone 3 - 20180806-20180902
+SSN: 6.78
+VSW: 431.30
+NMCR: 281.14
+TiltAngle: 23.10
+EarthMagField: 4.94
+Polarity: 1
+SolarPhase: 1
+TiltAngleSmooth: 22.04
+
+#Zone 4 - 20180709-20180806
+SSN: 7.00
+VSW: 396.75
+NMCR: 282.01
+TiltAngle: 25.30
+EarthMagField: 4.96
+Polarity: 1
+SolarPhase: 1
+TiltAngleSmooth: 22.39
+
+#Zone 5 - 20180612-20180709
+SSN: 7.42
+VSW: 401.37
+NMCR: 280.14
+TiltAngle: 17.70
+EarthMagField: 4.63
+Polarity: 1
+SolarPhase: 1
+TiltAngleSmooth: 22.77
+
+#Zone 6 - 20180516-20180612
+SSN: 7.67
+VSW: 405.96
+NMCR: 283.65
+TiltAngle: 16.50
+EarthMagField: 4.34
+Polarity: 1
+SolarPhase: 1
+TiltAngleSmooth: 23.07
+
+#Zone 7 - 20180419-20180516
+SSN: 7.84
+VSW: 434.56
+NMCR: 278.48
+TiltAngle: 18.70
+EarthMagField: 4.86
+Polarity: 1
+SolarPhase: 1
+TiltAngleSmooth: 23.32
+
+#Zone 8 - 20180322-20180419
+SSN: 8.06
+VSW: 405.07
+NMCR: 279.00
+TiltAngle: 20.00
+EarthMagField: 4.36
+Polarity: 1
+SolarPhase: 1
+TiltAngleSmooth: 23.88
+
+#Zone 9 - 20180223-20180322
+SSN: 8.84
+VSW: 408.04
+NMCR: 275.37
+TiltAngle: 24.10
+EarthMagField: 5.13
+Polarity: 1
+SolarPhase: 1
+TiltAngleSmooth: 24.33
+
+#Zone 10 - 20180127-20180223
+SSN: 11.87
+VSW: 381.22
+NMCR: 278.79
+TiltAngle: 26.70
+EarthMagField: 4.55
+Polarity: 1
+SolarPhase: 1
+TiltAngleSmooth: 23.93
+
+#Zone 11 - 20171230-20180127
+SSN: 14.15
+VSW: 399.50
+NMCR: 278.88
+TiltAngle: 25.60
+EarthMagField: 4.80
+Polarity: 1
+SolarPhase: 1
+TiltAngleSmooth: 24.73
+
+#Zone 12 - 20171203-20171230
+SSN: 14.41
+VSW: 425.15
+NMCR: 276.77
+TiltAngle: 29.10
+EarthMagField: 5.14
+Polarity: 1
+SolarPhase: 1
+TiltAngleSmooth: 26.02
+
+#Zone 13 - 20171106-20171203
+SSN: 15.15
+VSW: 437.81
+NMCR: 275.30
+TiltAngle: 29.20
+EarthMagField: 5.24
+Polarity: 1
+SolarPhase: 1
+TiltAngleSmooth: 27.06
+
+#Zone 14 - 20171010-20171106
+SSN: 16.11
+VSW: 429.56
+NMCR: 275.30
+TiltAngle: 30.60
+EarthMagField: 4.96
+Polarity: 1
+SolarPhase: 1
+TiltAngleSmooth: 28.01
+
+#Zone 15 - 20170912-20171010
+SSN: 17.95
+VSW: 464.32
+NMCR: 272.83
+TiltAngle: 28.50
+EarthMagField: 5.02
+Polarity: 1
+SolarPhase: 1
+TiltAngleSmooth: 28.41
+UseEffectiveHeliosphere: 1
+
+SourcePos_r: 1.000000
+
+KillingRadius: 114.570000
+
+KillingRadius_tail: 121.110000
+Rts: 85.9800
+Rts_tail: 93.2400
+Rhp: 114.5700
+Rhp_tail: 121.1100
+
+SolarWindModel: 1
+
+CommandWithSmoothTilt: 1
+
+Kp0: 0.065000
+MagField_Model: 1
+MagField_delta_m_pol: 2.000000e-05
+MagField_PolarZone: 30.000000
+PolarExclusionRegion: 0.000010
+
+DriftSuppression: 0
+
+DriftSuppressionV: 0
+DriftSuppression_P0d_NS_r: 1.000000 
+DriftSuppression_P0d_NS_phi: 1.000000 
+DriftSuppression_P0d_r: 1.000000 
+DriftSuppression_P0d_phi: 1.000000 
+DriftSuppression_P0d_theta: 1.000000 
+
+TimeDependentDriftSuppression: 1
+TDDS_P0dNS_CoT_des: 57.000000 
+TDDS_P0dNS_Smt_des: 5.000000 
+TDDS_P0dNS_CoT_asc: 68.000000 
+TDDS_P0dNS_Smt_asc: 1.000000 
+TDDS_P0dNS_Ini: 0.500000 
+TDDS_P0dNS_Fin: 4.000000 
+TDDS_P0d_CoT_des: 65.000000 
+TDDS_P0d_Smt_des: 5.000000 
+TDDS_P0d_CoT_asc: 73.000000 
+TDDS_P0d_Smt_asc: 1.000000 
+TDDS_P0d_Ini: 0.500000 
+TDDS_P0d_Fin: 4.000000 
+d0NSTrans: 2 
+SSNScalF: 50 
+
+HighRigidityDriftSuppression: 1
+HighRigiSupp_plateau: 1.000000 
+HighRigiSupp_smoothness: 0.300000 
+HighRigiSupp_TransPoint: 9.500000 
+HighRigiSupp_TransPoint_des: 40.000000
+HighRigiSupp_TransPoint_asc: 35.000000
+HighRigiSupp_smoothness_asc: 5.000000
+HighRigiSupp_smoothness_des: 5.000000
+
+K0corrMethod: 2
+K0Corr_maxv: 1.500000
+K0Corr_p0_asc: 18.000000
+K0Corr_p1_asc: 40.000000
+K0Corr_p0_des: 5.000000
+K0Corr_p1_des: 53.000000
+K0Corr_maxv_neg: 0.700000
+K0Corr_p0_asc_neg: 5.800000
+K0Corr_p1_asc_neg: 47.000000
+K0Corr_p0_des_neg: 5.800000
+K0Corr_p1_des_neg: 58.000000
+PEMethod: 0
+HighActivityDriftSuppression: 0
+SHARPtransition: 1
+PolarEnhancActive: 1
+PolarEnhanc: 2.000000
+
+ConstantAbsolt_TransPoint_des_pos: 45.000000
+ConstantAbsolt_TransPoint_asc_pos: 60.000000
+ConstantAbsolt_smoothness_asc_pos: 9.000000
+ConstantAbsolt_smoothness_des_pos: 5.000000
+ConstantAbsolt_pos: 0.600000
+
+ConstantAbsolt_TransPoint_des_neg: 45.000000
+ConstantAbsolt_TransPoint_asc_neg: 60.000000
+ConstantAbsolt_smoothness_asc_neg: 9.000000
+ConstantAbsolt_smoothness_des_neg: 10.000000
+ConstantAbsolt_neg: 0.500000
+
+rconst: 4.000000

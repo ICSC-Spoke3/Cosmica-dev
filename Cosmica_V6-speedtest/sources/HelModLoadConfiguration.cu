@@ -218,6 +218,14 @@ int Load_Configuration_File(int argc, char* argv[], struct SimParameters_t &SimP
         }
       }
 
+        // ------------- Random Seed ----------------
+      if (strcmp(key,"RandomSeed")==0){
+        SimParameters.RandomSeed = atol(value);
+        if (verbose>=VERBOSE_hig) {
+          fprintf(stdout,"### RandomSeed--> %s\n",value);
+        }
+      }
+
       // ------------- Number of particle to be simulated ----------------
       if (strcmp(key,"Npart")==0){ 
         SimParameters.Npart= atoi(value);

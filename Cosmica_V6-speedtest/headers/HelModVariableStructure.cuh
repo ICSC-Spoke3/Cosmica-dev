@@ -95,6 +95,7 @@ typedef struct SimulatedHeliosphere_t {                                         
 } SimulatedHeliosphere_t;
 
 typedef struct SimParameters_t {                                                    // Place here all simulation variables
+    unsigned long RandomSeed = 0;
     char  output_file_name[struct_string_lengh]="SimTest";
     unsigned long      Npart=5000;                                  // number of event to be simulated
     unsigned char      NT;                                          // number of bins of energies to be simulated

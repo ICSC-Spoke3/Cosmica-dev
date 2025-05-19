@@ -14,7 +14,7 @@ import astropy.io.fits as pyfits # per elaborare i fits file
 from scipy.interpolate import interp1d # interpolazione
 # -- directory e nomi file generali
 LISPATH_root=f"{os.getcwd()}/../LISs/LISFiles/"
-SOURCECODEDIR = "/home/nfsdisk/DevGC/Cosmica_1D"
+SOURCECODEDIR = "/home/matteo.grazioso/Cosmica_1D"
 LISPATH_dict={
     "Proton":    "ApJ_28Nuclei/LIS_Default2020_Proton.gz",
     "Positron":  "ApJ_28Nuclei/LIS_Default2020_Proton.gz",    # Solo per i test naive (NON CORRETTO)
