@@ -35,11 +35,11 @@ def evaluate_spectra(RawMatrixFile, LIS, A, Z):
 def evaluate_spectra_multiple(outputs, ion_lis):
     """
     Evaluate the modulation of cosmic rays for a given ion species.
-    :param ion:
+    :param ion: 
     :param ion_lis:
     :param modulation_matrix:
     :param output_in_energy:
-    :return:
+    :return: Simulated energy rigidity, simulated flux, simulated LIS
     """
 
     isotopes_list = [find_isotope(iso) for iso in outputs.keys()]

@@ -263,9 +263,9 @@ def load_simulation_output(file_name, debug=False):
     }, warning_list
 
 
-def load_simulation_outputs_yaml(yml, debug=False):
+def load_simulation_outputs_yaml(yml, debug=False, param=0):
     out = {}
-    for iso, hists in yml['histograms'][0].items():
+    for iso, hists in yml['histograms'][param].items():
         input_energy = []
         outer_energy = []
         n_parts = []
