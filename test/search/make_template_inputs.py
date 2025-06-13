@@ -190,23 +190,20 @@ def create_input_file(nparts, nk0, random_seed, sim_el, input_dir, h_par, rigidi
 def make_input_from_sim(data_dir, input_dir, sim_el):
     p_past_par = data_dir / 'heliospheric_parameters' / 'ParameterListALL_v12.txt'
     p_frct_par = data_dir / 'heliospheric_parameters' / 'Frcst_param.txt'
-    p_exp = data_dir / 'benchmark' / 'experimental'
+    p_exp = data_dir / 'search' / 'experimental'
 
     h_par = load_heliospheric_parameters(p_past_par, p_frct_par)
     exp_data_file = next(p_exp.glob(f'*_{sim_el[3]}_*.dat'))
     exp = load_experimental_data(exp_data_file, (2, 3, 4, 5), rig_range=(0, 11))
     rigidities = exp[:, 0].tolist()
 
-    for npart in (10, 100, 300, 500):
-        for nk0 in (1, 10, 30, 50):
-            for rnd in (42, 69, 123):
-                create_input_file(npart, nk0, rnd, sim_el, input_dir, h_par, rigidities)
+    create_input_file(100, 1, 42, sim_el, input_dir, h_par, rigidities)
 
 
 if __name__ == "__main__":
     data_dir = Path(__file__).parent.parent / 'data'
-    p_inputs = data_dir / 'benchmark' / 'inputs'
-    p_sims = data_dir / 'benchmark' / 'Simulations.list'
+    p_inputs = data_dir / 'search' / 'inputs'
+    p_sims = data_dir / 'search' / 'Simulations.list'
 
     sim_list = load_simulation_list(str(p_sims))
     for sim_el in sim_list:

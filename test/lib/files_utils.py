@@ -264,6 +264,11 @@ def load_simulation_output(file_name, debug=False):
 
 
 def load_simulation_outputs_yaml(yml, debug=False, param=0):
+    def asarray_no_merge(lst):
+        arr = np.empty(len(lst), dtype=object)
+        arr[:] = [np.asarray(l) for l in lst]
+        return arr
+
     out = {}
     for iso, hists in yml['histograms'][param].items():
         input_energy = []
@@ -280,8 +285,8 @@ def load_simulation_outputs_yaml(yml, debug=False, param=0):
         out[iso.title()] = {
             'InputEnergy': np.asarray(input_energy, object),
             'NGeneratedParticle': np.asarray(n_parts, object),
-            'OuterEnergy': np.asarray(outer_energy, object),
-            'BoundaryDistribution': np.asarray(distributions, object)
+            'OuterEnergy': asarray_no_merge(outer_energy),
+            'BoundaryDistribution': asarray_no_merge(distributions)
         }
     return out
 
