@@ -114,7 +114,7 @@ def find_matching_ion(txt, ions):
             return v.lower()
     return None
 
-def convert_multi_txt_to_yaml(txts, yml):
+def convert_multi_txt_to_yaml(txts, yml, mod =None):
     ions = [iso[-1].lower() for iso in ISOTOPES.values()]
     data = None
     for txt in txts:
@@ -126,6 +126,9 @@ def convert_multi_txt_to_yaml(txts, yml):
             data = tmp
         else:
             data['isotopes'][ion] = tmp['isotopes'][ion]
+
+    if mod is not None:
+        data = mod(data)
 
     with open(yml, 'w') as f:
         f.write(yaml.dump(data, sort_keys=False, width=float("inf")))
