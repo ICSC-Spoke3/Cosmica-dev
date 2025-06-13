@@ -187,7 +187,7 @@ if __name__ == "__main__":
             outputs_b = sorted(glob(poutputs_b), reverse=True)
             res_b = get_out(outputs_b, init_date)
 
-        exp_data = load_experimental_data(pexp, file_name, cols=(2, 3, 4, 5), rig_range=(0, 100), to_rig=(1, 1))
+        exp_data = load_experimental_data(pjoin(pexp, file_name), cols=(2, 3, 4, 5), rig_range=(0, 100), to_rig=(1, 1))
         rmse, diff = evaluate_output([res_a, res_b], exp_data, lis, pjoin(pplots, f'{sim_name}.png'))
         diffs.append(diff)
         print(rmse)

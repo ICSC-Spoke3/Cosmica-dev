@@ -10,6 +10,7 @@ import yaml
 from lib.files_utils import load_simulation_list, load_heliospheric_parameters, load_experimental_data
 from lib.isotopes import find_ion_or_isotope
 from lib.physics_utils import rig_to_en
+from test.lib.files_utils import RigidityMapper
 
 yaml.Dumper.ignore_aliases = lambda *args: True
 
@@ -23,14 +24,14 @@ class InlineList(list):
 yaml.add_representer(InlineList, InlineList.inline_list_representer)
 
 
-def create_input_file(k0vals, h_par, exp_data, input_dir, sim_el, random_seed, tot_npart_per_bin=5024,
+def create_input_file(k0vals, h_par, rigidities, input_dir, sim_el, random_seed, tot_npart_per_bin=5024,
                       n_heliosphere_regions=15, force_execute=False):
     """
     Generates input files for the Cosmica simulation, validating parameters and handling file creation.
     
     param: k0vals (array): Array of K0 values to simulate.
     param: h_par (array): Array of heliosphere parameters used in the simulation.
-    param: exp_data (array): Experimental data relevant to the simulation.
+    param: rigidities (array): Experimental data relevant to the simulation.
     param: input_path (str): Directory where input files will be stored.
     param: sim_el (list): Simulation metadata including name, ions, dates, and positions.
     param: tot_npart_per_bin (int): Total number of particles per bin (default=1200).
@@ -125,7 +126,7 @@ def create_input_file(k0vals, h_par, exp_data, input_dir, sim_el, random_seed, t
                         f.write(f"Particle_Charge: {isotope[0]}\n")
 
                         # Write energy bins, converting if necessary
-                        tcentr = rig_to_en(exp_data[:, 0], isotope[1], isotope[0]) if tko else exp_data[:, 0]
+                        tcentr = rigidities.tolist()
                         tcentr_str = ','.join(f"{x:.3e}" for x in tcentr)
                         if len(tcentr_str) >= 2000:
                             raise ValueError("Energy inputs exceed allowed 2000 characters.")
@@ -176,7 +177,7 @@ def create_input_file(k0vals, h_par, exp_data, input_dir, sim_el, random_seed, t
                 'random_seed': random_seed,
                 'output_path': f'{'_'.join(i[-1] for i in isotopes)}_{cr_list[-1]:.0f}_{cr_list[0]:.0f}_r{rad[0] * 100:05.0f}_lat{lat[0] * 100:05.0f}',
                 # 'energies': InlineList(rig_to_en(exp_data[:, 0], isotopes[0][1], isotopes[0][0]).tolist()),
-                'rigidities': InlineList(exp_data[:, 0].tolist()),
+                'rigidities': InlineList(rigidities.tolist()),
                 'isotopes': {nm.lower(): {
                     'nucleon_rest_mass': t0,
                     'mass_number': a,
@@ -214,13 +215,12 @@ def create_input_file(k0vals, h_par, exp_data, input_dir, sim_el, random_seed, t
 def make_input_from_sim(ROOTDIR, input_dir, sim_el, k0_array):
     ppastpar = pjoin(ROOTDIR, 'heliospheric_parameters', 'ParameterListALL_v12.txt')
     pfrcpar = pjoin(ROOTDIR, 'heliospheric_parameters', 'Frcst_param.txt')
-    pexp = pjoin(ROOTDIR, 'outfile')
+    prigi = pjoin(ROOTDIR, 'rigidity_groups.xlsx')
+    rigidities = RigidityMapper(prigi).get_simulation_rigidities()
 
     h_par = load_heliospheric_parameters(ppastpar, pfrcpar)
 
-    exp_data = load_experimental_data(pexp, sim_el[2], cols=(2, 3), rig_range=(0, 100), to_rig=(1, 1))
-
-    sims_dict = create_input_file(k0_array, h_par, exp_data, input_dir, sim_el, 42, force_execute=True)
+    sims_dict = create_input_file(k0_array, h_par, rigidities, input_dir, sim_el, 123, force_execute=True)
 
     return sims_dict
 

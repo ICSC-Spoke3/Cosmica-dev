@@ -12,7 +12,8 @@ def run_cosmica(cosmica_executable, input_file, output_dir, cuda_devices='0,1'):
             str(cosmica_executable),
             "-i",
             input_file,
-            # "--legacy" if 'V8' in cosmica_executable else "",
+            # "-v", "info",
+            "--legacy" if 'V8' in cosmica_executable else "",
         ]
         print(f"Executing command: {' '.join(command)}")
 
@@ -38,13 +39,14 @@ def run_cosmica(cosmica_executable, input_file, output_dir, cuda_devices='0,1'):
 if __name__ == "__main__":
     ROOTDIR = pjoin(dirname(__file__), 'data')
     pcosmica = pjoin(dirname(dirname(__file__)), 'Cosmica_V8-speedtest', 'exefiles', 'Cosmica')
-    pinputs = pjoin(ROOTDIR, 'inputs', '*.yaml')
-    poutputs = pjoin(ROOTDIR, 'outputs', 'tmp')
+    pinputs = pjoin(ROOTDIR, 'inputs_giovanni', '*.txt')
+    # pinputs = pjoin(ROOTDIR, 'inputs', '*.yaml')
+    poutputs = pjoin(ROOTDIR, 'outputs', 'giovanni')
 
     df = {'file': [], 'time': []}
 
     for inpt in sorted(glob(pinputs)):
-        _, _, _, bench = run_cosmica(pcosmica, inpt, poutputs, cuda_devices='0,1')
+        _, _, _, bench = run_cosmica(pcosmica, inpt, poutputs, cuda_devices='0')
         df['file'].append(basename(inpt))
         df['time'].append(bench)
 

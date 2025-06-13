@@ -1,3 +1,4 @@
+import pickle
 from glob import glob
 from os.path import join as pjoin, dirname
 
@@ -10,6 +11,8 @@ from lib.files_utils import load_experimental_data
 from lib.files_utils import load_simulation_outputs, \
     load_simulation_list, load_lis
 from lib.modulation import evaluate_modulations
+from test.lib.files_utils import RigidityMapper
+from test.lib.physics_utils import lin_log_interpolation
 
 # Setting rc params for all plots
 
@@ -42,11 +45,8 @@ def plot_fluxes(results, raw_results, results_labels=(), raw_results_labels=(), 
     assert len(fluxes) == len(results_labels), 'Missing labels'
     assert len(raw_results) == len(raw_results_labels), 'Missing raw labels'
 
-    fig = plt.figure(figsize=(16, 10))
-    gs = gridspec.GridSpec(2, 2)
-    ax1 = fig.add_subplot(gs[0, :])
-    ax21 = fig.add_subplot(gs[1, 0])
-    ax22 = fig.add_subplot(gs[1, 1])
+    fig, axs = plt.subplots(2, 1, figsize=(10, 10))
+    ax1, ax2 = axs.flatten()
 
     if title is not None:
         fig.suptitle(title, fontsize=20)
@@ -83,46 +83,38 @@ def plot_fluxes(results, raw_results, results_labels=(), raw_results_labels=(), 
 
     # AXIS 2
     norm = raw_results[1][:, 1]
-    ax21.plot(rig, (lis_flux - norm) / norm, label=fr'$\text{{Local Interstellar Spectrum (LIS)}}$',
-              color='navy', linestyle='--', linewidth=1.5)
-    ax22.plot(rig, lis_flux - norm, label=fr'$\text{{Local Interstellar Spectrum (LIS)}}$',
+    ax2.plot(rig, (lis_flux - norm) / norm, label=fr'$\text{{Local Interstellar Spectrum (LIS)}}$',
               color='navy', linestyle='--', linewidth=1.5)
 
     for i, (raw, label) in enumerate(zip(raw_results, raw_results_labels)):
         if raw.shape[1] == 2:
-            ax21.scatter(raw[:, 0], (raw[:, 1] - norm) / norm, label=fr'$\text{{{label}}}$',
-                         marker='x', color=f'C{i + len(results)}', s=300)
-            ax22.scatter(raw[:, 0], raw[:, 1] - norm, label=fr'$\text{{{label}}}$',
+            ax2.scatter(raw[:, 0], (raw[:, 1] - norm) / norm, label=fr'$\text{{{label}}}$',
                          marker='x', color=f'C{i + len(results)}', s=300)
         else:
-            ax21.errorbar(raw[:, 0], (raw[:, 1] - norm) / norm, yerr=[raw[:, 2] / norm, raw[:, 3] / norm],
+            ax2.errorbar(raw[:, 0], (raw[:, 1] - norm) / norm, yerr=[raw[:, 2] / norm, raw[:, 3] / norm],
                           label=fr'$\text{{{label}}}$',
-                          fmt='o', color='crimson', markersize=5, capsize=4, elinewidth=1)
-            ax22.errorbar(raw[:, 0], raw[:, 1] - norm, yerr=[raw[:, 2], raw[:, 3]], label=fr'$\text{{{label}}}$',
                           fmt='o', color='crimson', markersize=5, capsize=4, elinewidth=1)
 
     for i, (flux, label) in enumerate(zip(fluxes, results_labels)):
-        ax21.scatter(rig, (flux - norm) / norm, label=fr'$\text{{Simulated: {label}}}$', color=f'C{i}')
-        ax22.scatter(rig, flux - norm, label=fr'$\text{{Simulated: {label}}}$', color=f'C{i}')
+        ax2.scatter(rig, (flux - norm) / norm, label=fr'$\text{{Simulated: {label}}}$', color=f'C{i}')
 
-    ax21.set_title('Relative')
-    ax22.set_title('Absolute')
-    ax21.set_ylim((-.1, .1))
-    ax22.set_ylim((-100, 100))
-    ax21.set_xscale('log')
-    ax22.set_xscale('log')
+    ax2.set_title('Relative')
+    ax2.set_ylim((-.1, .1))
+    ax2.set_xscale('log')
 
     plt.subplots_adjust(right=0.8)
     plt.tight_layout()
 
-    if plot_path is not None:
-        plt.savefig(plot_path, dpi=300)
-        plt.close()
-    else:
-        plt.show()
+    return fig, ax1, ax2, norm
+
+    # if plot_path is not None:
+    #     plt.savefig(plot_path, dpi=300)
+    #     plt.close()
+    # else:
+    #     plt.show()
 
 
-def evaluate_output(outputs, experimental_data, raw_data, lis, labels, plot_path=None):
+def evaluate_output(mapper, outputs, experimental_data, raw_data, lis, labels, plot_path=None):
     """
     Evaluate the output of a simulation and compare it with experimental data.
     :param output_path: path to the output file
@@ -135,7 +127,14 @@ def evaluate_output(outputs, experimental_data, raw_data, lis, labels, plot_path
 
     results = evaluate_modulations(lis, *outputs)
     rig, lis_flux = results.T[:2]
+    rig, lis_flux = mapper.average_simulation_flux(lis_flux).T
     fluxes = results.T[2:]
+    fluxes = np.apply_along_axis(lambda a: mapper.average_simulation_flux(a)[:, 1], 1, fluxes)
+
+    rig = rig[:len(experimental_data)]
+    lis_flux = lis_flux[:len(experimental_data)]
+    fluxes = fluxes[:, :len(experimental_data)]
+
     exp_en_rig, exp_j_mod, exp_inf, exp_sup = experimental_data.T
     raw_en_rig, raw_j_mod, = raw_data.T
 
@@ -152,21 +151,46 @@ def evaluate_output(outputs, experimental_data, raw_data, lis, labels, plot_path
         err = np.abs(raw_j_mod - f) / raw_j_mod
         print(f'err_{i}', err.mean(), err.max())
 
-    plot_fluxes(results, (raw_data, experimental_data), labels[0], labels[1], 'Comparison',
-                plot_path)
+    fig, ax1, ax2, norm = plot_fluxes(
+        np.c_[rig, lis_flux, *fluxes],
+        (raw_data, experimental_data),
+        labels[0], labels[1],
+        'Comparison', plot_path
+    )
+
+    # norm = lin_log_interpolation(rig, norm, results[:, 0])
+    #
+    # ax1.plot(results[:, 0], results[:, 1], label=fr'$\text{{LISS}}$',)
+    # ax1.plot(results[:, 0], results[:, 2], label=fr'$\text{{V6}}$',)
+    # ax1.plot(results[:, 0], results[:, 3], label=fr'$\text{{V8}}$',)
+    # ax1.legend(loc='upper right', fontsize=12, frameon=True)
+    #
+    # ax2.scatter(results[:, 0], (results[:, 1]-norm)/norm, label=fr'$\text{{LISS}}$',)
+    # ax2.scatter(results[:, 0], (results[:, 2]-norm)/norm, label=fr'$\text{{V6}}$',)
+    # ax2.scatter(results[:, 0], (results[:, 3]-norm)/norm, label=fr'$\text{{V8}}$',)
+
+    if plot_path is not None:
+        plt.savefig(plot_path, dpi=300)
+        plt.close()
+    else:
+        plt.show()
 
     return rmses, diffs
 
 
+def match_file(files, *vals):
+    return next(filter(lambda f: all((v in f for v in vals)), files), None)
+
+
 def get_out(outputs, init_date):
     if outputs[0].endswith('.dat'):
-        proton_res = next(filter(lambda f: init_date in f and 'Proton' in f, outputs), None)
-        deuteron_res = next(filter(lambda f: init_date in f and 'Deuteron' in f, outputs), None)
+        proton_res = match_file(outputs, init_date, 'Proton')
+        deuteron_res = match_file(outputs, init_date, 'Deuteron')
         if not all([proton_res, deuteron_res]):
             return None
         res = load_simulation_outputs([proton_res, deuteron_res])
     else:
-        proton_deuteron_res = next(filter(lambda f: init_date in f, outputs), None)
+        proton_deuteron_res = match_file(outputs, init_date)
         if not proton_deuteron_res:
             return None
         res = load_simulation_outputs(proton_deuteron_res, yaml=True)
@@ -177,18 +201,21 @@ if __name__ == "__main__":
     ROOTDIR = pjoin(dirname(__file__), 'data')
     plis = pjoin(ROOTDIR, 'LIS_Default2020_Proton')
     pinputs = pjoin(ROOTDIR, 'inputs')
+    prigi = pjoin(ROOTDIR, 'rigidity_groups.xlsx')
 
     poutputs = [
         pjoin(ROOTDIR, 'outputs', 'v6', '*.dat'),
-        pjoin(ROOTDIR, 'outputs', 'v6.1', '*.dat'),
         pjoin(ROOTDIR, 'outputs', 'v8', '*.yaml'),
-        pjoin(ROOTDIR, 'outputs', 'v8.1', '*.yaml'),
         pjoin(ROOTDIR, 'outputs', 'v8s', '*.dat'),
+        pjoin(ROOTDIR, 'outputs', 'v6.1', '*.dat'),
+        pjoin(ROOTDIR, 'outputs', 'v8.1', '*.yaml'),
+        pjoin(ROOTDIR, 'outputs', 'v8.1s', '*.dat'),
     ]
-    labels = (('V6', 'V6 (random)', 'V8', 'V8 (many)', 'V8 (sep)'), ('HelMod', 'Experimental'))
+    labels = (('V6 (1)', 'V8 (1)', 'V8 (1, sep)', 'V6 (2)', 'V8 (2)', 'V8 (2, sep)'), ('HelMod', 'Experimental'))
+    # labels = (('V6', 'V6 (random)', 'V8', 'V8 (many)', 'V8 (sep)'), ('HelMod', 'Experimental'))
 
-    pexp = pjoin(ROOTDIR, 'outfile')
-    praw = pjoin(ROOTDIR, 'helmod')
+    pexp = pjoin(ROOTDIR, 'experimental', '*.dat')
+    praw = pjoin(ROOTDIR, 'helmod', '*.txt')
     psims = pjoin(ROOTDIR, f'Simulations.list')
     pplots = pjoin(dirname(__file__), 'plots')
 
@@ -196,6 +223,10 @@ if __name__ == "__main__":
     lis = load_lis(plis)
 
     outputs = [sorted(glob(p), reverse=True) for p in poutputs]
+    experimental = sorted(glob(pexp), reverse=True)
+    helmod = sorted(glob(praw), reverse=True)
+
+    mapper = RigidityMapper(prigi)
 
     diffs = []
     for sim_name, ions, file_name, init_date, end_date, rad, lat, lon in sim_list:
@@ -205,9 +236,15 @@ if __name__ == "__main__":
             print(results)
             continue
 
-        exp_data = load_experimental_data(pexp, file_name, cols=(2, 3, 4, 5), rig_range=(0, 100), to_rig=(1, 1))
-        raw_data = load_experimental_data(praw, file_name, cols=(0, 1), rig_range=(0, 100))
-        rmse, diff = evaluate_output(results, exp_data, raw_data, lis, labels, pjoin(pplots, f'{sim_name}.png'))
+        # with open(pjoin(pplots, sim_name + '_v8.pkl'), 'wb') as f:
+        #     pickle.dump(results[1], f)
+        print(results[1]['Proton']['InputEnergy'])
+
+        exp_data = match_file(experimental, init_date)
+        exp_data = load_experimental_data(exp_data, cols=(2, 3, 4, 5), rig_range=(0, 10))
+        raw_data = match_file(helmod, init_date)
+        raw_data = load_experimental_data(raw_data, cols=(0, 1), rig_range=(0, 10))
+        rmse, diff = evaluate_output(mapper, results, exp_data, raw_data, lis, labels, pjoin(pplots, f'{sim_name}.png'))
         diffs.append(diff)
         print(rmse)
         print()

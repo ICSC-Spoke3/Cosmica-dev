@@ -38,6 +38,24 @@ def rig_to_en(r, mass_number=1., z=1.):
         mass_number = 1
     return np.sqrt((z * z) / (mass_number * mass_number) * (r * r) + (t0 * t0)) - t0
 
+def d_rig_to_en(t, r, mass_number=1., z=1.):
+    """
+    Derivative of convert rigidity to energy
+    :param t: energy
+    :param r: rigidity
+    :param mass_number: mass number
+    :param z: charge
+    :return: energy
+    """
+
+    t0 = 0.931494061
+    if np.fabs(z) == 1:
+        t0 = 0.938272046
+    if mass_number == 0:
+        t0 = 5.11e-4
+        mass_number = 1
+    return (z * z) / (mass_number * mass_number) * r / (t + t0)
+
 
 def smooth_transition(initial_val, final_val, center_of_transition, smoothness, x):
     """

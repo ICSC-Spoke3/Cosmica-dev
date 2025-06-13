@@ -2,9 +2,26 @@ import numpy as np
 from os.path import basename, join as pjoin
 
 import astropy.io.fits as pyfits
+import pandas as pd
 import yaml
 
 from .physics_utils import en_to_rig, rig_to_en_flux_factor
+
+
+class RigidityMapper:
+    def __init__(self, path):
+        self.df = pd.read_excel(path)
+
+    def get_simulation_rigidities(self):
+        return self.df['Rigidity'].to_numpy()
+
+    def get_experimental_rigidities(self):
+        return self.df['Rigidity Bucket'].to_numpy()
+
+    def average_simulation_flux(self, flux):
+        mod_flux = (flux * self.df['Coefficient']).rename('flux')
+        grouped_df = pd.concat([mod_flux, self.df], axis=1).groupby('Rigidity Bucket').agg({'flux': 'sum'}).reset_index()
+        return grouped_df.to_numpy()
 
 
 def load_simulation_list(list_path: str, debug=False):
@@ -76,7 +93,7 @@ def load_heliospheric_parameters(pastpar_path: str, frcpar_path: str, debug=Fals
     return h_par
 
 
-def load_experimental_data(exp_path: str, file: str, cols=(0, 1), rig_range=(3, 11), to_rig=None):
+def load_experimental_data(exp_path: str, cols=(0, 1), rig_range=(3, 11), to_rig=None):
     """
     Load the experimental data and filter in rigidity range
     :param exp_path: directory of experimental data
@@ -93,8 +110,7 @@ def load_experimental_data(exp_path: str, file: str, cols=(0, 1), rig_range=(3, 
     rig_col = cols[0]
     rig_low, rig_high = rig_range
 
-    fname = pjoin(exp_path, file)
-    exp_data = np.loadtxt(fname)
+    exp_data = np.loadtxt(exp_path)
 
     if to_rig is not None:
         mass_number, z = to_rig
@@ -268,6 +284,7 @@ def load_simulation_outputs_yaml(yml, debug=False):
             'BoundaryDistribution': np.asarray(distributions, object)
         }
     return out
+
 
 def load_simulation_outputs_yaml_file(file_names, debug=False):
     with open(file_names) as f:

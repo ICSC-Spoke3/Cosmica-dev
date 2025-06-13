@@ -11,7 +11,8 @@ dependencies:
   - bzip2=1.0.8=h4bc722e_7
   - c-ares=1.34.4=hb9d3cd8_0
   - c-compiler=1.9.0=h2b85faf_0
-  - ca-certificates=2025.1.31=hbcca054_0
+  - ca-certificates=2025.4.26=hbd8a1cb_0
+  - cairo=1.18.4=h3394656_0
   - cmake=3.30.5=hf9cb763_0
   - cuda=12.4.1=0
   - cuda-cccl=12.4.127=0
@@ -51,15 +52,26 @@ dependencies:
   - cuda-tools=12.4.1=0
   - cuda-visual-tools=12.4.1=0
   - cxx-compiler=1.9.0=h1a2810e_0
+  - font-ttf-dejavu-sans-mono=2.37=hab24e00_0
+  - font-ttf-inconsolata=3.000=h77eed37_0
+  - font-ttf-source-code-pro=2.038=h77eed37_0
+  - font-ttf-ubuntu=0.83=h77eed37_3
+  - fontconfig=2.15.0=h7e30c49_1
+  - fonts-conda-ecosystem=1=0
+  - fonts-conda-forge=1=0
+  - freetype=2.13.3=ha770c72_1
   - gcc=13.3.0=h9576a4e_2
   - gcc_impl_linux-64=13.3.0=hfea6d02_1
   - gcc_linux-64=13.3.0=hc28eda2_7
   - gdb=15.1=py313h883dceb_1
   - gds-tools=1.9.1.3=0
   - gmp=6.3.0=hac33072_2
+  - graphite2=1.3.13=h59595ed_1003
   - gxx=13.3.0=h9576a4e_2
   - gxx_impl_linux-64=13.3.0=hdbfa832_1
   - gxx_linux-64=13.3.0=h6834431_7
+  - harfbuzz=9.0.0=hda332d3_1
+  - icu=75.1=he02047a_0
   - kernel-headers_linux-64=3.10.0=he073ed8_18
   - keyutils=1.6.1=h166bdaf_0
   - krb5=1.21.3=h659f571_0
@@ -87,12 +99,16 @@ dependencies:
   - libev=4.33=hd590300_2
   - libexpat=2.6.4=h5888daf_0
   - libffi=3.4.6=h2dba641_0
+  - libfreetype=2.13.3=ha770c72_1
+  - libfreetype6=2.13.3=h48d6fc4_1
   - libgcc=14.2.0=h77fa898_1
   - libgcc-devel_linux-64=13.3.0=h84ea5a7_101
   - libgcc-ng=14.2.0=h69a702a_1
   - libgfortran=14.2.0=h69a702a_2
   - libgfortran5=14.2.0=hf1ad2bd_2
+  - libglib=2.84.1=h3618099_1
   - libgomp=14.2.0=h77fa898_1
+  - libiconv=1.18=h4ce23a2_1
   - liblzma=5.6.4=hb9d3cd8_0
   - liblzma-devel=5.6.4=hb9d3cd8_0
   - libmpdec=4.0.0=h4bc722e_0
@@ -107,6 +123,7 @@ dependencies:
   - libnvjpeg=12.3.1.117=0
   - libnvjpeg-dev=12.3.1.117=0
   - libnvjpeg-static=12.3.1.117=0
+  - libpng=1.6.47=h943b412_0
   - libsanitizer=13.3.0=heb74ff8_1
   - libsqlite=3.49.1=hee588c1_1
   - libssh2=1.11.1=hf672d98_0
@@ -115,12 +132,16 @@ dependencies:
   - libstdcxx-ng=14.2.0=h4852527_1
   - libuuid=2.38.1=h0b41bf4_0
   - libuv=1.50.0=hb9d3cd8_0
+  - libxcb=1.17.0=h8a09558_0
   - libzlib=1.3.1=hb9d3cd8_2
   - mpfr=4.2.1=h90cbb55_3
   - ncurses=6.5=h2d0b736_3
   - nsight-compute=2024.1.1.4=0
-  - openssl=3.4.1=h7b32b05_0
+  - openssl=3.5.0=h7b32b05_1
+  - pcre2=10.45=hc749103_0
   - pip=25.0.1=pyh145f28c_0
+  - pixman=0.46.0=h29eaf8c_0
+  - pthread-stubs=0.4=hb9d3cd8_1002
   - pygments=2.19.1=pyhd8ed1ab_0
   - python=3.13.2=hf636f53_101_cp313
   - python_abi=3.13=5_cp313
@@ -128,8 +149,16 @@ dependencies:
   - rhash=1.4.5=hb9d3cd8_0
   - six=1.17.0=pyhd8ed1ab_0
   - sysroot_linux-64=2.17=h0157908_18
+  - texlive-core=20230313=he8f7729_15
   - tk=8.6.13=noxft_h4845f30_101
   - tzdata=2025a=h78e105d_0
+  - xorg-libice=1.1.2=hb9d3cd8_0
+  - xorg-libsm=1.2.6=he73a12e_0
+  - xorg-libx11=1.8.12=h4f16b4b_0
+  - xorg-libxau=1.0.12=hb9d3cd8_0
+  - xorg-libxdmcp=1.1.5=hb9d3cd8_0
+  - xorg-libxext=1.3.6=hb9d3cd8_0
+  - xorg-libxrender=0.9.12=hb9d3cd8_0
   - xz=5.6.4=hbcc6ac9_0
   - xz-gpl-tools=5.6.4=hbcc6ac9_0
   - xz-tools=5.6.4=hb9d3cd8_0
