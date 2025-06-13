@@ -1,13 +1,15 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
 import datetime
 from collections import defaultdict
-from pathlib import Path
 
 import numpy as np
 import yaml
 from math import ceil
-
-from lib.files_utils import load_simulation_list, load_heliospheric_parameters, load_experimental_data
-from lib.isotopes import find_ion_or_isotope
+from test.lib.files_utils import load_simulation_list, load_heliospheric_parameters, load_experimental_data
+from test.lib.isotopes import find_ion_or_isotope
 
 yaml.Dumper.ignore_aliases = lambda *args: True
 
@@ -87,103 +89,100 @@ def create_input_file(nparts, nk0, random_seed, sim_el, input_dir, h_par, rigidi
     folder_name = input_dir / sim_name
     folder_name.mkdir(exist_ok=True)
 
-    for ink0 in range(nk0):
         # Loop through each isotope to construct simulation files
-        for isotope in isotopes:
-            input_file_path = folder_name / f"{isotope[3]}_{ink0}.txt"
-            output_name = f'{isotope[3]}_{init_date}_{end_date}_{nparts}_{nk0}_{random_seed}_{ink0}'
+    for isotope in isotopes:
+        input_file_path = folder_name / f"{isotope[3]}.txt"
+        output_name = f'{isotope[3]}_{init_date}_{end_date}_{nparts}_{nk0}_{random_seed}'
 
-            # Open the file for writing
-            with open(input_file_path, 'w') as f:
-                # Write metadata and simulation details
-                f.write(f"# File generated on {datetime.date.today()}\n")
-                f.write(f"RandomSeed: {random_seed}\n")
-                f.write(f"OutputFilename: {output_name}\n")
-                f.write(f"Particle_NucleonRestMass: {isotope[2]}\n")
-                f.write(f"Particle_MassNumber: {isotope[1]}\n")
-                f.write(f"Particle_Charge: {isotope[0]}\n")
+        # Open the file for writing
+        with open(input_file_path, 'w') as f:
+            # Write metadata and simulation details
+            f.write(f"# File generated on {datetime.date.today()}\n")
+            f.write(f"RandomSeed: {random_seed}\n")
+            f.write(f"OutputFilename: {output_name}\n")
+            f.write(f"Particle_NucleonRestMass: {isotope[2]}\n")
+            f.write(f"Particle_MassNumber: {isotope[1]}\n")
+            f.write(f"Particle_Charge: {isotope[0]}\n")
 
-                # Write energy bins, converting if necessary
-                tcentr = rigidities
-                tcentr_str = ','.join(f"{x:.3e}" for x in tcentr)
-                f.write(f"Tcentr: {tcentr_str}\n")
+            # Write energy bins, converting if necessary
+            tcentr = rigidities
+            tcentr_str = ','.join(f"{x:.3e}" for x in tcentr)
+            f.write(f"Tcentr: {tcentr_str}\n")
 
-                # Write source position details
-                f.write(f"SourcePos_theta: {','.join(f'{x:.5f}' for x in np_lat)}\n")
-                f.write(f"SourcePos_phi: {','.join(f'{x:.5f}' for x in np_lon)}\n")
-                f.write(f"SourcePos_r: {','.join(f'{x:.5f}' for x in np_rad)}\n")
+            # Write source position details
+            f.write(f"SourcePos_theta: {','.join(f'{x:.5f}' for x in np_lat)}\n")
+            f.write(f"SourcePos_phi: {','.join(f'{x:.5f}' for x in np_lon)}\n")
+            f.write(f"SourcePos_r: {','.join(f'{x:.5f}' for x in np_rad)}\n")
 
-                # Write particle generation and heliosphere parameters
-                f.write(f"Npart: {nparts * len(rigidities)}\n")
-                f.write(f"Nregions: {n_heliosphere_regions}\n")
+            # Write particle generation and heliosphere parameters
+            f.write(f"Npart: {nparts * len(rigidities)}\n")
+            f.write(f"Nregions: {n_heliosphere_regions}\n")
 
-                # Add heliospheric parameters for each CR period
-                for hp in h_par:
-                    if hp[0] in cr_list_param:
-                        f.write(
-                            "HeliosphericParameters: {:.6e}, {:.3f}, {:.2f}, {:.2f}, {:.3f}, {:.3f}, {:.0f}, {:.0f}, {:.3f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}\n".format(
-                                0.0 if np.where(cr_list_param == hp[0])[0].item() == 0 else 0.,
-                                *hp[[2, 3, 4, 12, 6, 7, 8, 11, 13, 14, 15, 16]]
-                            ))
-
-                # Add heliosheat parameters for each CR period
-                for i, hp in enumerate(h_par):
-                    if hp[0] in cr_list:
-                        f.write("HeliosheatParameters: {:.5e}, {:.2f}\n".format(
-                            3.e-05, h_par[i + n_heliosphere_regions - 1, 3]
-                        ))
-                f.close()
-
-                # Append file paths and names to the list
-                sims_dict[(ion, 0.0)].append(sim_name)
-
-            hpp = []
+            # Add heliospheric parameters for each CR period
             for hp in h_par:
                 if hp[0] in cr_list_param:
-                    hpp.append(hp[[2, 3, 4, 12, 6, 7, 8, 11, 13, 14, 15, 16]].tolist())
-            hpp = list(map(list, zip(*hpp)))
+                    f.write(
+                        "HeliosphericParameters: {:.6e}, {:.3f}, {:.2f}, {:.2f}, {:.3f}, {:.3f}, {:.0f}, {:.0f}, {:.3f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}\n".format(
+                            0.0 if np.where(cr_list_param == hp[0])[0].item() == 0 else 0.,
+                            *hp[[2, 3, 4, 12, 6, 7, 8, 11, 13, 14, 15, 16]]
+                        ))
 
-            hsp = []
+            # Add heliosheat parameters for each CR period
             for i, hp in enumerate(h_par):
                 if hp[0] in cr_list:
-                    hsp.append((3.e-05, h_par[i + n_heliosphere_regions - 1, 3].tolist()))
-            hsp = list(map(list, zip(*hsp)))
+                    f.write("HeliosheatParameters: {:.5e}, {:.2f}\n".format(
+                        3.e-05, h_par[i + n_heliosphere_regions - 1, 3]
+                    ))
+            f.close()
 
-            yml = {
-                'random_seed': random_seed,
-                'output_path': sim_name,
-                # 'energies': InlineList(rig_to_en(exp_data[:, 0], isotopes[0][1], isotopes[0][0]).tolist()),
-                'rigidities': InlineList(rigidities),
-                'isotopes': {nm.lower(): {
-                    'nucleon_rest_mass': t0,
-                    'mass_number': a,
-                    'charge': z,
-                } for z, a, t0, nm in isotopes},
-                'sources': {
-                    'r': InlineList(np_rad.tolist()),
-                    'th': InlineList(np_lat.tolist()),
-                    'phi': InlineList(np_lon.tolist()),
-                },
-                'relative_bin_amplitude': 0.00855,
-                'n_particles': nparts,  # TODO: maybe * 10
-                'n_regions': n_heliosphere_regions,
-                'dynamic': {'heliosphere': {'k0': [InlineList([0.0] * len(hpp[0]))] * nk0}},
-                'static': {
-                    'heliosphere': {
-                        k: InlineList(hpp[i])
-                        for i, k in
-                        enumerate(('ssn', 'v0', 'tilt_angle', 'smooth_tilt', 'b_field', 'polarity', 'solar_phase',
-                                   'nmcr', 'ts_nose', 'ts_tail', 'hp_nose', 'hp_tail'))
-                    },
-                    'heliosheat': {
-                        k: InlineList(hsp[i])
-                        for i, k in enumerate(('k0', 'v0'))
-                    }
-                }
+
+    hpp = []
+    for hp in h_par:
+        if hp[0] in cr_list_param:
+            hpp.append(hp[[2, 3, 4, 12, 6, 7, 8, 11, 13, 14, 15, 16]].tolist())
+    hpp = list(map(list, zip(*hpp)))
+
+    hsp = []
+    for i, hp in enumerate(h_par):
+        if hp[0] in cr_list:
+            hsp.append((3.e-05, h_par[i + n_heliosphere_regions - 1, 3].tolist()))
+    hsp = list(map(list, zip(*hsp)))
+
+    yml = {
+        'random_seed': random_seed,
+        'output_path': sim_name,
+        # 'energies': InlineList(rig_to_en(exp_data[:, 0], isotopes[0][1], isotopes[0][0]).tolist()),
+        'rigidities': InlineList(rigidities),
+        'isotopes': {nm.lower(): {
+            'nucleon_rest_mass': t0,
+            'mass_number': a,
+            'charge': z,
+        } for z, a, t0, nm in isotopes},
+        'sources': {
+            'r': InlineList(np_rad.tolist()),
+            'th': InlineList(np_lat.tolist()),
+            'phi': InlineList(np_lon.tolist()),
+        },
+        'relative_bin_amplitude': 0.00855,
+        'n_particles': nparts,  # TODO: maybe * 10
+        'n_regions': n_heliosphere_regions,
+        'dynamic': {'heliosphere': {'k0': [InlineList([0.0] * len(hpp[0]))] * nk0}},
+        'static': {
+            'heliosphere': {
+                k: InlineList(hpp[i])
+                for i, k in
+                enumerate(('ssn', 'v0', 'tilt_angle', 'smooth_tilt', 'b_field', 'polarity', 'solar_phase',
+                           'nmcr', 'ts_nose', 'ts_tail', 'hp_nose', 'hp_tail'))
+            },
+            'heliosheat': {
+                k: InlineList(hsp[i])
+                for i, k in enumerate(('k0', 'v0'))
             }
-            yml['n_particles'] = int(ceil(yml['n_particles'] / len(yml['sources']['r'])))
-            with open(folder_name / f'{yml['output_path']}.yaml', 'w') as f:
-                yaml.dump(yml, f, sort_keys=False, width=float("inf"))
+        }
+    }
+    yml['n_particles'] = int(ceil(yml['n_particles'] / len(yml['sources']['r'])))
+    with open(folder_name / f'{yml['output_path']}.yaml', 'w') as f:
+        yaml.dump(yml, f, sort_keys=False, width=float("inf"))
 
     return dict(sims_dict)
 

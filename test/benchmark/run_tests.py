@@ -1,7 +1,9 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
 import subprocess
 import time
-import pandas as pd
-from pathlib import Path
 
 from pynvml import *
 
