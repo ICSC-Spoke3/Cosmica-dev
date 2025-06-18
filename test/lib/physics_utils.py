@@ -35,20 +35,16 @@ class FluxVec(NDArrayBase):
 class RigidityFlux(NamedTuple):
     rigidity: RigidityVec
     flux: FluxVec
-    isotope: Optional[Isotope] = None
 
-    def to_energy(self, isotope: Optional[Isotope] = None) -> 'EnergyFlux':
+    def to_energy(self, isotope: Isotope) -> 'EnergyFlux':
         raise NotImplementedError
 
 
 class EnergyFlux(NamedTuple):
     energy: EnergyVec
     flux: FluxVec
-    isotope: Optional[Isotope] = None
 
-    def to_rigidity(self, isotope: Optional[Isotope] = None) -> 'RigidityFlux':
+    def to_rigidity(self, isotope: Isotope) -> 'RigidityFlux':
         if isotope is None:
-            if self.isotope is None:
-                raise ValueError("Missing isotope")
-            isotope = self.isotope
+            raise ValueError("Missing isotope")
         return RigidityFlux(*func.en_to_rig_flux(self.energy, self.flux, isotope.A, isotope.Z))

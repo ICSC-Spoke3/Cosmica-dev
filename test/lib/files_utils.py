@@ -1,12 +1,12 @@
 from pathlib import Path
-from typing import NamedTuple, Optional, Callable
+from typing import NamedTuple, Optional, Callable, Union
 
 import astropy.io.fits as pyfits
 import numpy as np
 
 from . import func
 from .isotopes import Isotope, ISOTOPES, Ion, IONS
-from .physics_utils import RigidityVec, FluxVec, RigidityFlux, EnergyFlux, NDArrayBase
+from .physics_utils import RigidityVec, FluxVec, RigidityFlux, EnergyFlux, NDArrayBase, EnergyVec
 
 import yaml
 
@@ -74,7 +74,25 @@ class LisLoader:
         tk_lis_spectra = self.flux[z][a][k][-1]
         for sec_ind in range(len(self.flux[z][a][k]) - 1):
             tk_lis_spectra = tk_lis_spectra + self.flux[z][a][k][sec_ind]
-        return EnergyFlux(self.energy, tk_lis_spectra, isotope)
+        return EnergyFlux(EnergyVec(self.energy), FluxVec(tk_lis_spectra))
+
+
+class ModulationResult(NamedTuple):
+    rigidity: RigidityVec
+    flux: FluxVec
+    lis: FluxVec
+
+    @property
+    def rig_flux(self):
+        return RigidityFlux(self.rigidity, self.flux)
+
+    @property
+    def lis_flux(self):
+        return RigidityFlux(self.rigidity, self.lis)
+
+    def trim(self, low, high):
+        indexes = (self.rigidity > low) & (self.rigidity < high)
+        return ModulationResult(self.rigidity[indexes], self.flux[indexes], self.lis[indexes])
 
 
 class IsotopeOutput(NamedTuple):
@@ -105,14 +123,13 @@ class IsotopeOutput(NamedTuple):
         output_dist_ = []
         n_particles_ = []
 
-        lines = list(map(str.split, filter(lambda l: not l.startswith("#"), histograms.split('\n'))))
+        lines = list(map(str.split, filter(lambda l: l and not l.startswith("#"), histograms.split('\n'))))
         n_bins = int(lines[0][0])
 
         for spec, dist in zip(lines[1::2], lines[2::2]):
             e_gen, n_part_gen, n_part_reg, n_bin_out, bin_low, bin_amp = spec[:6]
             input_rig_.append(float(e_gen))
             n_particles_.append(int(n_part_reg))
-            output_dist_.append(int(n_bin_out))
             bin_low, bin_amp = map(float, (bin_low, bin_amp))
             bins = bin_low + np.arange(int(n_bin_out)) * bin_amp
             output_rig_.append(RigidityVec((10 ** bins + 10 ** (bins + bin_amp)) / 2))
@@ -145,8 +162,8 @@ class IsotopeOutput(NamedTuple):
                               zip(self.input_rig, un_norm_flux, self.n_particles)]
         lis_flux_rig_in = conv_coeff * lis_flux_en_in
 
-        return (RigidityFlux(self.input_rig.copy(), j_mod, isotope),
-                RigidityFlux(self.input_rig.copy(), lis_flux_rig_in, isotope))
+        return (RigidityFlux(self.input_rig.copy(), j_mod),
+                RigidityFlux(self.input_rig.copy(), lis_flux_rig_in))
 
 
 class SingleOutput(dict[Isotope, IsotopeOutput]):
@@ -157,24 +174,31 @@ class SingleOutput(dict[Isotope, IsotopeOutput]):
             for iso, histograms in parametrization.items()
         })
 
-    def modulate(self, lis_loader: LisLoader) -> tuple[RigidityFlux, RigidityFlux]:
+    @classmethod
+    def from_txts(cls, txts: dict[str, str]) -> 'SingleOutput':
+        return cls({
+            ISOTOPES.get(iso): IsotopeOutput.from_txt(txt)
+            for iso, txt in txts.items()
+        })
+
+    def modulate(self, lis_loader: LisLoader) -> ModulationResult:
         rig: Optional[RigidityVec] = None
         flux: Optional[FluxVec] = None
         lis_rig_flux: Optional[FluxVec] = None
 
         for isotope, output in self.items():
             lis_spectrum = lis_loader[isotope]
-            j_flux, j_lis = output.modulate(lis_spectrum, isotope)
+            j_rig_flux, j_lis_rig_flux = output.modulate(lis_spectrum, isotope)
 
             if rig is None:
-                rig = j_flux.rigidity
+                rig = j_rig_flux.rigidity
                 flux = FluxVec(np.zeros_like(rig))
                 lis_rig_flux = FluxVec(np.zeros_like(rig))
 
-            flux += j_flux
-            lis_rig_flux += j_lis
+            flux += j_rig_flux.flux
+            lis_rig_flux += j_lis_rig_flux.flux
 
-        return RigidityFlux(rig, flux), RigidityFlux(rig, lis_rig_flux)
+        return ModulationResult(rig, flux, lis_rig_flux)
 
 
 class SimulationOutput(list[SingleOutput]):
@@ -185,16 +209,32 @@ class SimulationOutput(list[SingleOutput]):
             for parametrization in yml['histograms']
         ])
 
-    def modulate(self, lis_loader: LisLoader) -> list[tuple[RigidityFlux, RigidityFlux]]:
+    @classmethod
+    def from_txt(cls, txts: list[dict[str, str]]) -> 'SimulationOutput':
+        return SimulationOutput([
+            SingleOutput.from_txts(txt)
+            for txt in txts
+        ])
+
+    @classmethod
+    def from_outputs(cls, *outputs: Union[SingleOutput, 'SimulationOutput']) -> 'SimulationOutput':
+        return SimulationOutput([o if isinstance(o, SingleOutput) else o[0] for o in outputs])
+
+    def modulate(self, lis_loader: LisLoader) -> list[ModulationResult]:
         return [single_output.modulate(lis_loader) for single_output in self]
 
 
 class ExperimentalData(NamedTuple):
-    rig_flux: RigidityFlux
+    rigidity: RigidityVec
+    flux: FluxVec
     limits: Optional[tuple[FluxVec, FluxVec]] = None
 
+    @property
+    def rig_flux(self) -> RigidityFlux:
+        return RigidityFlux(self.rigidity, self.flux)
+
     @classmethod
-    def from_data(cls, path: Path, cols: tuple[int, int] | tuple[int, int, int, int] = (0, 1), rig_range=(0, 11),
+    def from_data(cls, path: Path, cols: tuple[int, int] | tuple[int, int, int, int], rig_range=(0, 11),
                   to_rig: Optional[Isotope] = None) -> 'ExperimentalData':
         assert rig_range[0] < rig_range[1]
         assert len(cols) in (2, 4)
@@ -213,13 +253,13 @@ class ExperimentalData(NamedTuple):
             exp_data[:, rig_col] = rigi
 
         filtered = exp_data[(rig_low <= exp_data[:, rig_col]) & (exp_data[:, rig_col] <= rig_high)][:, cols]
-        rig_flux = RigidityFlux(RigidityVec(filtered[:, 0]), FluxVec(filtered[:, 1]))
+        rigidity, flux = RigidityVec(filtered[:, 0]), FluxVec(filtered[:, 1])
 
         if len(cols) == 2:
-            return cls(rig_flux)
+            return cls(rigidity, flux)
 
         limits = (FluxVec(filtered[:, 2]), FluxVec(filtered[:, 3]))
-        return cls(rig_flux, limits)
+        return cls(rigidity, flux, limits)
 
 
 class SimulationExperimentItem(NamedTuple):

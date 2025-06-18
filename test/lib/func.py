@@ -251,7 +251,7 @@ def rig_to_en_flux_factor(en: np.ndarray, rig: np.ndarray, Z: int, A: int) -> np
     return Z * Z / (A * A) * rig / (en + T0)
 
 
-def en_to_rig_flux(en: np.ndarray, flux: np.ndarray, Z: int, A: int) -> (np.ndarray, np.ndarray):
+def en_to_rig_flux(en: np.ndarray, flux: np.ndarray, Z: int, A: int) -> tuple[np.ndarray, np.ndarray]:
     """
     Convert energy to rigidity flux
     :param en: energy values
