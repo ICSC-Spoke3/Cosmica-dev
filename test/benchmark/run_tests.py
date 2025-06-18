@@ -60,10 +60,11 @@ def run_cosmica(cosmica_executable, input_file, output_dir, cuda_devices='0,1'):
 
 if __name__ == "__main__":
     VERSION = 'V8'
+    SET = '*_k0_*'
 
     data_dir = Path(__file__).parent.parent / 'data'
     p_cosmica = Path(__file__).parent.parent.parent / f'Cosmica_{VERSION}-speedtest' / 'exefiles' / 'Cosmica'
-    p_inputs = sorted((data_dir / 'benchmark' / 'inputs').rglob('*/*.yaml' if VERSION == 'V8' else '*.txt'))
+    p_inputs = sorted((data_dir / 'benchmark' / 'inputs').rglob(f'{SET}/*.yaml' if VERSION == 'V8' else '*.txt'))
     p_outputs = data_dir / 'benchmark' / 'outputs'
 
     for inpt in p_inputs:

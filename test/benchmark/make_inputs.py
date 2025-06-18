@@ -21,17 +21,18 @@ class InlineList(list):
 yaml.add_representer(InlineList, InlineList.inline_list_representer)
 
 
-def make_single_input(data_dir: Path, sim: SimulationExperimentItem, heliospheric_parameters: HeliosphericParameters,
-                      n_particles: int, n_k0: int, rnd: int):
-    p_inputs = data_dir / 'benchmark' / 'inputs'
+def make_single_input(data_dir: Path, folder_name: str, sim: SimulationExperimentItem,
+                      heliospheric_parameters: HeliosphericParameters, n_particles: int, n_k0: int, rnd: int):
+    p_inputs = data_dir / 'benchmark' / 'inputs' / folder_name
     p_exp = data_dir / 'benchmark' / 'experimental'
 
     isotopes = sim.ions[0].isotopes
 
     isotopes_str = '_'.join(i.name for i in isotopes)
     sim_spec_str = f'{sim.period[0]}_{sim.period[1]}_{n_particles}_{n_k0}_{rnd}'
-    folder_name = p_inputs / f'{isotopes_str}_{sim_spec_str}'
-    folder_name.mkdir(parents=True, exist_ok=True)
+    full_spec_str = f'{isotopes_str}_{sim_spec_str}'
+
+    p_inputs.mkdir(parents=True, exist_ok=True)
 
     experimental_data = ExperimentalData.from_data(p_exp / sim.experimental_data_path, (2, 3, 4, 5))
     rigidities = experimental_data.rig_flux.rigidity
@@ -45,7 +46,7 @@ def make_single_input(data_dir: Path, sim: SimulationExperimentItem, heliospheri
 
     inpt = SimulationInput(
         random_seed=rnd,
-        output_path=f'{isotopes_str}',
+        output_path=full_spec_str,
         rigidities=rigidities,
         isotopes=isotopes,
         sources=sim.sources,
@@ -55,12 +56,13 @@ def make_single_input(data_dir: Path, sim: SimulationExperimentItem, heliospheri
         static=SimulationInput.StaticParameters(static_sphere, static_sheat)
     )
 
-    with open(p_inputs / folder_name / f'{isotopes_str}.yaml', 'w') as f:
+    with open(p_inputs / f'{full_spec_str}.yaml', 'w') as f:
         yaml.dump(inpt.to_dict(), f, sort_keys=False, width=float("inf"))
 
-    for iso, txt in inpt.to_txt(lambda _, i, __: f'{i.name}')[0].items():
-        with open(p_inputs / folder_name / f'{iso.name}.txt', 'w') as f:
+    for iso, txt in inpt.to_txt(lambda _, i, __: f'{i.name}_{sim_spec_str}')[0].items():
+        with open(p_inputs / f'{iso.name}_{sim_spec_str}.txt', 'w') as f:
             f.write(txt)
+
 
 if __name__ == "__main__":
     data_dir = Path(__file__).parent.parent / 'data'
@@ -73,7 +75,12 @@ if __name__ == "__main__":
     sim_list = SimulationList.from_listfile(p_sims)
     for sim in sim_list:
         print(sim)
-        for npart in (300, 3000, 6000, 9000):
-            for nk0 in (1, 10, 30, 50):
-                for rnd in (42, 69, 123):
-                    make_single_input(data_dir, sim, heliospheric_parameters, npart, nk0, rnd)
+        for n_part in (512, 2048, 4096, 8192, 16384, 65536):
+            folder_name = f'{sim.period[0]}_{sim.period[1]}_part_{n_part}'
+            make_single_input(data_dir, folder_name, sim, heliospheric_parameters, n_part, 1, 42)
+        for n_k0 in (1, 16, 32, 64, 128, 256):
+            folder_name = f'{sim.period[0]}_{sim.period[1]}_k0_{n_k0}'
+            make_single_input(data_dir, folder_name, sim, heliospheric_parameters, 4096, n_k0, 42)
+        for rnd in (103, 436, 861, 271, 107,  72):
+            folder_name = f'{sim.period[0]}_{sim.period[1]}_rnd_{rnd}'
+            make_single_input(data_dir, folder_name, sim, heliospheric_parameters, 4096, 1, rnd)
