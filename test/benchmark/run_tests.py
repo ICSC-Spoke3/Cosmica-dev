@@ -63,7 +63,7 @@ if __name__ == "__main__":
 
     data_dir = Path(__file__).parent.parent / 'data'
     p_cosmica = Path(__file__).parent.parent.parent / f'Cosmica_{VERSION}-speedtest' / 'exefiles' / 'Cosmica'
-    p_inputs = sorted((data_dir / 'benchmark' / 'inputs').rglob('*10_1_42.yaml' if VERSION == 'V8' else '*.txt'))
+    p_inputs = sorted((data_dir / 'benchmark' / 'inputs').rglob('*/*.yaml' if VERSION == 'V8' else '*.txt'))
     p_outputs = data_dir / 'benchmark' / 'outputs'
 
     for inpt in p_inputs:

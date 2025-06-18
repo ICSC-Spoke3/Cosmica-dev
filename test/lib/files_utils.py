@@ -1,303 +1,390 @@
-import numpy as np
-from os.path import basename, join as pjoin
+from pathlib import Path
+from typing import NamedTuple, Optional, Callable
 
 import astropy.io.fits as pyfits
-import pandas as pd
+import numpy as np
+
+from . import func
+from .isotopes import Isotope, ISOTOPES, Ion, IONS
+from .physics_utils import RigidityVec, FluxVec, RigidityFlux, EnergyFlux, NDArrayBase
+
 import yaml
 
-from .physics_utils import en_to_rig, rig_to_en_flux_factor
+yaml.Dumper.ignore_aliases = lambda *args: True
 
 
-class RigidityMapper:
+class InlineList(list):
+    @staticmethod
+    def inline_list_representer(dumper, data):
+        return dumper.represent_sequence('tag:yaml.org,2002:seq', data, flow_style=True)
+
+
+yaml.add_representer(InlineList, InlineList.inline_list_representer)
+
+
+class LisLoader:
     def __init__(self, path):
-        self.df = pd.read_excel(path)
+        hdulist = pyfits.open(path)
+        data = hdulist[0].data
+        r_sun = 8.33
+        r = np.arange(int(hdulist[0].header["NAXIS1"])) * hdulist[0].header["CDELT1"] + hdulist[0].header["CRVAL1"]
+        if r[0] > r_sun:
+            indexes = [0]
+            weights = [1]
+        elif r[-1] <= r_sun:
+            indexes = [-1]
+            weights = [1]
+        else:
+            i = np.where((r[:-1] <= r_sun) & (r_sun < r[1:]))[0][0]
+            indexes = [i, i + 1]
+            weights = [(r[i + 1] - r_sun) / (r[i + 1] - r[i]), (r_sun - r[i]) / (r[i + 1] - r[i])]
 
-    def get_simulation_rigidities(self):
-        return self.df['Rigidity'].to_numpy()
+        energy = 10 ** (
+                float(hdulist[0].header["CRVAL3"]) +
+                np.arange(int(hdulist[0].header["NAXIS3"])) *
+                float(hdulist[0].header["CDELT3"])
+        )
 
-    def get_experimental_rigidities(self):
-        return self.df['Rigidity Bucket'].to_numpy()
+        particle_flux = {}
 
-    def average_simulation_flux(self, flux):
-        mod_flux = (flux * self.df['Coefficient']).rename('flux')
-        grouped_df = pd.concat([mod_flux, self.df], axis=1).groupby('Rigidity Bucket').agg({'flux': 'sum'}).reset_index()
-        return grouped_df.to_numpy()
+        n_nuclei = hdulist[0].header["NAXIS4"]
+        for i in range(1, n_nuclei + 1):
+            id_ = "%03d" % i
+            z = int(hdulist[0].header["NUCZ" + id_])
+            a = int(hdulist[0].header["NUCA" + id_])
+            k = int(hdulist[0].header["NUCK" + id_])
 
+            if z not in particle_flux:
+                particle_flux[z] = {}
+            if a not in particle_flux[z]:
+                particle_flux[z][a] = {}
+            if k not in particle_flux[z][a]:
+                particle_flux[z][a][k] = []
 
-def load_simulation_list(list_path: str, debug=False):
-    """
-    Load the list of simulations
-    :param list_path: path to list file
-    :param debug: if True, more verbose output will be printed
-    :return: list of simulations
-    """
+            d = ((data[i - 1, :, 0, indexes].swapaxes(0, 1)) * np.array(weights)).sum(axis=1)
+            particle_flux[z][a][k].append(1e7 * d / energy ** 2)
 
-    # Counters for excluded simulations (Added by me)
-    excluded_sims_filter = 0
-    excluded_sims_type = 0
+        energy = energy / 1e3
+        hdulist.close()
+        self.energy = energy
+        self.flux = particle_flux
 
-    sim_list = []
-    if debug:
-        print(f"Loading simulations for: {list_path}")
-
-    for line in open(list_path).readlines():
-        if line.startswith("#"):
-            continue
-
-        single_sim = [x.strip() for x in line.replace("\t", "").split("|")[:8]]
-        if debug:
-            print(f"Parsed simulation: {single_sim}")
-
-        # if debug is true, it excludes all files obtaining a final empty list, so I inibited it (MG)
-        # if debug:
-        # if False:
-        #     if (float(single_sim[3]) < 20180101 or float(single_sim[3]) > 20180102):
-        #         excluded_sims_filter += 1
-        #     continue
-
-        if "Electron" in single_sim[1] or "Positron" in single_sim[1]:
-            if debug:
-                excluded_sims_type += 1
-            continue
-
-        if debug:
-            print(f"Adding simulation: {single_sim}")
-        sim_list.append(single_sim)
-
-    if debug:
-        print(f"Loaded simulation list:")
-        for sim in sim_list:
-            print(sim)
-        print(f"Excluded simulations due to filter: {excluded_sims_filter}")
-        print(f"Excluded simulations due to particle type: {excluded_sims_type}")
-
-    return sim_list
+    def __getitem__(self, isotope: Isotope) -> EnergyFlux:
+        z, a, k = isotope.Z, isotope.A, 0
+        tk_lis_spectra = self.flux[z][a][k][-1]
+        for sec_ind in range(len(self.flux[z][a][k]) - 1):
+            tk_lis_spectra = tk_lis_spectra + self.flux[z][a][k][sec_ind]
+        return EnergyFlux(self.energy, tk_lis_spectra, isotope)
 
 
-def load_heliospheric_parameters(pastpar_path: str, frcpar_path: str, debug=False):
-    """
-    Load the Heliospheric parameters files
-    :param pastpar_path: all parameters file
-    :param frcpar_path: frcst parameters file
-    :param debug: if True, more verbose output will be printed
-    :return: matrix of parameters
-    """
+class IsotopeOutput(NamedTuple):
+    input_rig: RigidityVec
+    output_rig: list[RigidityVec]
+    output_dist: list[np.ndarray]
+    n_particles: np.ndarray
 
-    # Carrington rotations in decreasing order of time (most recent to least)
-    h_par = np.loadtxt(pastpar_path)
-
-    frc_heliospheric_parameters = np.loadtxt(frcpar_path)
-    h_par = np.append(frc_heliospheric_parameters, h_par, axis=0)
-    if debug:
-        print(" ----- HeliosphericParameters loaded ----")
-    return h_par
-
-
-def load_experimental_data(exp_path: str, cols=(0, 1), rig_range=(3, 11), to_rig=None):
-    """
-    Load the experimental data and filter in rigidity range
-    :param exp_path: directory of experimental data
-    :param file: name of file
-    :param cols: columns to include in data
-    :param rig_range: range of rigidity to filter in
-    :param to_rig: if input in energy, (mass_number, z) for conversion
-    :return: matrix of experimental data (rig, flux, flux_inf, flux_sup)
-    """
-    assert rig_range[0] < rig_range[1]
-    assert len(cols) >= 2
-    assert to_rig is None or isinstance(to_rig, (tuple, list)) and len(to_rig) == 2
-
-    rig_col = cols[0]
-    rig_low, rig_high = rig_range
-
-    exp_data = np.loadtxt(exp_path)
-
-    if to_rig is not None:
-        mass_number, z = to_rig
-        tkin = exp_data[:, rig_col]
-        rigi = en_to_rig(tkin, mass_number, z)
-        factors = rig_to_en_flux_factor(tkin, rigi, z, mass_number)
-        for c in cols[1:]:
-            exp_data[:, c] *= factors
-        exp_data[:, rig_col] = rigi
-
-    return exp_data[(rig_low <= exp_data[:, rig_col]) & (exp_data[:, rig_col] <= rig_high)][:, cols]
-
-
-def load_lis(lis_path):
-    """
-    Load the LIS from a fits file
-    :param lis_path:
-    :return:
-    """
-
-    hdulist = pyfits.open(lis_path)
-    data = hdulist[0].data
-    # Find out which indices to interpolate over for r_sun
-    r_sun = 8.33  # Earth position in the Galaxy
-    r = np.arange(int(hdulist[0].header["NAXIS1"])) * hdulist[0].header["CDELT1"] + hdulist[0].header["CRVAL1"]
-    if r[0] > r_sun:
-        indexes = [0]
-        weights = [1]
-    elif r[-1] <= r_sun:
-        indexes = [-1]
-        weights = [1]
-    else:
-        i = np.where((r[:-1] <= r_sun) & (r_sun < r[1:]))[0][0]  # Find first index in range
-        indexes = [i, i + 1]
-        weights = [(r[i + 1] - r_sun) / (r[i + 1] - r[i]), (r_sun - r[i]) / (r[i + 1] - r[i])]
-
-    # Calculate the energy for the spectral points (note that Energy is in MeV)
-    energy = 10 ** (
-            float(hdulist[0].header["CRVAL3"]) +
-            np.arange(int(hdulist[0].header["NAXIS3"])) *
-            float(hdulist[0].header["CDELT3"])
-    )
-
-    # Parse the header, looking for Nuclei definitions
-    particle_flux = {}
-
-    n_nuclei = hdulist[0].header["NAXIS4"]
-    for i in range(1, n_nuclei + 1):
-        id_ = "%03d" % i
-        z = int(hdulist[0].header["NUCZ" + id_])
-        a = int(hdulist[0].header["NUCA" + id_])
-        k = int(hdulist[0].header["NUCK" + id_])
-
-        # Add the data to the particle_flux dictionary
-        if z not in particle_flux:
-            particle_flux[z] = {}
-        if a not in particle_flux[z]:
-            particle_flux[z][a] = {}
-        if k not in particle_flux[z][a]:
-            particle_flux[z][a][k] = []
-        # data structure
-        #    - Particle type, identified by "id_", the header allows to identify which particle is
-        #    | - Energy Axis, ":" takes all elements
-        #    | | - not used
-        #    | | | - distance from Galaxy center: indexes is a list of position nearest to Earth position (r_sun)
-        #    | | | |
-
-        # Real solution is interpolation between the nearest solution to Earth position in the Galaxy (indexes)
-        d = ((data[i - 1, :, 0, indexes].swapaxes(0, 1)) * np.array(weights)).sum(axis=1)
-        particle_flux[z][a][k].append(1e7 * d / energy ** 2)  # 1e7 is conversion from [cm^2 MeV]^-1 --> [m^2 GeV]^-1
-
-    # particle_flux[z][a][k] contains the particle flux for all considered species galprop convention wants that for same combination of z,a,k firsts are secondaries, latter Primary
-    energy = energy / 1e3  # convert energy scale from MeV/n to GeV/n
-    hdulist.close()
-    return energy, particle_flux
-
-
-def get_lis(lis, z: int, a: int, k=0, include_secondaries=True, debug=False):
-    """
-    Get the LIS for the selected Isotope,
-    :param lis: the LIS loaded with load_lis
-    :param z: atomic number
-    :param a: atomic mass
-    :param k: K-shell
-    :param include_secondaries: if True, accumulate secondary spectra
-    :param debug:
-    :return: (energy, flux), energy is -1 if Z missing and -2 if A missing
-    """
-    tk_bin, particle_flux = lis
-    if z not in particle_flux:
-        if debug:
-            print(f'Error: Z={z} does not exist in LIS dictionary')
-        return np.full(1, -1.), []
-    if a not in particle_flux[z]:
-        if debug:
-            print(f'Error: A={a} does not exist in LIS dictionary for Z={z}')
-        return np.full(1, -2.), []
-    tk_lis_spectra = particle_flux[z][a][k][-1]  # the primary spectrum is always the last one (if exist)
-    if include_secondaries:  # Include (sum) secondary spectra
-        for sec_ind in range(len(particle_flux[z][a][k]) - 1):
-            tk_lis_spectra = tk_lis_spectra + particle_flux[z][a][k][sec_ind]
-    return tk_bin, tk_lis_spectra
-
-
-def load_simulation_output(file_name, debug=False):
-    """
-    Load a simulation output file histograms
-    :param file_name: path to file
-    :param debug: if True, more verbose output will be printed
-    :return: dictionary with the histograms
-    """
-    input_energy = []  # Energy Simulated
-    n_registered_particle = []  # number of simulated energy per input bin
-    n_bins_outer_energy = []  # number of bins used for the output distribution
-    outer_energy = []  # Bin center of output distribution
-    energy_distribution_at_boundary = []  # Energy distribution at heliosphere boundary
-    warning_list = []
-
-    with open(file_name) as f:
-        lines = list(filter(lambda l: not l.startswith("#"), f.readlines()))
-    n_bins = int(lines[0])
-
-    # Read bins specifications
-    for spec in map(str.split, lines[1::2]):
-        e_gen, n_part_gen, n_part_reg, n_bin_out, bin_low, bin_amp = spec[:6]
-        input_energy.append(float(e_gen))
-        if debug and n_part_gen != n_part_reg:
-            warning_list.append(
-                f'WARNING: registered particle for Energy {e_gen} ({n_part_reg}) is different from injected ({n_part_gen})')
-        n_registered_particle.append(int(n_part_reg))
-        n_bins_outer_energy.append(int(n_bin_out))
-        bin_low, bin_amp = map(float, (bin_low, bin_amp))
-        bins = bin_low + np.arange(int(n_bin_out)) * bin_amp
-        outer_energy.append((10 ** bins + 10 ** (bins + bin_amp)) / 2)
-
-    # Read bins distributions
-    for dist, ie, nboe in zip(map(str.split, lines[2::2]), input_energy, n_bins_outer_energy):
-        if len(dist) != nboe:
-            warning_list.append(
-                f'WARNING: The number of saved bins for energy {ie} ({len(dist)}) is different from expected ({nboe})')
-        energy_distribution_at_boundary.append(list(map(float, dist)))
-
-    assert 2 * n_bins == len(lines) - 1 and n_bins == len(input_energy)
-
-    return {
-        'InputEnergy': np.asarray(input_energy, object),
-        'NGeneratedParticle': np.asarray(n_registered_particle, object),
-        'OuterEnergy': np.asarray(outer_energy, object),
-        'BoundaryDistribution': np.asarray(energy_distribution_at_boundary, object)
-    }, warning_list
-
-
-def load_simulation_outputs_yaml(yml, debug=False, param=0):
-    def asarray_no_merge(lst):
-        arr = np.empty(len(lst), dtype=object)
-        arr[:] = [np.asarray(l) for l in lst]
-        return arr
-
-    out = {}
-    for iso, hists in yml['histograms'][param].items():
-        input_energy = []
-        outer_energy = []
-        n_parts = []
-        distributions = []
-        for his in hists:
+    @classmethod
+    def from_yaml(cls, histograms: list[dict]) -> 'IsotopeOutput':
+        input_rig_ = []
+        output_rig_ = []
+        output_dist_ = []
+        n_particles_ = []
+        for his in histograms:
             rig, amp, lb, n_reg, dist = his['rigidity'], his['amplitude'], his['lower_bound'], his['n_reg'], his['bins']
-            input_energy.append(rig)
-            n_parts.append(n_reg)
+            input_rig_.append(rig)
+            n_particles_.append(n_reg)
             bins = lb + np.arange(len(dist)) * amp
-            outer_energy.append((10 ** bins + 10 ** (bins + amp)) / 2)
-            distributions.append(dist)
-        out[iso.title()] = {
-            'InputEnergy': np.asarray(input_energy, object),
-            'NGeneratedParticle': np.asarray(n_parts, object),
-            'OuterEnergy': asarray_no_merge(outer_energy),
-            'BoundaryDistribution': asarray_no_merge(distributions)
+            output_rig_.append(RigidityVec((10 ** bins + 10 ** (bins + amp)) / 2))
+            output_dist_.append(np.array(dist))
+        return cls(RigidityVec(input_rig_), output_rig_, output_dist_, np.array(n_particles_))
+
+    @classmethod
+    def from_txt(cls, histograms: str) -> 'IsotopeOutput':
+        input_rig_ = []
+        output_rig_ = []
+        output_dist_ = []
+        n_particles_ = []
+
+        lines = list(map(str.split, filter(lambda l: not l.startswith("#"), histograms.split('\n'))))
+        n_bins = int(lines[0][0])
+
+        for spec, dist in zip(lines[1::2], lines[2::2]):
+            e_gen, n_part_gen, n_part_reg, n_bin_out, bin_low, bin_amp = spec[:6]
+            input_rig_.append(float(e_gen))
+            n_particles_.append(int(n_part_reg))
+            output_dist_.append(int(n_bin_out))
+            bin_low, bin_amp = map(float, (bin_low, bin_amp))
+            bins = bin_low + np.arange(int(n_bin_out)) * bin_amp
+            output_rig_.append(RigidityVec((10 ** bins + 10 ** (bins + bin_amp)) / 2))
+            output_dist_.append(np.array(list(map(float, dist))))
+
+        assert 2 * n_bins == len(lines) - 1 and n_bins == len(input_rig_)
+
+        return cls(RigidityVec(input_rig_), output_rig_, output_dist_, np.array(n_particles_))
+
+    def modulate(self, lis: EnergyFlux, isotope: Isotope) -> tuple[RigidityFlux, RigidityFlux]:
+        lis_rig = lis.energy.to_rigidity(isotope)
+        lis_flux_en = lis.flux
+        lis_flux_en_in = func.lin_log_interpolation(lis_rig, lis_flux_en, self.input_rig)
+
+        un_norm_flux = np.zeros(len(self.input_rig))
+        for index_rig in range(len(self.input_rig)):
+            lis_flux_en_out = func.lin_log_interpolation(lis_rig, lis_flux_en, self.output_rig[index_rig])
+
+            for outer_rig_bin, boundary_bin, lis_flux_bin in zip(self.output_rig[index_rig],
+                                                                 self.output_dist[index_rig],
+                                                                 lis_flux_en_out):
+                un_norm_flux[index_rig] += boundary_bin * lis_flux_bin / outer_rig_bin ** 2
+
+        conv_coeff = func.d_rig_to_en(
+            self.input_rig.to_energy(isotope),
+            self.input_rig,
+            isotope.Z, isotope.A
+        )
+        j_mod = conv_coeff * [UnFlux / Npart * R ** 2 for R, UnFlux, Npart in
+                              zip(self.input_rig, un_norm_flux, self.n_particles)]
+        lis_flux_rig_in = conv_coeff * lis_flux_en_in
+
+        return (RigidityFlux(self.input_rig.copy(), j_mod, isotope),
+                RigidityFlux(self.input_rig.copy(), lis_flux_rig_in, isotope))
+
+
+class SingleOutput(dict[Isotope, IsotopeOutput]):
+    @classmethod
+    def from_yaml(cls, parametrization: dict[str, list[dict]]) -> 'SingleOutput':
+        return cls({
+            ISOTOPES.get(iso): IsotopeOutput.from_yaml(histograms)
+            for iso, histograms in parametrization.items()
+        })
+
+    def modulate(self, lis_loader: LisLoader) -> tuple[RigidityFlux, RigidityFlux]:
+        rig: Optional[RigidityVec] = None
+        flux: Optional[FluxVec] = None
+        lis_rig_flux: Optional[FluxVec] = None
+
+        for isotope, output in self.items():
+            lis_spectrum = lis_loader[isotope]
+            j_flux, j_lis = output.modulate(lis_spectrum, isotope)
+
+            if rig is None:
+                rig = j_flux.rigidity
+                flux = FluxVec(np.zeros_like(rig))
+                lis_rig_flux = FluxVec(np.zeros_like(rig))
+
+            flux += j_flux
+            lis_rig_flux += j_lis
+
+        return RigidityFlux(rig, flux), RigidityFlux(rig, lis_rig_flux)
+
+
+class SimulationOutput(list[SingleOutput]):
+    @classmethod
+    def from_yaml(cls, yml: dict) -> 'SimulationOutput':
+        return SimulationOutput([
+            SingleOutput.from_yaml(parametrization)
+            for parametrization in yml['histograms']
+        ])
+
+    def modulate(self, lis_loader: LisLoader) -> list[tuple[RigidityFlux, RigidityFlux]]:
+        return [single_output.modulate(lis_loader) for single_output in self]
+
+
+class ExperimentalData(NamedTuple):
+    rig_flux: RigidityFlux
+    limits: Optional[tuple[FluxVec, FluxVec]] = None
+
+    @classmethod
+    def from_data(cls, path: Path, cols: tuple[int, int] | tuple[int, int, int, int] = (0, 1), rig_range=(0, 11),
+                  to_rig: Optional[Isotope] = None) -> 'ExperimentalData':
+        assert rig_range[0] < rig_range[1]
+        assert len(cols) in (2, 4)
+
+        rig_col = cols[0]
+        rig_low, rig_high = rig_range
+
+        exp_data = np.loadtxt(str(path))
+
+        if to_rig is not None:
+            tkin = exp_data[:, rig_col]
+            rigi = func.en_to_rig(tkin, to_rig.Z, to_rig.A)
+            factors = func.rig_to_en_flux_factor(tkin, rigi, to_rig.Z, to_rig.A)
+            for c in cols[1:]:
+                exp_data[:, c] *= factors
+            exp_data[:, rig_col] = rigi
+
+        filtered = exp_data[(rig_low <= exp_data[:, rig_col]) & (exp_data[:, rig_col] <= rig_high)][:, cols]
+        rig_flux = RigidityFlux(RigidityVec(filtered[:, 0]), FluxVec(filtered[:, 1]))
+
+        if len(cols) == 2:
+            return cls(rig_flux)
+
+        limits = (FluxVec(filtered[:, 2]), FluxVec(filtered[:, 3]))
+        return cls(rig_flux, limits)
+
+
+class SimulationExperimentItem(NamedTuple):
+    name: str
+    ions: list[Ion]
+    period: tuple[int, int]
+    sources: tuple[np.ndarray, np.ndarray, np.ndarray]
+    experimental_data_path: str
+
+
+class SimulationPredictionItem(NamedTuple):
+    name: str
+    ions: list[Ion]
+    period: tuple[int, int]
+    sources: tuple[np.ndarray, np.ndarray, np.ndarray]
+    rigidities: RigidityVec
+
+
+class SimulationList(list[SimulationExperimentItem | SimulationPredictionItem]):
+    @classmethod
+    def from_listfile(cls, file: Path) -> 'SimulationList':
+        def parse(line):
+            parsed = [x.strip() for x in line.replace("\t", "").split("|")[:8]]
+
+            def prs(x, rad: float | None = None):
+                arr = np.array(list(map(float, x.split(','))))
+                return arr if rad is None else (
+                    np.radians(arr) if rad == 0 else np.radians(rad - arr)
+                )
+
+            return SimulationExperimentItem(
+                name=parsed[0],
+                ions=[IONS.get(i.lower().strip()) for i in parsed[1].split(",")],
+                period=(int(parsed[3]), int(parsed[4])),
+                sources=(prs(parsed[5]), prs(parsed[6], 90), prs(parsed[7], 0)),
+                experimental_data_path=parsed[2]
+            )
+
+        with open(file) as f:
+            return cls([
+                parse(line)
+                for line in filter(lambda x: not x.startswith('#'), f.read().splitlines())
+            ])
+
+
+class HeliosphericParameters(NDArrayBase):
+    @classmethod
+    def from_files(cls, *paths: Path | str) -> 'HeliosphericParameters':
+        arrays = [np.loadtxt(path) for path in paths]
+        arrays = np.concatenate(arrays, axis=0)
+        sorted_indexes = np.lexsort((arrays[:, 1], arrays[:, 0]))
+        return cls(arrays[sorted_indexes][::-1].copy())
+
+    def in_period(self, period: tuple[int, int], n_regions: int = 15) -> tuple[np.ndarray, np.ndarray]:
+        cr_ini, cr_end = self[:, 0], self[:, 1]
+        cr_ord = np.arange(len(cr_ini))
+        # if between start and end
+        mask1 = (cr_ini <= period[1]) & (cr_end > period[0])
+        # if between (start - num regions) and end
+        mask2 = (cr_ini <= period[1]) & (cr_end[cr_ord - (n_regions - 1)] > period[0])
+        # if before (start - num regions)
+        mask3 = np.append((cr_ord - (n_regions - 1) >= 0) & (cr_ini[cr_ord - (n_regions - 1)] < period[0]), 1)
+        # remove all after first True
+        mask3 = cr_ord <= np.argwhere(mask3)[0, 0]
+
+        return np.array(self[mask2 & mask3]), np.array(self[np.bool(np.roll(mask1 & mask3, n_regions - 1))])
+
+
+class SimulationInput(NamedTuple):
+    class DynamicParameters(NamedTuple):
+        class DynamicHeliosphere(NamedTuple):
+            k0: list[np.ndarray]
+
+        heliosphere: DynamicHeliosphere
+
+        def to_dict(self):
+            return {
+                'heliosphere': {k: [InlineList(v.tolist()) for v in vv] for k, vv in self.heliosphere._asdict().items()}
+            }
+
+    class StaticParameters(NamedTuple):
+        class StaticHeliosphere(NamedTuple):
+            ssn: np.ndarray
+            v0: np.ndarray
+            tilt_angle: np.ndarray
+            smooth_tilt: np.ndarray
+            b_field: np.ndarray
+            polarity: np.ndarray
+            solar_phase: np.ndarray
+            nmcr: np.ndarray
+            ts_nose: np.ndarray
+            ts_tail: np.ndarray
+            hp_nose: np.ndarray
+            hp_tail: np.ndarray
+
+        class StaticHeliosheat(NamedTuple):
+            k0: np.ndarray
+            v0: np.ndarray
+
+        heliosphere: StaticHeliosphere
+        heliosheat: StaticHeliosheat
+
+        def to_dict(self):
+            return {
+                'heliosphere': {k: InlineList(v.tolist()) for k, v in self.heliosphere._asdict().items()},
+                'heliosheat': {k: InlineList(v.tolist()) for k, v in self.heliosheat._asdict().items()}
+            }
+
+    random_seed: int
+    output_path: str
+    rigidities: RigidityVec
+    isotopes: list[Isotope]
+    sources: tuple[np.ndarray, np.ndarray, np.ndarray]
+    n_particles: int
+    n_regions: int
+    dynamic: DynamicParameters
+    static: StaticParameters
+    relative_bin_amplitude: float = 0.00855
+
+    def to_txt(self, output_path_map: Optional[Callable[[int, Isotope, str], str]] = None) -> list[dict[Isotope, str]]:
+        return [
+            {
+                isotope: '\n'.join(
+                    [
+                        f'RandomSeed: {self.random_seed}',
+                        f'OutputFilename: {self.output_path if output_path_map is None else output_path_map(i, isotope, self.output_path)}',
+                        f'Particle_Charge: {isotope.Z}',
+                        f'Particle_MassNumber: {isotope.A}',
+                        f'Particle_NucleonRestMass: {isotope.T0}',
+                        f'Tcentr: {", ".join(f"{x:.3e}" for x in self.rigidities)}',
+                        f'SourcePos_r: {", ".join(f"{x:.5f}" for x in self.sources[0])}',
+                        f'SourcePos_theta: {", ".join(f"{x:.5f}" for x in self.sources[1])}',
+                        f'SourcePos_phi: {", ".join(f"{x:.5f}" for x in self.sources[2])}',
+                        f'Npart: {self.n_particles * len(self.sources[0])}',
+                        f'Nregions: {self.n_regions}'
+                    ] + [
+                        'HeliosphericParameters: {:.6e}, {:.3f}, {:.2f}, {:.2f}, {:.3f}, {:.3f}, {:.0f}, {:.0f}, {:.3f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}'.format(
+                            *hp
+                        ) for hp in zip(*dyn, *self.static.heliosphere._asdict().values())
+                    ] + [
+                        'HeliosheatParameters: {:.5e}, {:.2f}'.format(*hs)
+                        for hs in zip(*self.static.heliosheat._asdict().values())
+                    ]
+                ) for isotope in self.isotopes
+            } for i, dyn in enumerate(zip(*self.dynamic.heliosphere._asdict().values()))
+        ]
+
+    def to_dict(self) -> dict:
+        return {
+            'random_seed': self.random_seed,
+            'output_path': str(self.output_path),
+            'rigidities': InlineList(self.rigidities.tolist()),
+            'isotopes': {iso.name: {
+                'nucleon_rest_mass': iso.T0,
+                'mass_number': iso.A,
+                'charge': iso.Z,
+            } for iso in self.isotopes},
+            'sources': {
+                'r': InlineList(self.sources[0].tolist()),
+                'th': InlineList(self.sources[1].tolist()),
+                'phi': InlineList(self.sources[2].tolist()),
+            },
+            'relative_bin_amplitude': self.relative_bin_amplitude,
+            'n_particles': self.n_particles,
+            'n_regions': self.n_regions,
+            'dynamic': self.dynamic.to_dict(),
+            'static': self.static.to_dict(),
         }
-    return out
-
-
-def load_simulation_outputs_yaml_file(file_names, debug=False):
-    with open(file_names) as f:
-        yml = yaml.load(f, Loader=yaml.SafeLoader)
-    return load_simulation_outputs_yaml(yml, debug=debug)
-
-
-def load_simulation_outputs(file_names, yaml=False, debug=False):
-    if not yaml:
-        return {basename(fn).split('_')[0]: load_simulation_output(fn, debug)[0] for fn in file_names}
-    return load_simulation_outputs_yaml_file(file_names, debug)

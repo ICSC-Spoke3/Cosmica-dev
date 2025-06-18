@@ -15,7 +15,7 @@ from math import ceil
 import numpy as np
 import yaml
 
-from lib.isotopes import ISOTOPES
+from lib.isotopes import ISOTOPES_dict
 
 yaml.Dumper.ignore_aliases = lambda *args: True
 
@@ -115,7 +115,7 @@ def find_matching_ion(txt, ions):
     return None
 
 def convert_multi_txt_to_yaml(txts, yml, mod =None):
-    ions = [iso[-1].lower() for iso in ISOTOPES.values()]
+    ions = [iso[-1].lower() for iso in ISOTOPES_dict.values()]
     data = None
     for txt in txts:
         assert (ion := find_matching_ion(txt, ions)) is not None
