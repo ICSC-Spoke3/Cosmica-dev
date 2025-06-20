@@ -1,12 +1,17 @@
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
 from typing import Optional, Callable
+
+from cmaes import CMA
+from fstpso import FuzzyPSO
 
 from test.lib.files_utils import LisLoader, SimulationPredictionItem, SimulationInput, HeliosphericParameters, \
     SimulationExperimentItem, ExperimentalData, SimulationOutput, ModulationResult
 from test.lib.isotopes import IONS
 
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import subprocess
 
@@ -92,7 +97,8 @@ def base_input(data_dir: Path, sim: SimulationExperimentItem, rnd: int = 42, n_p
 
     isotopes = sim.ions[0].isotopes
 
-    experimental_data = ExperimentalData.from_data(p_exp / sim.experimental_data_path, (2, 3, 4, 5))
+    p_exp = data_dir / 'experimental' / sim.experimental_data_path
+    experimental_data = ExperimentalData.from_data(p_exp, (2, 3, 4, 5))
     rigidities = experimental_data.rig_flux.rigidity
 
     sphere, sheat = heliospheric_parameters.in_period(sim.period, 15)
@@ -133,8 +139,7 @@ if __name__ == "__main__":
     p_cosmica = Path(__file__).parent.parent.parent / 'Cosmica_V8-speedtest' / 'exefiles' / 'Cosmica'
     p_out = data_dir / 'search' / 'output'
 
-    ROOTDIR = data_dir / 'data'
-    p_lis = ROOTDIR / 'LIS_Default2020_Proton'
+    p_lis = data_dir / 'LIS_Default2020_Proton'
 
     lis_loader = LisLoader(p_lis)
 
@@ -151,14 +156,18 @@ if __name__ == "__main__":
     p_exp = data_dir / 'experimental' / sim.experimental_data_path
     exp_data = ExperimentalData.from_data(p_exp, (2, 3, 4, 5), rig_range=(0, 11))
 
-    k0_list = [1.0, 1.25, 1.5, 1.75, 2.0]
+    population_size = 5
+    optimizer = CMA(mean=np.full(2, 0.000325), sigma=1)
+
 
     for iteration in range(3):
+        k0_list = [optimizer.ask() for _ in range(population_size)]
+
         iter_folder = p_out / f'iteration_{iteration}'
         iter_folder.mkdir(parents=True, exist_ok=True)
 
         print(f"\nIteration {iteration + 1}")
-        inpt = generate_input(template, k0_list)
+        inpt = generate_input(template, [float(k0[0]) for k0 in k0_list])
 
         # Run Cosmica with the generated input
         print("Running Cosmica with the generated input...")
@@ -171,6 +180,8 @@ if __name__ == "__main__":
         results = out.modulate(lis_loader)
 
         fitness = fitness_fn(results, exp_data)
+        print(len(k0_list), len(fitness), fitness)
 
-        k0_list = mistery_function_next_k0list(fitness, k0_list)
+        optimizer.tell([(k0, fit) for k0, fit in zip(k0_list, fitness)])
+        # k0_list = mistery_function_next_k0list(fitness, k0_list)
         print(f"Next k0 list: {k0_list}")
