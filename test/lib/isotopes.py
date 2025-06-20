@@ -1,8 +1,7 @@
 """
 Isotopes module.
 """
-
-from typing_extensions import NamedTuple
+from typing import NamedTuple
 
 IONS_dict = {  # Z    A   T0[GeV/n]      Name
     "Electron": [(-1., 1., 5.109989e-04, "Electron")],

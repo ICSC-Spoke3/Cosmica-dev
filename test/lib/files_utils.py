@@ -92,7 +92,10 @@ class ModulationResult(NamedTuple):
 
     def trim(self, low, high):
         indexes = (self.rigidity > low) & (self.rigidity < high)
-        return ModulationResult(self.rigidity[indexes], self.flux[indexes], self.lis[indexes])
+        return ModulationResult(
+            RigidityVec(self.rigidity[indexes]),
+            FluxVec(self.flux[indexes]),
+            FluxVec(self.lis[indexes]))
 
 
 class IsotopeOutput(NamedTuple):
