@@ -18,7 +18,8 @@ import yaml
 yaml.Dumper.ignore_aliases = lambda self, data: True
 
 
-def run_cosmica(inpt: SimulationInput, cosmica_executable: Path, log_file: Path, output_dir: Path) -> Optional[
+def run_cosmica(inpt: SimulationInput, cosmica_executable: Path, log_file: Path, output_dir: Path,
+                cuda_devices: str = '0,1') -> Optional[
     SimulationOutput]:
     try:
         command = [
@@ -36,7 +37,8 @@ def run_cosmica(inpt: SimulationInput, cosmica_executable: Path, log_file: Path,
 
         input_string = yaml.dump(inpt.to_dict())
 
-        process = subprocess.run(command, input=input_string, capture_output=True, text=True)
+        process = subprocess.run(command, env={'CUDA_VISIBLE_DEVICES': cuda_devices},
+                                 input=input_string, capture_output=True, text=True)
 
         if process.returncode != 0:
             return None
@@ -160,7 +162,7 @@ if __name__ == "__main__":
 
         # Run Cosmica with the generated input
         print("Running Cosmica with the generated input...")
-        out = run_cosmica(inpt, p_cosmica, iter_folder / 'log.log', iter_folder)
+        out = run_cosmica(inpt, p_cosmica, iter_folder / 'log.log', iter_folder, cuda_devices='1')
 
         if out is None:
             print("Failed to load simulation outputs.")
