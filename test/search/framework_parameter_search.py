@@ -8,8 +8,8 @@ from typing import Optional, Callable
 from cmaes import CMA
 import nevergrad as ng
 
-from test.lib.files_utils import LisLoader, SimulationPredictionItem, SimulationInput, HeliosphericParameters, \
-    SimulationExperimentItem, ExperimentalData, SimulationOutput, ModulationResult
+from test.lib.files_utils import LisLoader, SimulationInput, HeliosphericParameters, \
+    SimulationExperimentItem, ExperimentalData, SimulationOutput, ModulationResult, estimate_k0
 from test.lib.isotopes import IONS
 
 

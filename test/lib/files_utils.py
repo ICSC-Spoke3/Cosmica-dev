@@ -431,3 +431,13 @@ class SimulationInput(NamedTuple):
             'dynamic': self.dynamic.to_dict(),
             'static': self.static.to_dict(),
         }
+
+
+def estimate_k0(inpt: SimulationInput) -> list[tuple[float, float]]:
+    hs = inpt.static.heliosphere
+    return [
+        func.eval_k0(float(hs.tilt_angle[period:period + inpt.n_regions].mean()) >= 50,
+                     hs.polarity[period], inpt.isotopes[0].Z, hs.solar_phase[period],
+                     hs.smooth_tilt[period], hs.nmcr[period], hs.ssn[period])
+        for period in range(len(hs.tilt_angle) - inpt.n_regions + 1)
+    ]
