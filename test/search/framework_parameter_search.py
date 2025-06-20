@@ -6,7 +6,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from typing import Optional, Callable
 
 from cmaes import CMA
-from fstpso import FuzzyPSO
+import nevergrad as ng
 
 from test.lib.files_utils import LisLoader, SimulationPredictionItem, SimulationInput, HeliosphericParameters, \
     SimulationExperimentItem, ExperimentalData, SimulationOutput, ModulationResult
@@ -156,29 +156,63 @@ if __name__ == "__main__":
     p_exp = data_dir / 'experimental' / sim.experimental_data_path
     exp_data = ExperimentalData.from_data(p_exp, (2, 3, 4, 5), rig_range=(0, 11))
 
-    population_size = 5
-    optimizer = CMA(mean=np.full(2, 0.000325), sigma=1)
+    population_size = 1
+    #optimizer = CMA(mean=np.full(2, 0.000325), sigma=1)
 
 
-    for iteration in range(3):
-        k0_list = [optimizer.ask() for _ in range(population_size)]
+    lr = ng.p.Scalar(lower=5e-5, upper=6e-4)
+    parametrization = ng.p.Instrumentation(lr)
 
-        iter_folder = p_out / f'iteration_{iteration}'
-        iter_folder.mkdir(parents=True, exist_ok=True)
+    #parametrization = ng.p.Array(shape=(1,))  # optimize on R^1
+    names = ["CMA"]
+    best_params = {}
 
-        print(f"\nIteration {iteration + 1}")
+    for name in names:
+        optim = ng.optimizers.registry[name](parametrization=parametrization, budget=population_size, num_workers=population_size)
 
-        fitness = []
-        for i, k0 in enumerate(k0_list):
-            inpt = generate_input(template, [float(k0[0])])  
-            out = run_cosmica(inpt, p_cosmica, iter_folder / f'log_{i}.log', iter_folder, cuda_devices='1')
-            if out is None:
-                fit = 1e6 
-            else:
-                results = out.modulate(lis_loader)
-                fit = fitness_fn(results, exp_data)[0]
-            fitness.append(fit)
+        evaluated_k0 = []
+        evaluated_loss = []
 
-        print(len(k0_list), len(fitness), fitness)
-        optimizer.tell([(k0, fit) for k0, fit in zip(k0_list, fitness)])
-        print(f"Next k0 list: {k0_list}")
+        for iteration in range(3):
+
+            k0_list = [optim.ask() for _ in range(population_size)]
+            iter_folder = p_out / f'iteration_{iteration}'
+            iter_folder.mkdir(parents=True, exist_ok=True)
+
+            print(f"\nIteration {iteration + 1}")
+
+            fitness = []
+            for i, k0 in enumerate(k0_list):
+
+                param = k0.value[0][0]
+                inpt = generate_input(template, [float(param)])
+                out = run_cosmica(inpt, p_cosmica, iter_folder / f'log_{i}.log', iter_folder, cuda_devices='1')
+                if out is None:
+                    fit = 1e6
+                else:
+                    results = out.modulate(lis_loader)
+                    fit = fitness_fn(results, exp_data)[0]
+                fitness.append(fit)
+
+
+
+            print(len(k0_list), len(fitness), fitness)
+
+            #[(k0.value[0][0], fit) for k0, fit in zip(k0_list, fitness)]
+
+            for k0, fit in zip(k0_list, fitness):
+                evaluated_k0.append(k0.value[0][0])
+                evaluated_loss.append(fit)
+                optim.tell(k0,fit)
+
+            print(f"Next k0 list: {k0_list}")
+
+        #best = optim.provide_recommendation()
+
+
+        best_params[name] =  { "best_x" : np.min(evaluated_k0),
+                               'best_loss' : np.min(evaluated_loss),
+                               "steps": evaluated_k0,
+                               "corr_loss": evaluated_loss} #,"best_loss":
+
+    print(best_params)
