@@ -8,8 +8,8 @@ from typing import Optional, Callable
 from cmaes import CMA
 import nevergrad as ng
 
-from test.lib.files_utils import LisLoader, SimulationInput, HeliosphericParameters, \
-    SimulationExperimentItem, ExperimentalData, SimulationOutput, ModulationResult, estimate_k0
+from test.lib.files_utils import LisLoader, SimulationPredictionItem, SimulationInput, HeliosphericParameters, \
+    SimulationExperimentItem, ExperimentalData, SimulationOutput, ModulationResult
 from test.lib.isotopes import IONS
 
 
@@ -37,7 +37,7 @@ def run_cosmica(inpt: SimulationInput, cosmica_executable: Path, log_file: Path,
             str(log_file),
             "-o",
             str(output_dir) + '/',
-        ]
+            ]
         print(f"Executing command: {' '.join(command)}")
 
         input_string = yaml.dump(inpt.to_dict())
