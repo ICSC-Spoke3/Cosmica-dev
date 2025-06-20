@@ -167,21 +167,18 @@ if __name__ == "__main__":
         iter_folder.mkdir(parents=True, exist_ok=True)
 
         print(f"\nIteration {iteration + 1}")
-        inpt = generate_input(template, [float(k0[0]) for k0 in k0_list])
 
-        # Run Cosmica with the generated input
-        print("Running Cosmica with the generated input...")
-        out = run_cosmica(inpt, p_cosmica, iter_folder / 'log.log', iter_folder, cuda_devices='1')
+        fitness = []
+        for i, k0 in enumerate(k0_list):
+            inpt = generate_input(template, [float(k0[0])])  
+            out = run_cosmica(inpt, p_cosmica, iter_folder / f'log_{i}.log', iter_folder, cuda_devices='1')
+            if out is None:
+                fit = 1e6 
+            else:
+                results = out.modulate(lis_loader)
+                fit = fitness_fn(results, exp_data)[0]
+            fitness.append(fit)
 
-        if out is None:
-            print("Failed to load simulation outputs.")
-            continue
-
-        results = out.modulate(lis_loader)
-
-        fitness = fitness_fn(results, exp_data)
         print(len(k0_list), len(fitness), fitness)
-
         optimizer.tell([(k0, fit) for k0, fit in zip(k0_list, fitness)])
-        # k0_list = mistery_function_next_k0list(fitness, k0_list)
         print(f"Next k0 list: {k0_list}")
