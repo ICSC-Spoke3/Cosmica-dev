@@ -6,10 +6,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from typing import Optional, Callable
 
 from cmaes import CMA
-from fstpso import FuzzyPSO
 
-from test.lib.files_utils import LisLoader, SimulationPredictionItem, SimulationInput, HeliosphericParameters, \
-    SimulationExperimentItem, ExperimentalData, SimulationOutput, ModulationResult
+from test.lib.files_utils import LisLoader, SimulationInput, HeliosphericParameters, \
+    SimulationExperimentItem, ExperimentalData, SimulationOutput, ModulationResult, estimate_k0
 from test.lib.isotopes import IONS
 
 
@@ -156,8 +155,9 @@ if __name__ == "__main__":
     p_exp = data_dir / 'experimental' / sim.experimental_data_path
     exp_data = ExperimentalData.from_data(p_exp, (2, 3, 4, 5), rig_range=(0, 11))
 
+    initial_k0 = estimate_k0(template)
     population_size = 5
-    optimizer = CMA(mean=np.full(2, 0.000325), sigma=1)
+    optimizer = CMA(mean=np.full(2,initial_k0), sigma=1)
 
 
     for iteration in range(3):

@@ -193,13 +193,14 @@ def eval_k0(is_high_activity_period, p, q, solar_phase, tilt, nmc, ssn):
 
     #   float3 output;
     # k0_paral is corrected by a correction factor
-    k0cor = k0_corr_factor(p, q, solar_phase, tilt)
+    k0_par = k0_corr_factor(p, q, solar_phase, tilt)
     # If high activity period and nmc (neutral sheet magnetic crossing) is greater than 0
     if is_high_activity_period and nmc > 0:
-        k0, kerr = k0_fit_nmc(nmc)
+        k0_perp, kerr = k0_fit_nmc(nmc)
     else:
-        k0, kerr = k0_fit_ssn(p, solar_phase, ssn)
-    return k0 * k0cor, kerr
+        k0_perp, kerr = k0_fit_ssn(p, solar_phase, ssn)
+    k0_par *= k0_perp
+    return k0_par, kerr
 
 
 def lin_log_interpolation(vx, vy, vx_new):
