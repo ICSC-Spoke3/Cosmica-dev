@@ -9,7 +9,7 @@ from cmaes import CMA
 import nevergrad as ng
 
 from test.lib.files_utils import LisLoader, SimulationPredictionItem, SimulationInput, HeliosphericParameters, \
-    SimulationExperimentItem, ExperimentalData, SimulationOutput, ModulationResult
+    SimulationExperimentItem, ExperimentalData, SimulationOutput, ModulationResult, estimate_k0
 from test.lib.isotopes import IONS
 
 
@@ -167,15 +167,45 @@ if __name__ == "__main__":
     names = ["CMA"]
     best_params = {}
 
-    for name in names:
-        optim = ng.optimizers.registry[name](parametrization=parametrization, budget=population_size, num_workers=population_size)
+    
 
-        evaluated_k0 = []
-        evaluated_loss = []
+    
+    
+
+    for name in names:
+
+        # Initialization with an estimated k0
+        initial_k0 = estimate_k0(template)[0][0]
+        print(f"Estimated initial k0: {initial_k0}")
+        inpt = generate_input(template, [float(initial_k0)])
+        iter_folder = p_out / 'initial'
+        iter_folder.mkdir(parents=True, exist_ok=True)
+        out = run_cosmica(inpt, p_cosmica, iter_folder / 'log_initial.log', iter_folder, cuda_devices='1')
+        if out is None:
+            fit = 1e6
+            raise RuntimeError(f"Cosmica run failed for initial k0={initial_k0}")
+        else:
+            results = out.modulate(lis_loader)
+            fit = fitness_fn(results, exp_data)[0]
+
+
+        init_param = parametrization.spawn_child()
+        init_param.value = ((initial_k0,), {})
+
+        evaluated_k0 = [initial_k0]
+        evaluated_loss = [fit]
+        
+        optim = ng.optimizers.registry[name](parametrization=parametrization, budget=population_size, num_workers=population_size)
+        
+        optim.tell(init_param, fit)
+
+        # evaluated_k0 = []
+        # evaluated_loss = []
 
         for iteration in range(3):
 
             k0_list = [optim.ask() for _ in range(population_size)]
+            print(f"Current k0 list: {[k0.value[0][0] for k0 in k0_list]}")
             iter_folder = p_out / f'iteration_{iteration}'
             iter_folder.mkdir(parents=True, exist_ok=True)
 
@@ -200,7 +230,7 @@ if __name__ == "__main__":
 
 
 
-            print(len(k0_list), len(fitness), fitness)
+            # print(len(k0_list), len(fitness), fitness)
 
             #[(k0.value[0][0], fit) for k0, fit in zip(k0_list, fitness)]
 
@@ -209,7 +239,7 @@ if __name__ == "__main__":
                 evaluated_loss.append(fit)
                 optim.tell(k0,fit)
 
-            print(f"Next k0 list: {k0_list}")
+            # print(f"Next k0 list: {k0_list}")
 
         #best = optim.provide_recommendation()
 
