@@ -63,3 +63,5 @@ if __name__ == "__main__":
     plt.legend()
     plt.grid(True)
     plt.show()
+    plt.savefig("./rastrigin_optimization.png", dpi=300, bbox_inches='tight')
+    print(f"Best x: {best_x}, Best f(x): {best_y}")

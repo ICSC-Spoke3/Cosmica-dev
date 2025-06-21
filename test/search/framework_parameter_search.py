@@ -189,6 +189,10 @@ if __name__ == "__main__":
                 out = run_cosmica(inpt, p_cosmica, iter_folder / f'log_{i}.log', iter_folder, cuda_devices='1')
                 if out is None:
                     fit = 1e6
+                    print(f"Error running Cosmica for k0={param}, setting fitness to {fit}")
+                    # TODO: handle this case properly
+                    if iteration != 0:
+                        raise RuntimeError(f"Cosmica run failed for k0={param}")
                 else:
                     results = out.modulate(lis_loader)
                     fit = fitness_fn(results, exp_data)[0]
