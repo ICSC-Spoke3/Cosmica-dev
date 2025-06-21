@@ -12,7 +12,6 @@ from test.lib.files_utils import LisLoader, SimulationPredictionItem, Simulation
     SimulationExperimentItem, ExperimentalData, SimulationOutput, ModulationResult, estimate_k0
 from test.lib.isotopes import IONS
 
-
 import subprocess
 
 import numpy as np
@@ -37,7 +36,7 @@ def run_cosmica(inpt: SimulationInput, cosmica_executable: Path, log_file: Path,
             str(log_file),
             "-o",
             str(output_dir) + '/',
-            ]
+        ]
         print(f"Executing command: {' '.join(command)}")
 
         input_string = yaml.dump(inpt.to_dict())
@@ -157,20 +156,14 @@ if __name__ == "__main__":
     exp_data = ExperimentalData.from_data(p_exp, (2, 3, 4, 5), rig_range=(0, 11))
 
     population_size = 1
-    #optimizer = CMA(mean=np.full(2, 0.000325), sigma=1)
-
+    # optimizer = CMA(mean=np.full(2, 0.000325), sigma=1)
 
     lr = ng.p.Scalar(lower=5e-5, upper=6e-4)
     parametrization = ng.p.Instrumentation(lr)
 
-    #parametrization = ng.p.Array(shape=(1,))  # optimize on R^1
+    # parametrization = ng.p.Array(shape=(1,))  # optimize on R^1
     names = ["CMA"]
     best_params = {}
-
-    
-
-    
-    
 
     for name in names:
 
@@ -188,15 +181,15 @@ if __name__ == "__main__":
             results = out.modulate(lis_loader)
             fit = fitness_fn(results, exp_data)[0]
 
-
         init_param = parametrization.spawn_child()
         init_param.value = ((initial_k0,), {})
 
         evaluated_k0 = [initial_k0]
         evaluated_loss = [fit]
-        
-        optim = ng.optimizers.registry[name](parametrization=parametrization, budget=population_size, num_workers=population_size)
-        
+
+        optim = ng.optimizers.registry[name](parametrization=parametrization, budget=population_size,
+                                             num_workers=population_size)
+
         optim.tell(init_param, fit)
 
         # evaluated_k0 = []
@@ -211,38 +204,28 @@ if __name__ == "__main__":
 
             print(f"\nIteration {iteration + 1}")
 
-            fitness = []
-            for i, k0 in enumerate(k0_list):
+            params = [float(k0[0]) for k0 in k0_list]
+            inpt = generate_input(template, params)
+            out = run_cosmica(inpt, p_cosmica, iter_folder / f'log.log', iter_folder, cuda_devices='1')
 
-                param = k0.value[0][0]
-                inpt = generate_input(template, [float(param)])
-                out = run_cosmica(inpt, p_cosmica, iter_folder / f'log_{i}.log', iter_folder, cuda_devices='1')
-                if out is None:
-                    raise RuntimeError(f"Cosmica run failed for k0={param}")
-                else:
-                    results = out.modulate(lis_loader)
-                    fit = fitness_fn(results, exp_data)[0]
-                fitness.append(fit)
+            if out is None:
+                raise RuntimeError(f"Cosmica run failed for k0={params}")
 
-
-
-            # print(len(k0_list), len(fitness), fitness)
-
-            #[(k0.value[0][0], fit) for k0, fit in zip(k0_list, fitness)]
+            results = out.modulate(lis_loader)
+            fitness = fitness_fn(results, exp_data)
 
             for k0, fit in zip(k0_list, fitness):
-                evaluated_k0.append(k0.value[0][0])
+                evaluated_k0.append(float(k0[0]))
                 evaluated_loss.append(fit)
-                optim.tell(k0,fit)
+                optim.tell(k0, fit)
 
             # print(f"Next k0 list: {k0_list}")
 
-        #best = optim.provide_recommendation()
+        # best = optim.provide_recommendation()
 
-
-        best_params[name] =  { "best_x" : np.min(evaluated_k0),
-                               'best_loss' : np.min(evaluated_loss),
-                               "steps": evaluated_k0,
-                               "corr_loss": evaluated_loss} #,"best_loss":
+        best_params[name] = {"best_x": np.min(evaluated_k0),
+                             'best_loss': np.min(evaluated_loss),
+                             "steps": evaluated_k0,
+                             "corr_loss": evaluated_loss}  # ,"best_loss":
 
     print(best_params)
