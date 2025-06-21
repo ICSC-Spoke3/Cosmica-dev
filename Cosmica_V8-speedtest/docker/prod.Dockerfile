@@ -1,17 +1,11 @@
 FROM sdegno-dev
 
-ARG SSH_KEY
-ARG ARCH=80
+ARG ARCH
 
-RUN mkdir $HOME/.ssh/
-RUN echo "$SSH_KEY" > $HOME/.ssh/id_rsa
-RUN chmod 600 $HOME/.ssh/id_rsa
-RUN touch $HOME/.ssh/known_hosts
-RUN ssh-keyscan github.com >> $HOME/.ssh/known_hosts
+COPY . /home/sdegno/Cosmica_V8/
 
-RUN git clone git@github.com:SDEGnOHub/Cosmica-dev.git
+WORKDIR /home/sdegno/Cosmica_V8
 
-WORKDIR /home/sdegno/Cosmica-dev/Cosmica_V8-speedtest
-
+RUN rm -rf ./build
 RUN cmake -S . ./build -DCMAKE_CUDA_ARCHITECTURES=$ARCH
 RUN cmake --build ./build --target Cosmica -- -j 10
