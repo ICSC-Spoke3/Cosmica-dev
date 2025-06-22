@@ -22,11 +22,13 @@ def monitor_gpu_power(power_readings_list, stop_event, device_index='0', interva
         nvmlShutdown()
 
 
-def run_cosmica(cosmica_executable: list[str], input_file: Path, output_dir: Path, cuda_devices='0,1'):
+def run_cosmica(base_command: list[str | Path] | str | Path, input_file: Path, output_dir: Path,
+                cuda_devices='0,1'):
     try:
         output_dir.mkdir(exist_ok=True, parents=True)
 
-        command = cosmica_executable + ["-i", str(input_file)]
+        command = list(map(str, base_command)) if isinstance(base_command, list) else [str(base_command)]
+        command += ["-i", str(input_file)]
 
         power_readings_mw = []
         stop_monitoring_event = threading.Event()
@@ -52,7 +54,7 @@ def run_cosmica(cosmica_executable: list[str], input_file: Path, output_dir: Pat
 
     except FileNotFoundError as f:
         print(f)
-        print(f"Error: Cosmica executable not found at {cosmica_executable}")
+        print(f"Error: Cosmica executable not found at {base_command}")
         return None, None, -1, None
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -60,17 +62,18 @@ def run_cosmica(cosmica_executable: list[str], input_file: Path, output_dir: Pat
 
 
 if __name__ == "__main__":
-    VERSION = 'V6'
-    SET = '*_part_*'
+    VERSION = 'V8'
+    SET = '*'
 
     data_dir = Path(__file__).parent.parent / 'data'
     p_cosmica = Path(__file__).parent.parent.parent / f'Cosmica_{VERSION}-speedtest' / 'exefiles' / 'Cosmica'
+    # p_cosmica = [sys.executable, Path(__file__).parent.parent.parent / f'Cosmica_{VERSION}-speedtest' / 'launch_docker.py']
     p_inputs = sorted((data_dir / 'benchmark' / 'inputs').rglob(f'{SET}/*.yaml' if VERSION == 'V8' else f'{SET}/*.txt'))
     p_outputs = data_dir / 'benchmark' / 'outputs'
 
     for inpt in p_inputs:
         out_dir = p_outputs / inpt.parent.name
-        _, _, _, bench, power = run_cosmica([str(p_cosmica)], inpt, out_dir, cuda_devices='0')
+        _, _, _, bench, power = run_cosmica(p_cosmica, inpt, out_dir, cuda_devices='0')
         with open(out_dir / f'power_{VERSION}.csv', 'a') as f:
             f.writelines([f'{p}\n' for p in power])
         with open(out_dir / f'exetime_{VERSION}.csv', 'a') as f:
