@@ -12,6 +12,7 @@ from test.lib.files_utils import (
     SimulationExperimentItem, ExperimentalData, SimulationOutput, ModulationResult, estimate_k0
 )
 from test.lib.isotopes import IONS
+from test.lib import metrics
 
 import subprocess
 import numpy as np
@@ -191,7 +192,8 @@ def run_optimization(sim: SimulationExperimentItem, data_dir: Path, cosmica_path
         if out is None:
             raise RuntimeError(f"Cosmica run failed for initial k0={initial_k0}")
         results = out.modulate(lis_loader)
-        fit = fitness_fn(results, exp_data)[0]
+        # fit = fitness_fn(results, exp_data)[0]
+        fit = fitness_fn(results, exp_data, metric_fn=metrics.rmse)[0]
 
         init_param = parametrization.spawn_child()
         init_param.value = ((initial_k0,), {})
@@ -220,7 +222,8 @@ def run_optimization(sim: SimulationExperimentItem, data_dir: Path, cosmica_path
             if out is None:
                 raise RuntimeError(f"Cosmica run failed for k0={params}")
             results = out.modulate(lis_loader)
-            fitness = fitness_fn(results, exp_data)
+            # fitness_fn = fitness_fn(results, exp_data)
+            fitness = fitness_fn(results, exp_data, metric_fn=metrics.rmse)
             for k0, fit in zip(k0_list, fitness):
                 evaluated_k0.append(float(k0.value[0][0]))
                 evaluated_loss.append(fit)
