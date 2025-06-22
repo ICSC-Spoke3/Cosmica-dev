@@ -1,4 +1,4 @@
-docker build -t sdegno-dev -f docker/dev.Dockerfile .
+docker build -t sdegno-dev -f docker_files/dev.Dockerfile .
 
 if [ -n "$1" ]; then
     ARCH="$1"
@@ -26,4 +26,4 @@ else
     echo "GPU name: '$GPU_NAME', Architecture: '$ARCH'"
 fi
 
-docker build -t sdegno-prod -f docker/prod.Dockerfile --build-arg ARCH=$ARCH .
+docker build -t sdegno-prod -f docker_files/prod.Dockerfile --build-arg ARCH=$ARCH .

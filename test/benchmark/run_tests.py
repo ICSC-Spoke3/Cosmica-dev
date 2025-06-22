@@ -22,11 +22,11 @@ def monitor_gpu_power(power_readings_list, stop_event, device_index='0', interva
         nvmlShutdown()
 
 
-def run_cosmica(cosmica_executable, input_file, output_dir, cuda_devices='0,1'):
+def run_cosmica(cosmica_executable: list[str], input_file: Path, output_dir: Path, cuda_devices='0,1'):
     try:
         output_dir.mkdir(exist_ok=True, parents=True)
 
-        command = [str(cosmica_executable), "-i", str(input_file)]
+        command = cosmica_executable + ["-i", str(input_file)]
 
         power_readings_mw = []
         stop_monitoring_event = threading.Event()
@@ -70,7 +70,7 @@ if __name__ == "__main__":
 
     for inpt in p_inputs:
         out_dir = p_outputs / inpt.parent.name
-        _, _, _, bench, power = run_cosmica(p_cosmica, inpt, out_dir, cuda_devices='0')
+        _, _, _, bench, power = run_cosmica([str(p_cosmica)], inpt, out_dir, cuda_devices='0')
         with open(out_dir / f'power_{VERSION}.csv', 'a') as f:
             f.writelines([f'{p}\n' for p in power])
         with open(out_dir / f'exetime_{VERSION}.csv', 'a') as f:

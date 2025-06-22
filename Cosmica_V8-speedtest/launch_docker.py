@@ -87,6 +87,6 @@ if __name__ == "__main__":
         sys.exit(1)
 
     image = 'sdegno-prod'
-    script = '/home/sdegno/Cosmica-dev/Cosmica_V8-speedtest/exefiles/Cosmica'
+    script = '/home/sdegno/Cosmica_V8/exefiles/Cosmica'
     script_args = sys.argv[1:]
     run_container(image, script, script_args)
