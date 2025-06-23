@@ -95,17 +95,6 @@ __constant__ SimulationConstants_t Constants;
 #include "sources/SolarWind.cu"
 #endif
 
-bool test_and_pop(std::deque<unsigned> &queue, unsigned &val) {
-    bool ret;
-#pragma omp critical
-    {
-        if ((ret = !queue.empty())) {
-            val = queue.front();
-            queue.pop_front();
-        }
-    }
-    return ret;
-}
 
 // Main Code
 int main(int argc, char *argv[]) {
@@ -181,11 +170,7 @@ int main(int argc, char *argv[]) {
         spdlog::info("Old histogram files deleted successfully");
     }
 
-    EventSequence BENCHMARK{"Cosmica", true};
-    vector<EventSequence::EventSequencePtr> THREAD_BENCHMARKS;
-    for (int t = 0; t < NGPUs; ++t) {
-        THREAD_BENCHMARKS.push_back(BENCHMARK.StartSubsequence(fmt::format("GPU {}", t)));
-    }
+    EventSequence BENCHMARK{"Cosmica"};
 
     ThreadIndexes_t global_indexes = AllocateIndex(NParts);
     for (unsigned r = 0; r < NRig; ++r) {
@@ -204,6 +189,8 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    BENCHMARK.AddEvent("Index copied");
+
     ThreadQuasiParticles_t global_parts = AllocateQuasiParticles(NParts);
     for (unsigned iPart = 0; iPart < NParts; ++iPart) {
         global_parts.r[iPart] = SimParameters.InitialPositions.r[global_indexes.period[iPart]];
@@ -220,6 +207,16 @@ int main(int argc, char *argv[]) {
     }
 
     auto global_res = SimParameters.Results = AllocateResults(NRig, NInstances);
+
+    BENCHMARK.AddEvent("Particles allocated");
+
+    spdlog::info("Global memory allocated");
+
+    auto THREAD_SEQUENCE = BENCHMARK.StartSubsequence("Threads", true);
+    vector<EventSequence::EventSequencePtr> THREAD_BENCHMARKS;
+    for (int t = 0; t < NGPUs; ++t) {
+        THREAD_BENCHMARKS.push_back(THREAD_SEQUENCE->StartSubsequence(fmt::format("GPU {}", t)));
+    }
 
 #pragma omp parallel
     {
@@ -250,7 +247,6 @@ int main(int argc, char *argv[]) {
         ThreadIndexes_t indexes = AllocateIndex(NPartsPerGPU);
         ThreadQuasiParticles_t QuasiParts = AllocateQuasiParticles(NPartsPerGPU);
 
-
         for (unsigned iPart = 0, iGlobal = gpu_id; iPart < NPartsPerGPU; ++iPart, iGlobal += NGPUs) {
             indexes.rig[iPart] = global_indexes.rig[iGlobal];
             indexes.param[iPart] = global_indexes.param[iGlobal];
@@ -269,19 +265,27 @@ int main(int argc, char *argv[]) {
 
         auto Results = AllocateResults(NRig, NInstances);
 
+        THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Index and particles copied");
+
+        spdlog::debug("Local memory allocated [GPU: {}]", gpu_id);
+
+        spdlog::info("Propagation start [GPU: {}]", gpu_id);
+
         cudaDeviceSynchronize();
         HeliosphericProp<<<BLOCKS, THREADS>>>(QuasiParts, indexes, SimParameters.simulation_parametrization,
                                               RandStates.get(), Maxs);
         cudaDeviceSynchronize();
 
-        THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Propagation Completed");
+        THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Propagation completed");
 
-        THREAD_BENCHMARKS[cpu_thread_id]->StartSubsequence("Histograms Allocation");
+        spdlog::info("Propagation complete [GPU: {}]", gpu_id);
+
+        // THREAD_BENCHMARKS[cpu_thread_id]->StartSubsequence("Histograms Allocation");
         for (unsigned iR = 0; iR < NRig; ++iR) {
-            for (unsigned inst = 0; inst < NInstances; ++inst) {
-                if (Maxs[iR][inst] < SimParameters.Tcentr[iR]) {
-                    spdlog::error("The max exiting rigidity is smaller than initial one (Rig {}, Instance {})", iR,
-                                  inst);
+            for (unsigned iI = 0; iI < NInstances; ++iI) {
+                if (Maxs[iR][iI] < SimParameters.Tcentr[iR]) {
+                    spdlog::error("The max exiting rigidity is smaller than initial one (Rig {}, Instance {})",
+                                  iR, iI);
                     continue; //TODO: check if needed
                 }
 
@@ -289,64 +293,61 @@ int main(int argc, char *argv[]) {
                 float LogBin0_lowEdge = log10f(SimParameters.Tcentr[iR]) - DeltaLogR / 2.f;
                 float Bin0_lowEdge = powf(10, LogBin0_lowEdge);
 
-                Results[iR][inst].Nbins = ceil(log10(Maxs[iR][inst] / Bin0_lowEdge) / DeltaLogR);
-                Results[iR][inst].LogBin0_lowEdge = LogBin0_lowEdge;
-                Results[iR][inst].DeltaLogR = DeltaLogR;
+                Results[iR][iI].Nbins = ceil(log10(Maxs[iR][iI] / Bin0_lowEdge) / DeltaLogR);
+                Results[iR][iI].LogBin0_lowEdge = LogBin0_lowEdge;
+                Results[iR][iI].DeltaLogR = DeltaLogR;
 
-                Results[iR][inst].BoundaryDistribution = AllocateManaged<float[]>(Results[iR][inst].Nbins, 0);
-                THREAD_BENCHMARKS[cpu_thread_id]->AddEvent(fmt::format("Histogram {} Allocated", inst));
+                Results[iR][iI].BoundaryDistribution = AllocateManaged<float[]>(Results[iR][iI].Nbins, 0);
+                // THREAD_BENCHMARKS[cpu_thread_id]->AddEvent(fmt::format("Histogram {} Allocated", iI));
             }
         }
-        THREAD_BENCHMARKS[cpu_thread_id]->StopSubsequence();
+        THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Histograms allocated");
 
         cudaDeviceSynchronize();
         SimpleHistogram<<<BLOCKS, THREADS>>>(indexes, QuasiParts.R, Results, Nfailed);
         cudaDeviceSynchronize();
 
         for (unsigned iR = 0; iR < NRig; ++iR) {
-            for (unsigned inst = 0; inst < NInstances; ++inst) {
-                Results[iR][inst].Nregistered = NPartsPerInstancePerGPU - Nfailed[iR][inst];
+            for (unsigned iI = 0; iI < NInstances; ++iI) {
+                Results[iR][iI].Nregistered = NPartsPerInstancePerGPU - Nfailed[iR][iI];
 #pragma omp critical
                 {
-                    if (global_res[iR][inst].Nbins == 0) {
-                        global_res[iR][inst].Nregistered = Results[iR][inst].Nregistered;
-                        global_res[iR][inst].Nbins = Results[iR][inst].Nbins;
-                        global_res[iR][inst].LogBin0_lowEdge = Results[iR][inst].LogBin0_lowEdge;
-                        global_res[iR][inst].DeltaLogR = Results[iR][inst].DeltaLogR;
-                        global_res[iR][inst].BoundaryDistribution = AllocateManaged<float[]>(
-                            global_res[iR][inst].Nbins);
-                        for (unsigned b = 0; b < global_res[iR][inst].Nbins; ++b)
-                            global_res[iR][inst].BoundaryDistribution[b] = Results[iR][inst].BoundaryDistribution[b];
+                    if (global_res[iR][iI].Nbins == 0) {
+                        global_res[iR][iI].Nregistered = Results[iR][iI].Nregistered;
+                        global_res[iR][iI].Nbins = Results[iR][iI].Nbins;
+                        global_res[iR][iI].LogBin0_lowEdge = Results[iR][iI].LogBin0_lowEdge;
+                        global_res[iR][iI].DeltaLogR = Results[iR][iI].DeltaLogR;
+                        global_res[iR][iI].BoundaryDistribution = AllocateManaged<float[]>(
+                            global_res[iR][iI].Nbins);
+                        for (unsigned b = 0; b < global_res[iR][iI].Nbins; ++b)
+                            global_res[iR][iI].BoundaryDistribution[b] = Results[iR][iI].BoundaryDistribution[b];
                     } else {
-                        global_res[iR][inst].Nregistered += Results[iR][inst].Nregistered;
+                        global_res[iR][iI].Nregistered += Results[iR][iI].Nregistered;
 
-                        if (global_res[iR][inst].Nbins < Results[iR][inst].Nbins) {
-                            for (unsigned b = 0; b < global_res[iR][inst].Nbins; ++b)
-                                Results[iR][inst].BoundaryDistribution[b] +=
-                                        global_res[iR][inst].BoundaryDistribution[b];
-                            delete[] global_res[iR][inst].BoundaryDistribution;
+                        if (global_res[iR][iI].Nbins < Results[iR][iI].Nbins) {
+                            for (unsigned b = 0; b < global_res[iR][iI].Nbins; ++b)
+                                Results[iR][iI].BoundaryDistribution[b] +=
+                                        global_res[iR][iI].BoundaryDistribution[b];
+                            delete[] global_res[iR][iI].BoundaryDistribution;
 
-                            global_res[iR][inst].Nbins = Results[iR][inst].Nbins;
-                            global_res[iR][inst].BoundaryDistribution = AllocateManaged<float[]>(
-                                global_res[iR][inst].Nbins, 0);
+                            global_res[iR][iI].Nbins = Results[iR][iI].Nbins;
+                            global_res[iR][iI].BoundaryDistribution = AllocateManaged<float[]>(
+                                global_res[iR][iI].Nbins, 0);
                         }
 
-                        for (unsigned b = 0; b < Results[iR][inst].Nbins; ++b) {
-                            global_res[iR][inst].BoundaryDistribution[b] += Results[iR][inst].BoundaryDistribution[b];
+                        for (unsigned b = 0; b < Results[iR][iI].Nbins; ++b) {
+                            global_res[iR][iI].BoundaryDistribution[b] += Results[iR][iI].BoundaryDistribution[b];
                         }
                     }
                 }
             }
         }
 
-        THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Histograms Generated");
+        THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Histograms computed");
+
+        spdlog::info("Histograms generated [GPU: {}]", gpu_id);
 
         for (unsigned iPart = 0, iGlobal = gpu_id; iPart < NPartsPerGPU; ++iPart, iGlobal += NGPUs) {
-            global_indexes.rig[iGlobal] = indexes.rig[iPart];
-            global_indexes.param[iGlobal] = indexes.param[iPart];
-            global_indexes.isotope[iGlobal] = indexes.isotope[iPart];
-            global_indexes.period[iGlobal] = indexes.period[iPart];
-
             global_parts.r[iGlobal] = QuasiParts.r[iPart];
             global_parts.th[iGlobal] = QuasiParts.th[iPart];
             global_parts.phi[iGlobal] = QuasiParts.phi[iPart];
@@ -354,14 +355,18 @@ int main(int argc, char *argv[]) {
             global_parts.t_fly[iGlobal] = QuasiParts.t_fly[iPart];
         }
 
-        THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Shared Data Allocated");
+        THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Particles copied back");
     }
+
+    THREAD_SEQUENCE->StopSubsequence();
+    BENCHMARK.StopSubsequence();
 
     // Generate the YAML file name, following the old naming convention:
     if (StoreResults(options, SimParameters) != EXIT_SUCCESS) {
         spdlog::critical("Error while storing simulation results");
         exit(EXIT_FAILURE);
     }
+    BENCHMARK.AddEvent("Output written");
 
     delete[] SimParameters.InitialPositions.r;
     delete[] SimParameters.InitialPositions.th;
@@ -370,9 +375,9 @@ int main(int argc, char *argv[]) {
 
     delete[] GPUs_profile;
 
-    if (spdlog::get_level() == spdlog::level::trace) BENCHMARK.Log(spdlog::level::trace, 3);
-    if (spdlog::get_level() == spdlog::level::debug) BENCHMARK.Log(spdlog::level::debug, 2);
-    BENCHMARK.Log(spdlog::level::info, 1);
+    if (spdlog::get_level() == spdlog::level::trace) BENCHMARK.Log(spdlog::level::trace, 4);
+    if (spdlog::get_level() == spdlog::level::debug) BENCHMARK.Log(spdlog::level::debug, 3);
+    BENCHMARK.Log(spdlog::level::info, 2);
 
     spdlog::info("Simulation ended");
 
