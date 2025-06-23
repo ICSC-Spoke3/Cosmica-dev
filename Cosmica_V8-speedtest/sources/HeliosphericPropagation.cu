@@ -17,7 +17,7 @@
  */
 __global__ void HeliosphericProp(ThreadQuasiParticles_t QuasiParts_out, const ThreadIndexes_t indexes,
                                  const SimulationParametrizations_t params, curandStatePhilox4_32_10_t *const CudaState,
-                                 float *RMaxs) {
+                                 float **RMaxs) {
     const unsigned id = threadIdx.x + blockIdx.x * blockDim.x;
     if (id >= indexes.size) return;
 
@@ -70,5 +70,5 @@ __global__ void HeliosphericProp(ThreadQuasiParticles_t QuasiParts_out, const Th
 
     CudaState[id] = randState;
 
-    atomicMax(&RMaxs[index.instance(Constants.NIsotopes)], qp.R);
+    atomicMax(&RMaxs[index.rig][index.instance(Constants.NIsotopes)], qp.R);
 }

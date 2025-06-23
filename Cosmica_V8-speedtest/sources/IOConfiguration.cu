@@ -763,7 +763,7 @@ int StoreResultsDat(std::ostream *stream, [[maybe_unused]] const cli_options &op
         *stream << "# output distribution \n";
 
         *stream << std::scientific; // Ensure scientific notation for floating-point values
-        for (int itNB = 0; itNB < config.Results[itemp][0].Nbins; itNB++) {
+        for (unsigned itNB = 0; itNB < config.Results[itemp][0].Nbins; itNB++) {
             *stream << config.Results[itemp][0].BoundaryDistribution[itNB] << " ";
         }
 

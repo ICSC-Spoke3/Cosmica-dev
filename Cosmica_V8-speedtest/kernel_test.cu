@@ -146,19 +146,24 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    unsigned NParams = SimParameters.simulation_parametrization.Nparams,
+    SimParameters.Npart = (SimParameters.Npart + NGPUs - 1) / NGPUs * NGPUs; // Round up to the closest multiple
+
+    unsigned NRig = SimParameters.NT,
+            NParams = SimParameters.simulation_parametrization.Nparams,
             NPositions = SimParameters.NInitialPositions,
             NIsotopes = SimParameters.simulation_constants.NIsotopes,
-            NRep = SimParameters.Npart;
+            NRep = SimParameters.Npart,
+            NRepPerGPU = SimParameters.Npart / NGPUs;
     unsigned NInstances = NParams * NIsotopes,
-            NPartsPerInstance = NPositions * NRep;
-    unsigned NParts = NInstances * NPartsPerInstance;
+            NPartsPerInstance = NPositions * NRep,
+            NPartsPerInstancePerGPU = NPositions * NRepPerGPU;
+    unsigned NParts = NRig * NInstances * NPartsPerInstance,
+            NPartsPerGPU = NRig * NInstances * NPartsPerInstancePerGPU;
     spdlog::info("Simulation parameters loaded:");
+    spdlog::info("# of rigidities: {}", NRig);
     spdlog::info("# of instances: {}", NInstances);
     spdlog::info("# particles per instance: {}", NPartsPerInstance);
     spdlog::info("# total particles: {}", NParts);
-
-    auto Results = SimParameters.Results = AllocateResults(SimParameters.NT, NInstances);
 
     std::string init_filename = SimParameters.output_file + "_prop_in.txt";
     std::string final_filename = SimParameters.output_file + "_prop_out.txt";
@@ -182,13 +187,39 @@ int main(int argc, char *argv[]) {
         THREAD_BENCHMARKS.push_back(BENCHMARK.StartSubsequence(fmt::format("GPU {}", t)));
     }
 
-#define USE_RIGIDITY_QUEUE
-#ifdef USE_RIGIDITY_QUEUE
-    auto rig_indexes = std::views::iota(0u, SimParameters.NT);
-    std::deque<unsigned> queue{rig_indexes.begin(), rig_indexes.end()};
-    // std::deque<unsigned> queue;
-    // for (unsigned i = 0; i < SimParameters.NT; ++i) queue.push_back(i);
-#endif
+    ThreadIndexes_t global_indexes = AllocateIndex(NParts);
+    for (unsigned r = 0; r < NRig; ++r) {
+        for (unsigned p = 0; p < NParams; ++p) {
+            for (unsigned i = 0; i < NIsotopes; ++i) {
+                for (unsigned o = 0; o < NPositions; ++o) {
+                    for (unsigned x = 0; x < NRep; ++x) {
+                        unsigned idx = x + NRep * (o + NPositions * (i + NIsotopes * (p + NParams * r)));
+                        global_indexes.rig[idx] = r;
+                        global_indexes.param[idx] = p;
+                        global_indexes.isotope[idx] = i;
+                        global_indexes.period[idx] = o;
+                    }
+                }
+            }
+        }
+    }
+
+    ThreadQuasiParticles_t global_parts = AllocateQuasiParticles(NParts);
+    for (unsigned iPart = 0; iPart < NParts; ++iPart) {
+        global_parts.r[iPart] = SimParameters.InitialPositions.r[global_indexes.period[iPart]];
+        global_parts.th[iPart] = SimParameters.InitialPositions.th[global_indexes.period[iPart]];
+        global_parts.phi[iPart] = SimParameters.InitialPositions.phi[global_indexes.period[iPart]];
+        if (SimParameters.UsingEnergy) {
+            global_parts.R[iPart] = Rigidity(SimParameters.Tcentr[global_indexes.rig[iPart]],
+                                             SimParameters.simulation_constants.Isotopes[global_indexes.isotope[
+                                                 iPart]]);
+        } else {
+            global_parts.R[iPart] = SimParameters.Tcentr[global_indexes.rig[iPart]];
+        }
+        global_parts.t_fly[iPart] = 0;
+    }
+
+    auto global_res = SimParameters.Results = AllocateResults(NRig, NInstances);
 
 #pragma omp parallel
     {
@@ -200,14 +231,14 @@ int main(int argc, char *argv[]) {
         spdlog::debug("CPU Thread {} (of {}) uses CUDA device {}", cpu_thread_id + 1, num_cpu_threads, gpu_id);
 
         cudaDeviceProp device_prop = GPUs_profile[gpu_id];
-        auto [BLOCKS, THREADS] = GetLaunchConfig(NParts, device_prop);
+        auto [BLOCKS, THREADS] = GetLaunchConfig(NPartsPerGPU, device_prop);
 
-        auto RandStates = AllocateManagedSafe<curandStatePhilox4_32_10_t[]>(NParts);
+        auto RandStates = AllocateManagedSafe<curandStatePhilox4_32_10_t[]>(NPartsPerGPU);
         unsigned long Rnd_seed = SimParameters.RandomSeed == 0
                                      ? getpid() + time(nullptr) + gpu_id
                                      : SimParameters.RandomSeed;
         cudaDeviceSynchronize();
-        init_rdmgenerator<<<BLOCKS, THREADS>>>(RandStates.get(), NParts, Rnd_seed);
+        init_rdmgenerator<<<BLOCKS, THREADS>>>(RandStates.get(), NPartsPerGPU, Rnd_seed);
         cudaDeviceSynchronize();
 
         THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Random State Initialized");
@@ -216,81 +247,43 @@ int main(int argc, char *argv[]) {
 
         CopyToConstant(Constants, &SimParameters.simulation_constants);
 
-        ThreadQuasiParticles_t QuasiParts = AllocateQuasiParticles(NParts);
+        ThreadIndexes_t indexes = AllocateIndex(NPartsPerGPU);
+        ThreadQuasiParticles_t QuasiParts = AllocateQuasiParticles(NPartsPerGPU);
 
-        ThreadIndexes_t indexes = AllocateIndex(NParts);
-        for (unsigned p = 0; p < NParams; ++p) {
-            for (unsigned i = 0; i < NIsotopes; ++i) {
-                for (unsigned o = 0; o < NPositions; ++o) {
-                    for (unsigned x = 0; x < NRep; ++x) {
-                        unsigned idx = x + NRep * (o + NPositions * (i + NIsotopes * p));
-                        indexes.param[idx] = p;
-                        indexes.isotope[idx] = i;
-                        indexes.period[idx] = o;
-                    }
-                }
-            }
+
+        for (unsigned iPart = 0, iGlobal = 0; iPart < NPartsPerGPU; ++iPart, iGlobal += NGPUs) {
+            indexes.rig[iPart] = global_indexes.rig[iGlobal];
+            indexes.param[iPart] = global_indexes.param[iGlobal];
+            indexes.isotope[iPart] = global_indexes.isotope[iGlobal];
+            indexes.period[iPart] = global_indexes.period[iGlobal];
+
+            QuasiParts.r[iPart] = global_parts.r[iGlobal];
+            QuasiParts.th[iPart] = global_parts.th[iGlobal];
+            QuasiParts.phi[iPart] = global_parts.phi[iGlobal];
+            QuasiParts.R[iPart] = global_parts.R[iGlobal];
+            QuasiParts.t_fly[iPart] = global_parts.t_fly[iGlobal];
         }
 
-        THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Shared Data Allocated");
+        auto Maxs = AllocateManagedNested<float>(NRig, NInstances);
+        auto Nfailed = AllocateManagedNested<unsigned>(NRig, NInstances, 0);
 
-#ifdef USE_RIGIDITY_QUEUE
-        unsigned iR;
-        while (test_and_pop(queue, iR)) {
-#else
-        for (unsigned int iR = gpu_id; iR < SimParameters.NT; iR += NGPUs) {
-#endif
-            spdlog::info("Simulation for rigidity {} [{}] started", SimParameters.Tcentr[iR], iR);
+        auto Results = SimParameters.Results = AllocateResults(NRig, NInstances);
 
-            THREAD_BENCHMARKS[cpu_thread_id]->StartSubsequence(
-                fmt::format("Rigidity {:.3e} [{:02}]", SimParameters.Tcentr[iR], iR));
+        cudaDeviceSynchronize();
+        HeliosphericProp<<<BLOCKS, THREADS>>>(QuasiParts, indexes, SimParameters.simulation_parametrization,
+                                              RandStates.get(), Maxs);
+        cudaDeviceSynchronize();
 
-            for (unsigned iPart = 0; iPart < NParts; ++iPart) {
-                QuasiParts.r[iPart] = SimParameters.InitialPositions.r[indexes.period[iPart]];
-                QuasiParts.th[iPart] = SimParameters.InitialPositions.th[indexes.period[iPart]];
-                QuasiParts.phi[iPart] = SimParameters.InitialPositions.phi[indexes.period[iPart]];
-                if (SimParameters.UsingEnergy) {
-                    unsigned i_inst = iPart / NPartsPerInstance;
-                    unsigned i_iso = i_inst % NIsotopes;
-                    QuasiParts.R[iPart] = Rigidity(SimParameters.Tcentr[iR], SimParameters.simulation_constants.Isotopes[i_iso]);
-                } else {
-                    QuasiParts.R[iPart] = SimParameters.Tcentr[iR];
-                }
-                QuasiParts.t_fly[iPart] = 0;
-            }
+        THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Propagation Completed");
 
-
-            auto Maxs = AllocateManagedSafe<float[]>(NInstances);
-            auto Nfailed = AllocateManagedSafe<unsigned[]>(NInstances, 0);
-
-            THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Particles Data Allocated");
-
-            if constexpr (INITSAVE && options.legacy) {
-                SaveTxt_part(init_filename.c_str(), NParts, QuasiParts, Maxs[0]);
-                THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Initial State Stored");
-            }
-
-
-            cudaDeviceSynchronize();
-            HeliosphericProp<<<BLOCKS, THREADS>>>(QuasiParts, indexes, SimParameters.simulation_parametrization,
-                                                  RandStates.get(), Maxs.get());
-            cudaDeviceSynchronize();
-
-            THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Propagation Completed");
-
-            if constexpr (FINALSAVE && options.legacy) {
-                SaveTxt_part(final_filename.c_str(), NParts, QuasiParts, Maxs[0]);
-                THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Final State Stored");
-            }
-
-
-            THREAD_BENCHMARKS[cpu_thread_id]->StartSubsequence("Histograms Allocation");
+        THREAD_BENCHMARKS[cpu_thread_id]->StartSubsequence("Histograms Allocation");
+        for (unsigned iR = 0; iR < NRig; ++iR) {
             for (unsigned inst = 0; inst < NInstances; ++inst) {
-                spdlog::debug("Results for Instance {} (Rigidity {}):", inst, iR);
-                spdlog::debug("* R_min: {}, R_max: {}", SimParameters.Tcentr[iR], Maxs[0]);
+                // spdlog::debug("Results for Instance {} (Rigidity {}):", inst, SimParameters.Tcentr[iR]);
+                // spdlog::debug("* R_min: {}, R_max: {}", SimParameters.Tcentr[iR], Maxs[0]);
 
-                if (Maxs[inst] < SimParameters.Tcentr[iR]) {
-                    spdlog::error("The max exiting rigidity is smaller than initial one (Instance {})", inst);
+                if (Maxs[iR][inst] < SimParameters.Tcentr[iR]) {
+                    // spdlog::error("The max exiting rigidity is smaller than initial one (Instance {})", inst);
                     continue; //TODO: check if needed
                 }
 
@@ -298,36 +291,77 @@ int main(int argc, char *argv[]) {
                 float LogBin0_lowEdge = log10f(SimParameters.Tcentr[iR]) - DeltaLogR / 2.f;
                 float Bin0_lowEdge = powf(10, LogBin0_lowEdge);
 
-                Results[iR][inst].Nbins = ceil(log10(Maxs[inst] / Bin0_lowEdge) / DeltaLogR);
+                Results[iR][inst].Nbins = ceil(log10(Maxs[iR][inst] / Bin0_lowEdge) / DeltaLogR);
                 Results[iR][inst].LogBin0_lowEdge = LogBin0_lowEdge;
                 Results[iR][inst].DeltaLogR = DeltaLogR;
 
                 Results[iR][inst].BoundaryDistribution = AllocateManaged<float[]>(Results[iR][inst].Nbins, 0);
                 THREAD_BENCHMARKS[cpu_thread_id]->AddEvent(fmt::format("Histogram {} Allocated", inst));
             }
-            THREAD_BENCHMARKS[cpu_thread_id]->StopSubsequence();
-
-            cudaDeviceSynchronize();
-            SimpleHistogram<<<BLOCKS, THREADS>>>(indexes, QuasiParts.R, Results[iR], Nfailed.get());
-            cudaDeviceSynchronize();
-
-            for (unsigned inst = 0; inst < NInstances; ++inst) {
-                Results[iR][inst].Nregistered = NPartsPerInstance - Nfailed[inst];
-                spdlog::debug("* Total Events.   : {}", NPartsPerInstance);
-                spdlog::debug("* Failed Events : {}", Nfailed[inst]);
-                spdlog::debug("* Recorded Events.  : {}", Results[iR][inst].Nregistered);
-            }
-
-            THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Histograms Generated");
-
-            THREAD_BENCHMARKS[cpu_thread_id]->StopSubsequence();
-
-            spdlog::info("Simulation for rigidity {} [{}] ended", SimParameters.Tcentr[iR], iR);
         }
-        // end of the cycle on the rigidities
-    }
-    // end of the multiple CPU thread pragma
+        THREAD_BENCHMARKS[cpu_thread_id]->StopSubsequence();
 
+        cudaDeviceSynchronize();
+        SimpleHistogram<<<BLOCKS, THREADS>>>(indexes, QuasiParts.R, Results, Nfailed);
+        cudaDeviceSynchronize();
+
+        for (unsigned iR = 0; iR < NRig; ++iR) {
+            for (unsigned inst = 0; inst < NInstances; ++inst) {
+                Results[iR][inst].Nregistered = NPartsPerInstance - Nfailed[iR][inst];
+                // spdlog::debug("* Total Events   : {}", NPartsPerInstance);
+                // spdlog::debug("* Failed Events : {}", Nfailed[iR][inst]);
+                // spdlog::debug("* Recorded Events  : {}", Results[iR][inst].Nregistered);
+#pragma omp critical
+                {
+                    if (global_res[iR][inst].Nbins == 0) {
+                        global_res[iR][inst].Nregistered = Results[iR][inst].Nregistered;
+                        global_res[iR][inst].Nbins = Results[iR][inst].Nbins;
+                        global_res[iR][inst].LogBin0_lowEdge = Results[iR][inst].LogBin0_lowEdge;
+                        global_res[iR][inst].DeltaLogR = Results[iR][inst].DeltaLogR;
+                        global_res[iR][inst].BoundaryDistribution = AllocateManaged<float[]>(
+                            global_res[iR][inst].Nbins);
+                        for (unsigned b = 0; b < global_res[iR][inst].Nbins; ++b)
+                            global_res[iR][inst].BoundaryDistribution[b] = Results[iR][inst].BoundaryDistribution[b];
+                    } else if (global_res[iR][inst].Nbins < Results[iR][inst].Nbins) {
+                        for (unsigned b = 0; b < global_res[iR][inst].Nbins; ++b)
+                            Results[iR][inst].BoundaryDistribution[b] += global_res[iR][inst].BoundaryDistribution[b];
+                        delete[] global_res[iR][inst].BoundaryDistribution;
+
+                        global_res[iR][inst].Nbins = Results[iR][inst].Nbins;
+                        global_res[iR][inst].BoundaryDistribution = AllocateManaged<float[]>(
+                            global_res[iR][inst].Nbins);
+                        for (unsigned b = 0; b < global_res[iR][inst].Nbins; ++b)
+                            global_res[iR][inst].BoundaryDistribution[b] = Results[iR][inst].BoundaryDistribution[b];
+                    } else {
+                        for (unsigned b = 0; b < Results[iR][inst].Nbins; ++b)
+                            global_res[iR][inst].BoundaryDistribution[b] += Results[iR][inst].BoundaryDistribution[b];
+                    }
+                }
+            }
+        }
+
+        THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Histograms Generated");
+
+        for (unsigned iPart = 0, iGlobal = 0; iPart < NPartsPerGPU; ++iPart, iGlobal += NGPUs) {
+            global_indexes.rig[iGlobal] = indexes.rig[iPart];
+            global_indexes.param[iGlobal] = indexes.param[iPart];
+            global_indexes.isotope[iGlobal] = indexes.isotope[iPart];
+            global_indexes.period[iGlobal] = indexes.period[iPart];
+
+            global_parts.r[iGlobal] = QuasiParts.r[iPart];
+            global_parts.th[iGlobal] = QuasiParts.th[iPart];
+            global_parts.phi[iGlobal] = QuasiParts.phi[iPart];
+            global_parts.R[iGlobal] = QuasiParts.R[iPart];
+            global_parts.t_fly[iGlobal] = QuasiParts.t_fly[iPart];
+        }
+
+        THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Shared Data Allocated");
+    }
+    //
+    // BENCHMARK.AddEvent("end");
+    // BENCHMARK.Log(spdlog::level::err);
+    // return 0;
+    //
 
     ////////////////////////////////////////////////////////////////
     //..... Exit results saving   ..................................

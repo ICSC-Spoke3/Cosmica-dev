@@ -132,7 +132,24 @@ ThreadIndexes_t AllocateIndex(const unsigned NPart) {
         AllocateManaged<unsigned[]>(NPart),
         AllocateManaged<unsigned[]>(NPart),
         AllocateManaged<unsigned[]>(NPart),
+        AllocateManaged<unsigned[]>(NPart),
     };
+}
+
+template<typename T>
+T **AllocateManagedNested(const unsigned size_1, const unsigned size_2, const int v) {
+    auto *res = AllocateManaged<T *[]>(size_1);
+    for (unsigned i = 0; i < size_1; i++)
+        res[i] = AllocateManaged<T[]>(size_2, v);
+    return res;
+}
+
+template<typename T>
+T **AllocateManagedNested(const unsigned size_1, const unsigned size_2) {
+    auto *res = AllocateManaged<T *[]>(size_1);
+    for (unsigned i = 0; i < size_1; i++)
+        res[i] = AllocateManaged<T[]>(size_2);
+    return res;
 }
 
 /**

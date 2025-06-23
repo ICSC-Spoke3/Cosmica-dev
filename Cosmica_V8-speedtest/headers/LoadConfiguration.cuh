@@ -27,6 +27,12 @@ auto AllocateManagedSafe(size_t, int);
 
 ThreadQuasiParticles_t AllocateQuasiParticles(int);
 
+template<typename T>
+T **AllocateManagedNested(unsigned, unsigned, int);
+
+template<typename T>
+T **AllocateManagedNested(unsigned, unsigned);
+
 InstanceHistograms *AllocateResults(unsigned, unsigned);
 
 template<typename T>

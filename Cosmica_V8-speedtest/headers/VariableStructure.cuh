@@ -111,7 +111,7 @@ struct ThreadQuasiParticles_t {
  * @brief Struct of the index of the quasi-particle in the grid
  */
 struct Index_t {
-    const unsigned param, isotope, period;
+    const unsigned rig, param, isotope, period;
     int radial = 0;
 
     /**
@@ -145,7 +145,7 @@ struct Index_t {
  */
 struct ThreadIndexes_t {
     unsigned size;
-    unsigned *param, *isotope, *period;
+    unsigned *rig, *param, *isotope, *period;
 
     /**
      * @brief Get the index at the given id.
@@ -153,7 +153,7 @@ struct ThreadIndexes_t {
      * @return Index_t with the combined index of the quasi-particle.
      */
     __forceinline__ __host__ __device__ Index_t get(const unsigned id) const {
-        return {param[id], isotope[id], period[id]};
+        return {rig[id], param[id], isotope[id], period[id]};
     }
 };
 
@@ -201,13 +201,13 @@ struct vect3D_t {
  * @brief Struct with the structure of the output result of a single energy simulation
  */
 struct MonteCarloResult_t {
-    unsigned Nregistered;
-    int Nbins;
-    float LogBin0_lowEdge; // lower boundary of first bin
-    float DeltaLogR; // Bin amplitude in log scale
+    unsigned Nregistered = 0;
+    unsigned Nbins = 0;
+    float LogBin0_lowEdge = 0; // lower boundary of first bin
+    float DeltaLogR = 0; // Bin amplitude in log scale
     float *BoundaryDistribution;
 };
 
-typedef MonteCarloResult_t* InstanceHistograms;
+typedef MonteCarloResult_t *InstanceHistograms;
 
 #endif
