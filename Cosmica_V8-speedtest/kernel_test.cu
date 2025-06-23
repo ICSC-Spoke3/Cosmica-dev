@@ -251,7 +251,7 @@ int main(int argc, char *argv[]) {
         ThreadQuasiParticles_t QuasiParts = AllocateQuasiParticles(NPartsPerGPU);
 
 
-        for (unsigned iPart = 0, iGlobal = 0; iPart < NPartsPerGPU; ++iPart, iGlobal += NGPUs) {
+        for (unsigned iPart = 0, iGlobal = gpu_id; iPart < NPartsPerGPU; ++iPart, iGlobal += NGPUs) {
             indexes.rig[iPart] = global_indexes.rig[iGlobal];
             indexes.param[iPart] = global_indexes.param[iGlobal];
             indexes.isotope[iPart] = global_indexes.isotope[iGlobal];
@@ -267,7 +267,7 @@ int main(int argc, char *argv[]) {
         auto Maxs = AllocateManagedNested<float>(NRig, NInstances);
         auto Nfailed = AllocateManagedNested<unsigned>(NRig, NInstances, 0);
 
-        auto Results = SimParameters.Results = AllocateResults(NRig, NInstances);
+        auto Results = AllocateResults(NRig, NInstances);
 
         cudaDeviceSynchronize();
         HeliosphericProp<<<BLOCKS, THREADS>>>(QuasiParts, indexes, SimParameters.simulation_parametrization,
@@ -279,11 +279,9 @@ int main(int argc, char *argv[]) {
         THREAD_BENCHMARKS[cpu_thread_id]->StartSubsequence("Histograms Allocation");
         for (unsigned iR = 0; iR < NRig; ++iR) {
             for (unsigned inst = 0; inst < NInstances; ++inst) {
-                // spdlog::debug("Results for Instance {} (Rigidity {}):", inst, SimParameters.Tcentr[iR]);
-                // spdlog::debug("* R_min: {}, R_max: {}", SimParameters.Tcentr[iR], Maxs[0]);
-
                 if (Maxs[iR][inst] < SimParameters.Tcentr[iR]) {
-                    // spdlog::error("The max exiting rigidity is smaller than initial one (Instance {})", inst);
+                    spdlog::error("The max exiting rigidity is smaller than initial one (Rig {}, Instance {})", iR,
+                                  inst);
                     continue; //TODO: check if needed
                 }
 
@@ -307,10 +305,7 @@ int main(int argc, char *argv[]) {
 
         for (unsigned iR = 0; iR < NRig; ++iR) {
             for (unsigned inst = 0; inst < NInstances; ++inst) {
-                Results[iR][inst].Nregistered = NPartsPerInstance - Nfailed[iR][inst];
-                // spdlog::debug("* Total Events   : {}", NPartsPerInstance);
-                // spdlog::debug("* Failed Events : {}", Nfailed[iR][inst]);
-                // spdlog::debug("* Recorded Events  : {}", Results[iR][inst].Nregistered);
+                Results[iR][inst].Nregistered = NPartsPerInstancePerGPU - Nfailed[iR][inst];
 #pragma omp critical
                 {
                     if (global_res[iR][inst].Nbins == 0) {
@@ -322,19 +317,23 @@ int main(int argc, char *argv[]) {
                             global_res[iR][inst].Nbins);
                         for (unsigned b = 0; b < global_res[iR][inst].Nbins; ++b)
                             global_res[iR][inst].BoundaryDistribution[b] = Results[iR][inst].BoundaryDistribution[b];
-                    } else if (global_res[iR][inst].Nbins < Results[iR][inst].Nbins) {
-                        for (unsigned b = 0; b < global_res[iR][inst].Nbins; ++b)
-                            Results[iR][inst].BoundaryDistribution[b] += global_res[iR][inst].BoundaryDistribution[b];
-                        delete[] global_res[iR][inst].BoundaryDistribution;
-
-                        global_res[iR][inst].Nbins = Results[iR][inst].Nbins;
-                        global_res[iR][inst].BoundaryDistribution = AllocateManaged<float[]>(
-                            global_res[iR][inst].Nbins);
-                        for (unsigned b = 0; b < global_res[iR][inst].Nbins; ++b)
-                            global_res[iR][inst].BoundaryDistribution[b] = Results[iR][inst].BoundaryDistribution[b];
                     } else {
-                        for (unsigned b = 0; b < Results[iR][inst].Nbins; ++b)
+                        global_res[iR][inst].Nregistered += Results[iR][inst].Nregistered;
+
+                        if (global_res[iR][inst].Nbins < Results[iR][inst].Nbins) {
+                            for (unsigned b = 0; b < global_res[iR][inst].Nbins; ++b)
+                                Results[iR][inst].BoundaryDistribution[b] +=
+                                        global_res[iR][inst].BoundaryDistribution[b];
+                            delete[] global_res[iR][inst].BoundaryDistribution;
+
+                            global_res[iR][inst].Nbins = Results[iR][inst].Nbins;
+                            global_res[iR][inst].BoundaryDistribution = AllocateManaged<float[]>(
+                                global_res[iR][inst].Nbins, 0);
+                        }
+
+                        for (unsigned b = 0; b < Results[iR][inst].Nbins; ++b) {
                             global_res[iR][inst].BoundaryDistribution[b] += Results[iR][inst].BoundaryDistribution[b];
+                        }
                     }
                 }
             }
@@ -342,7 +341,7 @@ int main(int argc, char *argv[]) {
 
         THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Histograms Generated");
 
-        for (unsigned iPart = 0, iGlobal = 0; iPart < NPartsPerGPU; ++iPart, iGlobal += NGPUs) {
+        for (unsigned iPart = 0, iGlobal = gpu_id; iPart < NPartsPerGPU; ++iPart, iGlobal += NGPUs) {
             global_indexes.rig[iGlobal] = indexes.rig[iPart];
             global_indexes.param[iGlobal] = indexes.param[iPart];
             global_indexes.isotope[iGlobal] = indexes.isotope[iPart];
@@ -357,15 +356,6 @@ int main(int argc, char *argv[]) {
 
         THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Shared Data Allocated");
     }
-    //
-    // BENCHMARK.AddEvent("end");
-    // BENCHMARK.Log(spdlog::level::err);
-    // return 0;
-    //
-
-    ////////////////////////////////////////////////////////////////
-    //..... Exit results saving   ..................................
-    ////////////////////////////////////////////////////////////////
 
     // Generate the YAML file name, following the old naming convention:
     if (StoreResults(options, SimParameters) != EXIT_SUCCESS) {
@@ -379,7 +369,6 @@ int main(int argc, char *argv[]) {
     delete[] SimParameters.Tcentr;
 
     delete[] GPUs_profile;
-
 
     if (spdlog::get_level() == spdlog::level::trace) BENCHMARK.Log(spdlog::level::trace, 3);
     if (spdlog::get_level() == spdlog::level::debug) BENCHMARK.Log(spdlog::level::debug, 2);
