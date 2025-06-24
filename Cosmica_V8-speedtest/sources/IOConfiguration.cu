@@ -53,7 +53,9 @@ cli_options parse_cli_options(int argc, char *argv[]) {
                      | lyra::opt(options.use_stdout).optional()
                      ["--stdout"]("Use stdout for output (yaml only) (this disables stdout logging)")
                      | lyra::opt(options.legacy).optional()
-                     ["--legacy"]("Use legacy .txt input and .dat output");
+                     ["--legacy"]("Use legacy .txt input and .dat output")
+                     | lyra::opt(options.no_pid).optional()
+                     ["--no_pid"]("Don't append the pid to the output file");
 
     if (const auto results = cli.parse({argc, argv}); !results) {
         spdlog::critical(results.message());
@@ -725,7 +727,8 @@ int StoreResults(const cli_options &options, const SimConfiguration_t &config) {
         spdlog::info("Results written to stdout");
         return ret;
     }
-    const std::string filename = fmt::format("{}_matrix_{}.{}", config.output_file, getpid(),
+    const std::string pid_str = options.no_pid ? "" : fmt::format("_{}", getpid());
+    const std::string filename = fmt::format("{}_matrix{}.{}", config.output_file, pid_str,
                                              options.legacy ? "dat" : "yaml");
     std::ofstream file(filename);
     if (!file.is_open()) return EXIT_FAILURE;

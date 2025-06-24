@@ -21,7 +21,7 @@ struct InputHeliosphericParameters_t {
 
 struct cli_options {
     std::string input_file{}, output_dir{}, log_file{};
-    bool use_stdin = false, use_stdout = false, legacy = false;
+    bool use_stdin = false, use_stdout = false, legacy = false, no_pid = false;
     spdlog::level::level_enum log_level = spdlog::level::info;
 };
 
