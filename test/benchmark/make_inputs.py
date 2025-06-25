@@ -75,12 +75,11 @@ if __name__ == "__main__":
     sim_list = SimulationList.from_listfile(p_sims)
     for sim in sim_list:
         print(sim)
-        for n_part in (512, 2048, 4096, 8192, 16384, 65536):
-            folder_name = f'{sim.period[0]}_{sim.period[1]}_part_{n_part}'
-            make_single_input(data_dir, folder_name, sim, heliospheric_parameters, n_part, 1, 42)
-        for n_k0 in (1, 16, 32, 64, 128, 256):
-            folder_name = f'{sim.period[0]}_{sim.period[1]}_k0_{n_k0}'
-            make_single_input(data_dir, folder_name, sim, heliospheric_parameters, 4096, n_k0, 42)
-        for rnd in (103, 436, 861, 271, 107,  72):
-            folder_name = f'{sim.period[0]}_{sim.period[1]}_rnd_{rnd}'
-            make_single_input(data_dir, folder_name, sim, heliospheric_parameters, 4096, 1, rnd)
+        for n_part in (512, 1024, 2048, 4096, 8192, 16384, 32768, 65536):
+            for rnd in (103, 436, 861, 271, 107, 72):
+                folder_name = f'{sim.period[0]}_{sim.period[1]}_{rnd}_part_{n_part}'
+                make_single_input(data_dir, folder_name, sim, heliospheric_parameters, n_part, 1, rnd)
+        for n_k0 in (1, 2, 4, 8, 16, 32, 64, 128):
+            for rnd in (103, 436, 861, 271, 107, 72):
+                folder_name = f'{sim.period[0]}_{sim.period[1]}_{rnd}_k0_{n_k0}'
+                make_single_input(data_dir, folder_name, sim, heliospheric_parameters, 4096, n_k0, rnd)
