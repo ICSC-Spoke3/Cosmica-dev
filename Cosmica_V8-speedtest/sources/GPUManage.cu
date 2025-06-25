@@ -58,11 +58,12 @@ int BestThreadsPerBlock(const std::string &name) {
     static const std::unordered_map<std::string, int> deviceTpB = {
         {"NVIDIA A30", 48},
         {"NVIDIA A40", 48},
+        {"NVIDIA A100-SXM-64GB", 48},
         {"NVIDIA A100", 64}, // TODO: temporary
         {"NVIDIA GeForce RTX 3090", 48},
     };
 
-    int TpB = 32;  // Default value
+    int TpB = 32; // Default value
     if (const auto it = deviceTpB.find(name); it != deviceTpB.end()) {
         TpB = it->second;
     } else {
@@ -139,9 +140,9 @@ cudaDeviceProp *DeviceInfo(const int N_GPU_count) {
         spdlog::debug("  - Threads in warp:  {}", infos[i].warpSize);
         spdlog::debug("  - Max threads per block:  {}", infos[i].maxThreadsPerBlock);
         spdlog::debug("  - Max thread dimensions:  ({}, {}, {})", infos[i].maxThreadsDim[0], infos[i].maxThreadsDim[1],
-                     infos[i].maxThreadsDim[2]);
+                      infos[i].maxThreadsDim[2]);
         spdlog::debug("  - Max grid dimensions:  ({}, {}, {})", infos[i].maxGridSize[0], infos[i].maxGridSize[1],
-                     infos[i].maxGridSize[2]);
+                      infos[i].maxGridSize[2]);
     }
 
     return infos;
