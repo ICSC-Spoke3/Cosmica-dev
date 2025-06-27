@@ -91,7 +91,8 @@ def fitness_fn(results: list[ModulationResult], experimental_data: ExperimentalD
         if metric_fn is not None:
             losses.append(metric_fn(result, experimental_data))
         else:
-            losses.append(float(np.sqrt(np.square(np.mean(result.flux - experimental_data.flux)))))
+            # losses.append(float(np.sqrt(np.square(np.mean(result.flux - experimental_data.flux)))))
+            losses.append(metrics.rmse(result, experimental_data)[0])
 
     return losses
 
