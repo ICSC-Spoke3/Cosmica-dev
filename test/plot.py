@@ -190,12 +190,17 @@ if __name__ == "__main__":
     p_outputs = [
         (data_dir / 'outputs' / 'v6').glob('*.dat'),
         (data_dir / 'outputs' / 'v8').glob('*.yaml'),
-        (data_dir / 'outputs' / 'v8s').glob('*.dat'),
+        # (data_dir / 'outputs' / 'v8s').glob('*.dat'),
         (data_dir / 'outputs' / 'v6.1').glob('*.dat'),
-        (data_dir / 'outputs' / 'v8.1').glob('*.yaml'),
-        (data_dir / 'outputs' / 'v8.1s').glob('*.dat'),
+        # (data_dir / 'outputs' / 'v8.1').glob('*.yaml'),
+        # (data_dir / 'outputs' / 'v8.1s').glob('*.dat'),
+        (data_dir / 'outputs' / 'v8m').glob('*.yaml'),
+        # (data_dir / 'outputs' / 'v8.1m').glob('*.yaml'),
     ]
-    labels = (['V6 (1)', 'V8 (1)', 'V8 (1, sep)', 'V6 (2)', 'V8 (2)', 'V8 (2, sep)'], ['HelMod', 'Experimental'])
+    labels = (['V6 (1)', 'V8 (1)', 'V6 (2)', 'V8 (1, mul)'],
+              ['HelMod', 'Experimental'])
+    # labels = (['V6 (1)', 'V8 (1)', 'V8 (1, sep)', 'V6 (2)', 'V8 (2)', 'V8 (2, sep)', 'V8 (1, mul)', 'V8 (2, mul)'],
+    #           ['HelMod', 'Experimental'])
     # labels = (('V6', 'V6 (random)', 'V8', 'V8 (many)', 'V8 (sep)'), ('HelMod', 'Experimental'))
 
     sim_list = SimulationList.from_listfile(p_sims)

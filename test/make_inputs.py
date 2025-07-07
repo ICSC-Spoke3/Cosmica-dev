@@ -71,4 +71,4 @@ if __name__ == "__main__":
     sim_list = SimulationList.from_listfile(p_sims)
     for sim in sim_list:
         print(sim)
-        make_single_input(data_dir, sim, heliospheric_parameters, 5024, 1, 42)
+        make_single_input(data_dir, sim, heliospheric_parameters, 5024, 1, 69)
