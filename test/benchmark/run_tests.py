@@ -62,8 +62,8 @@ def run_cosmica(base_command: list[str | Path] | str | Path, input_file: Path, o
 
 
 if __name__ == "__main__":
-    VERSION = 'V8'
-    SET = '*'
+    VERSION = 'V6'
+    SET = '*_part_*'
 
     data_dir = Path(__file__).parent.parent / 'data'
     p_cosmica = Path(__file__).parent.parent.parent / f'Cosmica_{VERSION}-speedtest' / 'exefiles' / 'Cosmica'
