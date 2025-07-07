@@ -63,7 +63,7 @@ int BestThreadsPerBlock(const std::string &name) {
         {"NVIDIA GeForce RTX 3090", 48},
     };
 
-    int TpB = 32; // Default value
+    int TpB = 48; // Default value
     if (const auto it = deviceTpB.find(name); it != deviceTpB.end()) {
         TpB = it->second;
     } else {

@@ -8,7 +8,14 @@ import docker
 
 def is_path(arg):
     try:
-        return Path(arg).exists()
+        pth = Path(arg)
+        if pth.is_dir() or pth.exists():
+            return True
+        elif pth.is_absolute() and pth.parent.exists():
+            if pth.suffix:
+                pth.open('a').close()
+            return True
+        return False
     except Exception:
         return False
 
@@ -69,7 +76,6 @@ def run_container(image_name, container_command, args):
             runtime="nvidia",
             environment={
                 "NVIDIA_DRIVER_CAPABILITIES": "compute,utility",
-                "NVIDIA_VISIBLE_DEVICES": "0"
             },
         )
         print(container.decode())
