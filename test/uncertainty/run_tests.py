@@ -62,18 +62,18 @@ def run_cosmica(base_command: list[str | Path] | str | Path, input_file: Path, o
 
 
 if __name__ == "__main__":
-    VERSION = 'V6'
-    SET = '*_part_*'
+    VERSION = 'V8'
+    SET = '*'
 
     data_dir = Path(__file__).parent.parent / 'data'
     p_cosmica = Path(__file__).parent.parent.parent / f'Cosmica_{VERSION}-speedtest' / 'exefiles' / 'Cosmica'
     # p_cosmica = [sys.executable, Path(__file__).parent.parent.parent / f'Cosmica_{VERSION}-speedtest' / 'launch_docker.py']
-    p_inputs = sorted((data_dir / 'benchmark' / 'inputs').rglob(f'{SET}/*.yaml' if VERSION == 'V8' else f'{SET}/*.txt'))
-    p_outputs = data_dir / 'benchmark' / 'outputs'
+    p_inputs = sorted((data_dir / 'uncertainty' / 'inputs').rglob(f'{SET}/*.yaml' if VERSION == 'V8' else f'{SET}/*.txt'))
+    p_outputs = data_dir / 'uncertainty' / 'outputs'
 
     for inpt in p_inputs:
         out_dir = p_outputs / inpt.parent.name
-        _, _, _, bench, power = run_cosmica(p_cosmica, inpt, out_dir, cuda_devices='0')
+        _, _, _, bench, power = run_cosmica(p_cosmica, inpt, out_dir, cuda_devices='0,1')
         with open(out_dir / f'power_{VERSION}.csv', 'a') as f:
             f.writelines([f'{p}\n' for p in power])
         with open(out_dir / f'exetime_{VERSION}.csv', 'a') as f:
