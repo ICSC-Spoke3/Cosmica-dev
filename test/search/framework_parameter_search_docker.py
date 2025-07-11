@@ -1,4 +1,5 @@
 import os
+import random
 import sys
 import time
 from pathlib import Path
@@ -190,9 +191,11 @@ def generate_input(base: SimulationInput, k0s: list[float]) -> SimulationInput:
         ),
     )
 
+
+
 def run_optimization(sim: SimulationExperimentItem, data_dir: Path, cosmica_path: list[str | Path] | str | Path, p_out: Path, lis_loader: LisLoader, names: List[str],
                      population_size: int = 10, n_iterations: int = 3,random_seed :int = 42,n_part:int=4096,
-                        min_improvement: float = 1e-4,epochs=1,window = 1):
+                        min_improvement: float = 0.001,epochs=1,max_patience = 10,metric_fn = metrics.mean_relative_error):
     """
         Run the optimization process for the given simulation experiment.
         Args:
@@ -206,46 +209,73 @@ def run_optimization(sim: SimulationExperimentItem, data_dir: Path, cosmica_path
             n_iterations (int): Number of iterations to run the optimization.
         Returns:
             Dict[str, Dict]: A dictionary containing the best parameters found for each optimization algorithm.
+            :param n_part:
+            :param random_seed:
+            :param names:
+            :param lis_loader:
+            :param sim:
+            :param p_out:
+            :param metrics:
+            :param epochs:
+            :param n_iterations:
+            :param cosmica_path:
+            :param data_dir:
+            :param population_size:
+            :param max_patience:
+            :param min_improvement:
     """
     best_params = {}
-    template = base_input(data_dir, sim)
-
 
     file_input = Path(__file__).parent / 'inputs' / 'test.yaml'
 
     if not file_input.exists():
         file_input.touch()
 
-
-
     template = base_input(data_dir, sim, rnd=random_seed, n_part=n_part)
     p_exp = data_dir / 'experimental' / sim.experimental_data_path
     exp_data = ExperimentalData.from_data(p_exp, (2, 3, 4, 5), rig_range=(0, 11))
     parquet_dir = Path(__file__).parent / 'parquet' / 'k0_search'
 
-    lr = ng.p.Scalar(lower=5e-5, upper=6e-4)
-    parametrization = ng.p.Instrumentation(lr)
-
-
-    metric_fn = metrics.mean_relative_error
 
     for epoch in range(epochs):
         print(f"Epoch - {epoch}")
         random_seed = int(time.time())
 
         for name in names:
+
+            start_run = time.time()
+            iteration_counter = 0
+
+            best_actual_fitness = np.inf
+            best_actual_x = 0
+
+            best_global_fitness = np.inf
+            best_global_step = 0
+
+            best_fitness_per_epoch = []
+            best_x_per_epoch = []
+
+            patience = max_patience
+
+            lr = ng.p.Scalar(lower=5e-5, upper=6e-4)
+            parametrization = ng.p.Instrumentation(lr)
+
             initial_k0 = estimate_k0(template)[0][0]
-            print(f"Estimated initial k0: {initial_k0}")
+            delta = initial_k0 * 0.10
+            iter_folder = p_out / 'initial'
+            iter_folder.mkdir(parents=True, exist_ok=True)
 
-            print([float(initial_k0)])
+            # introduce controlled variation to initial k0
+            init_pop = [initial_k0]
+            for _ in range(population_size - 1):
+                init_pop.append(initial_k0 + random.uniform(-delta, delta))
 
-            inpt = generate_input(template, [float(initial_k0)])
+            print(f"Estimated initial k0: {init_pop}")
+
+            inpt = generate_input(template, init_pop)
 
             with open(file_input, 'w') as f:
                 yaml.dump(inpt.to_dict(), f, Dumper=yaml.Dumper)
-
-            iter_folder = p_out / 'initial'
-            iter_folder.mkdir(parents=True, exist_ok=True)
 
 
             out = run_cosmica(file_input, cosmica_path, iter_folder / 'log_initial.log', iter_folder)
@@ -254,17 +284,28 @@ def run_optimization(sim: SimulationExperimentItem, data_dir: Path, cosmica_path
                 raise RuntimeError(f"Cosmica run failed for initial k0={initial_k0}")
 
             results = out.modulate(lis_loader)
-            fit = fitness_fn(results, exp_data, metric_fn=metric_fn)[0]
+            fitness = fitness_fn(results, exp_data, metric_fn=metric_fn)
 
+            evaluated_k0 = []
+            evaluated_loss = []
 
+            init_params = []
 
-            init_param = parametrization.spawn_child()
-            init_param.value = ((initial_k0,), {})
+            for initial_k0, fit in zip(init_pop, fitness):
+                evaluated_k0.append(float(initial_k0))
+                evaluated_loss.append(fit)
+                init_param = parametrization.spawn_child()
+                init_param.value = ((initial_k0,), {})
+                init_params.append(init_param)
 
-            evaluated_k0 = [initial_k0]
-            evaluated_loss = [fit]
-            fitness_window = [fit]
-            best_loss = fit
+                if fit < best_global_fitness:
+                    best_global_fitness = fit
+                    best_global_step = initial_k0
+                    best_actual_fitness = best_global_fitness
+                    best_actual_x = initial_k0
+
+            best_fitness_per_epoch.append(best_actual_fitness)
+            best_x_per_epoch.append(best_actual_x)
 
             optim = ng.optimizers.registry[name](
                 parametrization=parametrization,
@@ -272,12 +313,16 @@ def run_optimization(sim: SimulationExperimentItem, data_dir: Path, cosmica_path
                 num_workers=population_size
             )
 
+            for initial_k0, fit in zip(init_params, fitness):
+                optim.tell(initial_k0, fit)
 
-            optim.tell(init_param, fit)
-
-            iteration_counter = 0
             for iteration in range(n_iterations):
+
+                best_actual_fitness = np.inf
+                best_actual_x = 0
+
                 iteration_counter +=1
+
                 k0_list = [optim.ask() for _ in range(population_size)]
                 print(f"Current k0 list: {[k0.value[0][0] for k0 in k0_list]}")
 
@@ -301,40 +346,49 @@ def run_optimization(sim: SimulationExperimentItem, data_dir: Path, cosmica_path
                 results = out.modulate(lis_loader)
 
                 fitness = fitness_fn(results, exp_data, metric_fn=metric_fn)
-                improved = False
+
 
                 for k0, fit in zip(k0_list, fitness):
                     evaluated_k0.append(float(k0.value[0][0]))
                     evaluated_loss.append(fit)
                     optim.tell(k0, fit)
-                    fitness_window.append(fit)
 
-                print(f"{fitness_window} finestre")
+                    if fit < best_actual_fitness:
+                        best_actual_fitness = fit
+                        best_actual_x = k0.value[0][0]
+                        if best_actual_fitness < best_global_fitness:
+                            best_global_fitness = best_actual_fitness
+                            best_global_step = k0.value[0][0]
 
-                fitness_window = sorted(fitness_window)[0:window]
+                best_fitness_per_epoch.append(best_actual_fitness)
+                best_x_per_epoch.append(best_actual_x)
 
-                print(f"{fitness_window} finestre sorted")
-
-                if abs(best_loss-np.mean(fitness_window)) > min_improvement:
-                    best_loss = fitness_window[0]
-                    improved = True
-
-                if not improved:
-                    print(f"Early stopping: improvement less than {min_improvement}")
-                    break
+                if len(best_fitness_per_epoch) >= 2:
+                    improvement = best_fitness_per_epoch[-2] - best_fitness_per_epoch[-1]
+                    if improvement < min_improvement:
+                        patience -= 1
+                        print(f"No significant improvement ({improvement:.3e}). Remaining patience: {patience}")
+                        if patience == 0:
+                            print(f"Early stopping: improvement less than {min_improvement}")
+                            break
+                    else:
+                        patience = max_patience
 
             best_params[name] = {
-                "best_x": evaluated_k0[evaluated_loss.index(min(evaluated_loss))],
-                "best_loss": float(min(evaluated_loss)),
+                "best_x": best_global_step,
+                "best_loss": best_global_fitness,
                 "steps": evaluated_k0,
                 "corr_loss": evaluated_loss,
                 "seed": random_seed,
-                "time_elapsed": 0,
+                "time_elapsed": time.time() - start_run ,
                 "algorithm": name,
                 "iterations": iteration_counter,
                 "n_part": n_part,
                 "experimental_data_path": sim.experimental_data_path,
-                "eval_metric": metric_fn.__name__
+                "eval_metric": metric_fn.__name__,
+                "best_per_epoch":best_fitness_per_epoch,
+                "best_k0_per_epoch":best_x_per_epoch,
+                "max_iterations":n_iterations
             }
 
             save_output_in_parquet(parquet_dir,best_params)
@@ -374,7 +428,7 @@ def main():
         experimental_data_path='Rigidity_Proton_AMS-02_PRL1272021271102_20180929_20181025.dat',
     )
 
-    names = ["CMA","PSO","DE","RandomSearch","TwoPointsDE","TBPSA"]
+    names = ["CMA","PSO","DE","TwoPointsDE","TBPSA","RandomSearch"]
 
     run_optimization(
         sim=sim,
@@ -383,11 +437,12 @@ def main():
         p_out=p_out,
         lis_loader=lis_loader,
         names=names,
-        population_size=50,
-        n_iterations=1000,
-        epochs=3,
+        population_size=2,
+        n_iterations=100,
+        epochs=1,
         n_part=4096,
-        window=15
+        max_patience=10,
+        min_improvement = 0.005
     )
 
 
