@@ -1,6 +1,7 @@
 """
 
 """
+import random
 from copy import deepcopy
 from datetime import time
 from pathlib import Path
@@ -38,11 +39,17 @@ class OptimizerQueue:
               initial_value_parameter: List[float] = [0.0],
               generate_random_seed_each_epoch: bool = False,
               random_seed: Optional[int] = None,
-              experimental_data_str : str = ""):
+              experimental_data_str : str = "",
+              n_part = 4096,
+              **kwargs):
 
 
         if procedure is None:
             raise ValueError("Procedure function must be provided.")
+
+        k_validation = kwargs.get("k_validation", 1)
+        k_validation_func = kwargs.get("k_validation_func", lambda values: np.mean(values, axis=0))
+
 
         for optimizer in self.optimizer_to_test:
             self.optimizer_queue.append(optimizer)
@@ -55,6 +62,7 @@ class OptimizerQueue:
             if generate_random_seed_each_epoch:
                 #TODO change
                 random_seed = int(time.time())
+                random.seed(random_seed)
 
             print(f"\n--- Used Seed {random_seed} ---")
 
@@ -62,7 +70,7 @@ class OptimizerQueue:
 
             # initial value parameter is a list of default value to test
             # each value to test rappresent a n-dimensional vector in the space
-            dummy_inputs = [initial_value_parameter]
+            dummy_inputs = initial_value_parameter
 
             print(f"\n--- initial Value {dummy_inputs} ---")
 
@@ -70,13 +78,19 @@ class OptimizerQueue:
             print(f"\n--- Results from {getattr(procedure, '__name__', str(procedure))} ---")
 
 
-            results = procedure(dummy_inputs)
-
             for optimizer in self.optimizer_queue[:]:
                 print(f"\n--- starting optimizer {optimizer.name} ---")
 
                 optimizer.run(seed=random_seed)
-                fitness = optimizer.evaluate_fitness(real_data, results)
+
+
+                start_time_epoch = time.time()
+
+                fitness = self.apply_k_validation(dummy_inputs, k_validation, k_validation_func, optimizer, procedure,
+                                                  random_seed, real_data)
+
+                optimizer.times_elapsed_per_epoch.append(time.time() - start_time_epoch)
+
 
                 print(f"\n--- Telling :  {dummy_inputs} , {fitness}   ---")
 
@@ -90,13 +104,12 @@ class OptimizerQueue:
                     print(f"\n--- Getting candidates   ---")
 
                     candidates = optimizer.ask(n=optimizer.budget)
+                    start_time_epoch = time.time()
 
-                    if procedure is not None:
-                        results = procedure([candidate for candidate in candidates])
-                    else:
-                        results = candidates
+                    fitness = self.apply_k_validation(candidates, k_validation, k_validation_func, optimizer, procedure,
+                                              random_seed, real_data)
 
-                    fitness = optimizer.evaluate_fitness(real_data, results)
+                    optimizer.times_elapsed_per_epoch.append(time.time() - start_time_epoch)
 
                     print(f"\n--- Candidates :  {candidates}    ---")
 
@@ -112,12 +125,23 @@ class OptimizerQueue:
                 print(f"\n--- Optimizer {optimizer.name} saving results   ---")
 
                 if optimizer.save_results_ended:
-                    optimizer.save_results(experimental_data_str,default=True)
+                    optimizer.save_results(experimental_data_str,default=True,n_part=n_part)
 
             print(f"Active: {len(self.optimizer_queue)}, To convergence: {len(self.completed_list)}")
 
+    def apply_k_validation(self, dummy_inputs, k_validation, k_validation_func, optimizer, procedure, random_seed,
+                           real_data):
+        all_fitness = []
+        for k_val in range(k_validation):
+            seed_step = None if random_seed is None else int(random_seed + k_val)
+            results = procedure(dummy_inputs, seed_step)
+            fitness = optimizer.evaluate_fitness(real_data, results)
+            all_fitness.append(fitness)
+        fitness_mean = k_validation_func(all_fitness)
+        return fitness_mean
 
-def extract_value(solution):
+
+def extract_value(solution)->List:
     if hasattr(solution, 'value'):
         return solution.value
     elif hasattr(solution, 'X'):
@@ -138,35 +162,6 @@ def set_param_value(param_obj, value):
 
 
 class Optimizer:
-
-    class SortedBestCandidates:
-        def __init__(self,max_size):
-            """
-            :param max_size: number of total best candidates to keep inside
-            """
-            self._data = []
-            self.max_size = max_size
-
-        def insert(self, item:tuple):
-            score = item[1]
-            index = bisect.bisect_left([x[1] for x in self._data], score)
-            self._data.insert(index, item)
-
-            if len(self._data) > self.max_size:
-                self._data.pop()
-
-
-        def __iter__(self):
-            return iter(self._data)
-
-        def __getitem__(self, index):
-            return self._data[index]
-
-        def __len__(self):
-            return len(self._data)
-
-        def __repr__(self):
-            return f"{self._data}"
 
     def __init__(self,
                  optimizer: object,
@@ -202,9 +197,11 @@ class Optimizer:
         self.parquet_dir = parquet_dir
         self.last_asked = []
         self.running_time = 0
-        self.best_last_asked: Optimizer.SortedBestCandidates = Optimizer.SortedBestCandidates(max_size=self.max_size_best_candidates)
-
+        self.best_fitness_per_epoch = []
+        self.best_x_per_epoch = []
+        self.times_elapsed_per_epoch = []
         self.budget = budget
+        self.max_iterations = max_iterations
 
         if use_default_budget:
             if hasattr(self.optimizer, 'budget'):
@@ -264,10 +261,11 @@ class Optimizer:
 
         return values
 
-    def update_internal_status(self,param_value_copy,fit,insert_into_last_asked = True):
-        if insert_into_last_asked:
-            self.best_last_asked.insert((param_value_copy, fit))
+    def update_internal_status(self,param_value_copy,fit):
+
         self.candidate_seen.append((param_value_copy, fit))
+        ### extract position 1 bc is a tuple
+
         if fit < self.best_candidate[1]:
             self.best_candidate = (param_value_copy, fit)
 
@@ -284,6 +282,8 @@ class Optimizer:
         :return:
         '''
 
+        best_fitness_in_epoch = np.inf
+        best_x_in_epoch = 0
 
         if known_solutions is not None:
             if len(known_solutions) == 1:
@@ -292,7 +292,6 @@ class Optimizer:
                 known_solution_items = [(deepcopy(param), fit) for param, fit in zip(known_solutions, fitness)]
 
             for param_value_copy, fit in known_solution_items:
-
 
                 if hasattr(self.optimizer, 'parametrization'):
                     # Nevergrad way
@@ -307,17 +306,31 @@ class Optimizer:
                             set_param_value(param_obj=param_obj, value=deepcopy(param_value_copy))
                             self.optimizer.tell(param_obj, fit)
 
-                        self.update_internal_status(param_value_copy=param_value_copy,fit=fit,insert_into_last_asked=False)
+                        if best_fitness_in_epoch > fit:
+                            best_x_in_epoch = param_value_copy
+                            best_fitness_in_epoch = fit
+
+                        self.update_internal_status(param_value_copy=param_value_copy,fit=fit)
 
                         continue  # avoid telling again
 
                     param_obj = self.optimizer.spawn_child()
                     set_param_value(param_obj=param_obj, value=param_value_copy)
+                    if best_fitness_in_epoch > fit:
+                        best_x_in_epoch = param_value_copy
+                        best_fitness_in_epoch = fit
+
+                    self.update_internal_status(param_value_copy=param_value_copy,fit=fit)
+
 
                 else:
                     #fallback: call tell directly with value
+                    if best_fitness_in_epoch > fit:
+                        best_x_in_epoch = param_value_copy
+                        best_fitness_in_epoch = fit
+
                     self.optimizer.tell(param_value_copy, fit)
-                    self.update_internal_status(param_value_copy=param_value_copy,fit=fit,insert_into_last_asked=False)
+                    self.update_internal_status(param_value_copy=param_value_copy,fit=fit)
 
                     continue  # no param_obj to tell
 
@@ -331,6 +344,9 @@ class Optimizer:
                 # For PSO_new, param_value is Particle
                 param_value_copy = deepcopy(param_value)
 
+                if best_fitness_in_epoch > fit:
+                    best_x_in_epoch = param_value_copy
+                    best_fitness_in_epoch = fit
                 self.update_internal_status(param_value_copy=param_value_copy,fit=fit)
 
                 if hasattr(self.optimizer, 'parametrization'):
@@ -342,8 +358,14 @@ class Optimizer:
                     raise Exception("Optimizer does not have tell method")
 
 
+        self.best_x_per_epoch.append(best_x_in_epoch)
+        self.best_fitness_per_epoch.append(best_fitness_in_epoch)
 
-        self.actual_iterations += 1
+        # we dont consider initial parametrization as iteration
+        if known_solutions is None:
+            self.actual_iterations += 1
+
+        print(self.actual_iterations)
 
     def get_name(self):
         return self.name
@@ -377,13 +399,13 @@ class Optimizer:
         else:
             raise Exception("None valid stopping criteria passed.")
 
-    def save_results(self,experimental_data_path = "",default: bool = True, n_part: int = 0):
+    def save_results(self,experimental_data_path = "",default: bool = True,n_part = 4096):
         if not default:
             return
 
         os.makedirs(os.path.dirname(self.parquet_dir), exist_ok=True)
 
-        df_new = pd.DataFrame([self.to_dict(experimental_data_path,n_part)])
+        df_new = pd.DataFrame([self.to_dict(experimental_data_path,n_part = n_part)])
         if os.path.exists(self.parquet_dir):
             df_existing = pd.read_parquet(self.parquet_dir)
             df_combined = pd.concat([df_existing, df_new], ignore_index=True)
@@ -392,33 +414,44 @@ class Optimizer:
 
         df_combined.to_parquet(self.parquet_dir, index=False, engine="pyarrow")
 
-    def to_dict(self,experimental_data_path = "", n_part: int = 0) -> dict:
+    def to_dict(self,experimental_data_path = "",n_part = 4096,k_validation=2,) -> dict:
 
 
         best_x,best_loss = self.best_candidate
         best_x = extract_value(best_x)
 
-        steps_and_losses = []
+        steps = []
+        evaluated_loss = []
+        best_x_each_epoch = []
+
         for x, loss in self.candidate_seen:
-            if hasattr(x, 'value'):  # is Instrumentation class from nevergrad
-                val = x.value[0][0]
-            elif isinstance(x, (tuple, list)):
-                val = x[0]
-            else:
-                val = x
-            steps_and_losses.append((val, loss))
+            steps.append(extract_value(x))
+            evaluated_loss.append(loss)
+
+        for x in self.best_x_per_epoch:
+            best_x_each_epoch.append(extract_value(x))
+
+        print(best_x_each_epoch)
 
         return {
             "best_x": best_x,
             "best_loss": best_loss,
-            "steps_and_losses": steps_and_losses,
+            "steps": steps,
+            "corr_loss": evaluated_loss,
             "seed": self.seed,
-            "time_elapsed": self.running_time - time.time(),
+            "time_elapsed": time.time() - self.running_time ,
             "algorithm": self.name,
             "iterations": self.actual_iterations,
             "n_part": n_part,
             "experimental_data_path": experimental_data_path,
-            "eval_metric": getattr(self.eval_metric, '__name__', str(self.eval_metric))
+            "eval_metric": getattr(self.eval_metric, '__name__', str(self.eval_metric)),
+            "best_per_epoch": self.best_fitness_per_epoch,
+            "best_k0_per_epoch":best_x_each_epoch,
+            "max_iterations":self.max_iterations,
+            "population" : self.budget,
+            "k_validation":k_validation,
+            "times_elapsed_per_epoch" : self.times_elapsed_per_epoch,
+            "version":"v2"
         }
 
     def __str__(self):
@@ -428,6 +461,7 @@ class Optimizer:
 
 
 # Base class for stopping criteria check
+# TODO implement with new logic for early stopping
 class StoppingCriteria:
 
     def __init__(self, min_increment: float = 1e-4, max_iterations: int = 100):

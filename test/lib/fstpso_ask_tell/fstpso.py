@@ -12,7 +12,8 @@ import subprocess
 import pickle
 from copy import deepcopy
 
-from fstpso.fstpso_checkpoints import Checkpoint
+from .fstpso_checkpoints import Checkpoint
+
 
 
 class Particle(object):
@@ -219,7 +220,15 @@ class PSO_new(object):
 			self._updateSolutionLocalBest(i=self.Solutions.index(solution))
 			self.told_unique_solution += 1
 
+			print("TOLD SOL")
+			print(self.told_unique_solution)
+			print("ACT ITERATIONS")
+			print(self.Iterations)
+
 			if self.told_unique_solution == len(self.Solutions):
+				print("UPDATE ITERATIONS")
+				print(self.Iterations)
+
 				self.told_unique_solution = 0
 				self.Iterations += 1
 				self.UpdateVelocities()
@@ -373,7 +382,7 @@ class PSO_new(object):
 
 			p.X = self.NewGenerate( [0]*dim, creation_method = creation_method )
 			p.B = copy.deepcopy(p.X)
-			p.V = [random.random() for _ in range(dim)]
+			p.V = list(zeros(dim))
 
 			self.Solutions.append(p)
 
@@ -1368,7 +1377,11 @@ class FuzzyPSO(PSO_new):
 			if self._overall_fitness_evaluations>=self._FES:
 				print (" * Budget of fitness evaluations exhausted after %d iterations." % (self.Iterations+1))
 				return True
-		else:			
+		else:
+
+			print(self.Iterations)
+			print(self.MaxIterations)
+
 			if self.Iterations > self.MaxIterations:
 				if verbose:
 					print (" * Maximum iterations reached.")
