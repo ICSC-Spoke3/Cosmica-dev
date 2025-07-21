@@ -331,9 +331,9 @@ __device__ float3 Diffusion_Tensor_In_HMF_Frame(const Index_t &index, const Quas
     float3 Ktensor;
 
     const int high_activity = Constants.IsHighActivityPeriod[index.period] ? 0 : 1;
-    const float k0_paral = params.params[index.param].heliosphere[index.combined()].k0_paral[high_activity];
-    const float k0_perp = params.params[index.param].heliosphere[index.combined()].k0_perp[high_activity];
-    const float GaussVar = params.params[index.param].heliosphere[index.combined()].GaussVar[high_activity];
+    const float k0_paral = __ldg(&params.params[index.param].heliosphere[index.combined()].k0_paral[high_activity]);
+    const float k0_perp = __ldg(&params.params[index.param].heliosphere[index.combined()].k0_perp[high_activity]);
+    const float GaussVar = __ldg(&params.params[index.param].heliosphere[index.combined()].GaussVar[high_activity]);
     const float g_low = Constants.heliosphere_properties[index.combined()].g_low;
     const float rconst = Constants.heliosphere_properties[index.combined()].rconst;
 

@@ -18,6 +18,9 @@ if __name__ == '__main__':
         with open(power_path, 'r') as f:
             power = sum(map(float, f.readlines())) / 1000
         device = ' '.join(exetime_path.parent.parent.name.split('_')[1:])
+        if '-' in device:
+            d, n = device.split('-')
+            device = f'{d} ({n}x)'
         spec = exetime_path.parent.name.split('_')
         version = exetime_path.stem.split('_')[-1]
         date, seed, test, val = spec[0], spec[2], spec[3], spec[4]

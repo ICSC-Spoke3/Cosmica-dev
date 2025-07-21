@@ -47,4 +47,4 @@
 #define MAX_DT 50.0                                       // max allowed value of time step
 #define MIN_DT 0.01                                       // min allowed value of time step
 #define TIMEOUT std::numeric_limits<float>::infinity()
-// #define TIMEOUT 20000
+// #define TIMEOUT 5000
