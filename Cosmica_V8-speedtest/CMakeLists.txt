@@ -46,10 +46,6 @@ target_include_directories(Cosmica PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/headers)
 target_compile_definitions(Cosmica PRIVATE UNIFIED_COMPILE)
 
 #-----------------------------------------------------------------------------
-# Set the target CUDA architecture.
-set_target_properties(Cosmica PROPERTIES CUDA_ARCHITECTURES 80)
-
-#-----------------------------------------------------------------------------
 # Add host compiler options (for C++). They will be forwarded to the CUDA compiler.
 # Add CUDA-specific compile options.
 set(HOST_FLAGS -fopenmp -Wall -Wextra -Werror)
