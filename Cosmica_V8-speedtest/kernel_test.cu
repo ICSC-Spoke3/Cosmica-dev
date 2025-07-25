@@ -231,9 +231,9 @@ int main(int argc, char *argv[]) {
         auto [BLOCKS, THREADS] = GetLaunchConfig(NPartsPerGPU, device_prop);
 
         auto RandStates = AllocateManagedSafe<curandStatePhilox4_32_10_t[]>(NPartsPerGPU);
-        unsigned long Rnd_seed = SimParameters.RandomSeed == 0
-                                     ? getpid() + time(nullptr) + gpu_id
-                                     : SimParameters.RandomSeed;
+        unsigned long Rnd_seed = gpu_id + (SimParameters.RandomSeed == 0
+                                               ? getpid() + time(nullptr)
+                                               : SimParameters.RandomSeed);
         cudaDeviceSynchronize();
         init_rdmgenerator<<<BLOCKS, THREADS>>>(RandStates.get(), NPartsPerGPU, Rnd_seed);
         cudaDeviceSynchronize();
@@ -328,7 +328,7 @@ int main(int argc, char *argv[]) {
                             for (unsigned b = 0; b < global_res[iR][iI].Nbins; ++b)
                                 Results[iR][iI].BoundaryDistribution[b] +=
                                         global_res[iR][iI].BoundaryDistribution[b];
-                            delete[] global_res[iR][iI].BoundaryDistribution;
+                            HANDLE_ERROR(cudaFree(global_res[iR][iI].BoundaryDistribution));
 
                             global_res[iR][iI].Nbins = Results[iR][iI].Nbins;
                             global_res[iR][iI].BoundaryDistribution = AllocateManaged<float[]>(
