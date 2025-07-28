@@ -31,6 +31,8 @@ class RigidityVec(NDArrayBase):
 class FluxVec(NDArrayBase):
     pass
 
+class ErrorVec(NDArrayBase):
+    pass
 
 class RigidityFlux(NamedTuple):
     rigidity: RigidityVec

@@ -6,7 +6,7 @@ import numpy as np
 
 from . import func
 from .isotopes import Isotope, ISOTOPES, Ion, IONS
-from .physics_utils import RigidityVec, FluxVec, RigidityFlux, EnergyFlux, NDArrayBase, EnergyVec
+from .physics_utils import RigidityVec, FluxVec, RigidityFlux, EnergyFlux, NDArrayBase, EnergyVec, ErrorVec
 
 import yaml
 
@@ -80,6 +80,7 @@ class LisLoader:
 class ModulationResult(NamedTuple):
     rigidity: RigidityVec
     flux: FluxVec
+    error: ErrorVec
     lis: FluxVec
 
     @property
@@ -95,6 +96,7 @@ class ModulationResult(NamedTuple):
         return ModulationResult(
             RigidityVec(self.rigidity[indexes]),
             FluxVec(self.flux[indexes]),
+            ErrorVec(self.error[indexes]),
             FluxVec(self.lis[indexes]))
 
 
@@ -142,30 +144,35 @@ class IsotopeOutput(NamedTuple):
 
         return cls(RigidityVec(input_rig_), output_rig_, output_dist_, np.array(n_particles_))
 
-    def modulate(self, lis: EnergyFlux, isotope: Isotope) -> tuple[RigidityFlux, RigidityFlux]:
+    def modulate(self, lis: EnergyFlux, isotope: Isotope) -> tuple[RigidityFlux, ErrorVec, RigidityFlux]:
         lis_rig = lis.energy.to_rigidity(isotope)
         lis_flux_en = lis.flux
         lis_flux_en_in = func.lin_log_interpolation(lis_rig, lis_flux_en, self.input_rig)
-
-        un_norm_flux = np.zeros(len(self.input_rig))
-        for index_rig in range(len(self.input_rig)):
-            lis_flux_en_out = func.lin_log_interpolation(lis_rig, lis_flux_en, self.output_rig[index_rig])
-
-            for outer_rig_bin, boundary_bin, lis_flux_bin in zip(self.output_rig[index_rig],
-                                                                 self.output_dist[index_rig],
-                                                                 lis_flux_en_out):
-                un_norm_flux[index_rig] += boundary_bin * lis_flux_bin / outer_rig_bin ** 2
 
         conv_coeff = func.d_rig_to_en(
             self.input_rig.to_energy(isotope),
             self.input_rig,
             isotope.Z, isotope.A
         )
-        j_mod = conv_coeff * [UnFlux / Npart * R ** 2 for R, UnFlux, Npart in
-                              zip(self.input_rig, un_norm_flux, self.n_particles)]
+        C = conv_coeff * self.input_rig ** 2 / self.n_particles
+
+        var = ErrorVec(np.zeros(len(self.input_rig)))
+        j_mod = np.zeros(len(self.input_rig))
+        for index_rig in range(len(self.input_rig)):
+            lis_flux_en_out = func.lin_log_interpolation(lis_rig, lis_flux_en, self.output_rig[index_rig])
+
+            A = lis_flux_en_out / self.output_rig[index_rig] ** 2
+            B, N = self.output_dist[index_rig], self.n_particles[index_rig]
+
+            j_mod[index_rig] = np.sum(B * A)
+            var[index_rig] = (np.sum(B * A ** 2) - np.sum(B * A) ** 2 / N)
+
+        j_mod *= C
+        var *= C ** 2
+
         lis_flux_rig_in = conv_coeff * lis_flux_en_in
 
-        return (RigidityFlux(self.input_rig.copy(), j_mod),
+        return (RigidityFlux(self.input_rig.copy(), FluxVec(j_mod)), var,
                 RigidityFlux(self.input_rig.copy(), lis_flux_rig_in))
 
 
@@ -187,21 +194,26 @@ class SingleOutput(dict[Isotope, IsotopeOutput]):
     def modulate(self, lis_loader: LisLoader) -> ModulationResult:
         rig: Optional[RigidityVec] = None
         flux: Optional[FluxVec] = None
+        var: Optional[ErrorVec] = None
         lis_rig_flux: Optional[FluxVec] = None
 
         for isotope, output in self.items():
             lis_spectrum = lis_loader[isotope]
-            j_rig_flux, j_lis_rig_flux = output.modulate(lis_spectrum, isotope)
+            j_rig_flux, err_var, j_lis_rig_flux = output.modulate(lis_spectrum, isotope)
 
             if rig is None:
                 rig = j_rig_flux.rigidity
                 flux = FluxVec(np.zeros_like(rig))
+                var = ErrorVec(np.zeros_like(rig))
                 lis_rig_flux = FluxVec(np.zeros_like(rig))
 
             flux += j_rig_flux.flux
+            var += err_var
             lis_rig_flux += j_lis_rig_flux.flux
 
-        return ModulationResult(rig, flux, lis_rig_flux)
+        error = ErrorVec(np.sqrt(err_var) / flux)
+
+        return ModulationResult(rig, flux, error, lis_rig_flux)
 
 
 class SimulationOutput(list[SingleOutput]):
