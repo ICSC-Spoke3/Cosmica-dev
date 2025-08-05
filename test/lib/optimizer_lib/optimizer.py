@@ -18,6 +18,8 @@ from astropy.stats import knuth_bin_width
 
 
 class OptimizerQueue:
+
+
     def __init__(self, optimizers_list: List[object]):
         self.optimizer_queue = []
         self.completed_list = []
@@ -43,16 +45,15 @@ class OptimizerQueue:
               n_part = 4096,
               **kwargs):
 
+        global FITNESS,ITER
 
         if procedure is None:
             raise ValueError("Procedure function must be provided.")
 
-        k_validation = kwargs.get("k_validation", 1)
-        k_validation_func = kwargs.get("k_validation_func", lambda values: np.mean(values, axis=0))
-
-
         for optimizer in self.optimizer_to_test:
             self.optimizer_queue.append(optimizer)
+
+        k_validation = kwargs.get("k_validation",1)
 
 
         for epoch in range(epochs):
@@ -60,11 +61,12 @@ class OptimizerQueue:
 
             print(f"\n--- Generating Random Seed ---")
             if generate_random_seed_each_epoch:
-                #TODO change
-                random_seed = int(time.time())
-                random.seed(random_seed)
+                random_seed = int(time.time() + epoch)
+
 
             print(f"\n--- Used Seed {random_seed} ---")
+            random.seed(random_seed)
+            np.random.seed(random_seed)
 
             # Start Epoch
 
@@ -72,30 +74,32 @@ class OptimizerQueue:
             # each value to test rappresent a n-dimensional vector in the space
             dummy_inputs = initial_value_parameter
 
+
+            # -------------- INIT ------------------ ##
             print(f"\n--- initial Value {dummy_inputs} ---")
 
+            start_time_epoch = time.time()
 
-            print(f"\n--- Results from {getattr(procedure, '__name__', str(procedure))} ---")
+            results = procedure(dummy_inputs,random_seed)
 
+            end_time = time.time() - start_time_epoch
 
             for optimizer in self.optimizer_queue[:]:
-                print(f"\n--- starting optimizer {optimizer.name} ---")
 
                 optimizer.run(seed=random_seed)
 
+                fitness = optimizer.evaluate_fitness(real_data, results)
 
-                start_time_epoch = time.time()
-
-                fitness = self.apply_k_validation(dummy_inputs, k_validation, k_validation_func, optimizer, procedure,
-                                                  random_seed, real_data)
-
-                optimizer.times_elapsed_per_epoch.append(time.time() - start_time_epoch)
-
+                optimizer.times_elapsed_per_epoch.append(end_time)
 
                 print(f"\n--- Telling :  {dummy_inputs} , {fitness}   ---")
 
                 optimizer.tell(known_solutions=dummy_inputs,fitness= fitness,is_starting_point = True)
 
+            # --------------- END INIT --------------------
+
+
+            # ------------- INIT ITERATIONS --------------
 
             for optimizer in self.optimizer_queue[:]:
                 print(str(optimizer) + " turn")
@@ -104,18 +108,22 @@ class OptimizerQueue:
                     print(f"\n--- Getting candidates   ---")
 
                     candidates = optimizer.ask(n=optimizer.budget)
+
+                    print(f"\n--- (ASK) Candidates :  {candidates}    ---")
+
+
                     start_time_epoch = time.time()
 
-                    fitness = self.apply_k_validation(candidates, k_validation, k_validation_func, optimizer, procedure,
-                                              random_seed, real_data)
+                    results = procedure(candidates,random_seed)
+                    fitness = optimizer.evaluate_fitness(real_data, results)
 
                     optimizer.times_elapsed_per_epoch.append(time.time() - start_time_epoch)
 
-                    print(f"\n--- Candidates :  {candidates}    ---")
 
-                    print(f"\n--- Telling :  {optimizer.last_asked} , {fitness}   ---")
+                    print(f"\n--- TELL :  {optimizer.last_asked} , {fitness}   ---")
 
                     optimizer.tell(fitness)
+
 
                 print(f"\n--- Optimizer {optimizer.name} reached stopping criteria   ---")
 
@@ -125,20 +133,9 @@ class OptimizerQueue:
                 print(f"\n--- Optimizer {optimizer.name} saving results   ---")
 
                 if optimizer.save_results_ended:
-                    optimizer.save_results(experimental_data_str,default=True,n_part=n_part)
+                    optimizer.save_results(experimental_data_str,default=True,n_part=n_part,k_validation=k_validation)
 
             print(f"Active: {len(self.optimizer_queue)}, To convergence: {len(self.completed_list)}")
-
-    def apply_k_validation(self, dummy_inputs, k_validation, k_validation_func, optimizer, procedure, random_seed,
-                           real_data):
-        all_fitness = []
-        for k_val in range(k_validation):
-            seed_step = None if random_seed is None else int(random_seed + k_val)
-            results = procedure(dummy_inputs, seed_step)
-            fitness = optimizer.evaluate_fitness(real_data, results)
-            all_fitness.append(fitness)
-        fitness_mean = k_validation_func(all_fitness)
-        return fitness_mean
 
 
 def extract_value(solution)->List:
@@ -263,11 +260,10 @@ class Optimizer:
 
     def update_internal_status(self,param_value_copy,fit):
 
-        self.candidate_seen.append((param_value_copy, fit))
+        self.candidate_seen.append((deepcopy(param_value_copy), fit))
         ### extract position 1 bc is a tuple
-
         if fit < self.best_candidate[1]:
-            self.best_candidate = (param_value_copy, fit)
+            self.best_candidate = (deepcopy(param_value_copy), fit)
 
     def tell(self, fitness: List[float], known_solutions: Optional[List|None] = None,is_starting_point = True):
         '''
@@ -309,20 +305,13 @@ class Optimizer:
                         if best_fitness_in_epoch > fit:
                             best_x_in_epoch = param_value_copy
                             best_fitness_in_epoch = fit
-
-                        self.update_internal_status(param_value_copy=param_value_copy,fit=fit)
-
-                        continue  # avoid telling again
-
-                    param_obj = self.optimizer.spawn_child()
-                    set_param_value(param_obj=param_obj, value=param_value_copy)
-                    if best_fitness_in_epoch > fit:
-                        best_x_in_epoch = param_value_copy
-                        best_fitness_in_epoch = fit
-
-                    self.update_internal_status(param_value_copy=param_value_copy,fit=fit)
-
-
+                    else:
+                        param_obj = self.optimizer.spawn_child()
+                        set_param_value(param_obj=param_obj, value=param_value_copy)
+                        self.optimizer.tell(param_obj, fit)
+                        if best_fitness_in_epoch > fit:
+                            best_x_in_epoch = param_value_copy
+                            best_fitness_in_epoch = fit
                 else:
                     #fallback: call tell directly with value
                     if best_fitness_in_epoch > fit:
@@ -330,9 +319,6 @@ class Optimizer:
                         best_fitness_in_epoch = fit
 
                     self.optimizer.tell(param_value_copy, fit)
-                    self.update_internal_status(param_value_copy=param_value_copy,fit=fit)
-
-                    continue  # no param_obj to tell
 
                 self.update_internal_status(param_value_copy=param_value_copy,fit=fit)
 
@@ -399,13 +385,13 @@ class Optimizer:
         else:
             raise Exception("None valid stopping criteria passed.")
 
-    def save_results(self,experimental_data_path = "",default: bool = True,n_part = 4096):
+    def save_results(self,experimental_data_path = "",default: bool = True,n_part = 4096,k_validation= 2):
         if not default:
             return
 
         os.makedirs(os.path.dirname(self.parquet_dir), exist_ok=True)
 
-        df_new = pd.DataFrame([self.to_dict(experimental_data_path,n_part = n_part)])
+        df_new = pd.DataFrame([self.to_dict(experimental_data_path,n_part = n_part,k_validation=k_validation)])
         if os.path.exists(self.parquet_dir):
             df_existing = pd.read_parquet(self.parquet_dir)
             df_combined = pd.concat([df_existing, df_new], ignore_index=True)
@@ -451,7 +437,7 @@ class Optimizer:
             "population" : self.budget,
             "k_validation":k_validation,
             "times_elapsed_per_epoch" : self.times_elapsed_per_epoch,
-            "version":"v2"
+            "version":"v3_old"
         }
 
     def __str__(self):
@@ -485,6 +471,8 @@ class StoppingCriteria:
                 return True
 
         return False
+
+
 
 
 

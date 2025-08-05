@@ -2,14 +2,18 @@ import os
 import random
 import sys
 import time
+from copy import deepcopy
 from pathlib import Path
 from typing import Optional, Callable, List, Dict
 
+import nevergrad.optimization
 import pandas as pd
 from fastparquet import write
 
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+from test.lib.physics_utils import FluxVec
 import nevergrad as ng
 
 from test.lib.files_utils import (
@@ -30,9 +34,11 @@ yaml.Dumper.ignore_aliases = lambda self, data: True
 ########################################################################
 # Version 1.0:
 # Version 2.0: Enhanced fitness evaluation: if the result lies within the experimental sensitivity bounds, it is not penalized
-#
+# Version 3.0: multiGPU bug fix
 #
 #######################################################################
+
+VERSION = "v3"
 
 def run_cosmica(inpt, base_command: list[str | Path] | str | Path, log_file: Path, output_dir: Path,
                 cuda_devices: str = '1,3,5,7') -> Optional[
@@ -56,8 +62,8 @@ def run_cosmica(inpt, base_command: list[str | Path] | str | Path, log_file: Pat
         print(f"Executing command: {' '.join(command)}")
 
 
+        #process = subprocess.run(command, capture_output=True, text=True)
         process = subprocess.run(command, env={'CUDA_VISIBLE_DEVICES': cuda_devices}, capture_output=True, text=True)
-        #process = subprocess.run(command, env={'CUDA_VISIBLE_DEVICES': cuda_devices}, capture_output=True, text=True)
 
         if process.returncode != 0:
             return None
@@ -132,9 +138,11 @@ def fitness_fn(results: list[ModulationResult], experimental_data: ExperimentalD
     for result in results:
         lower,upper = experimental_data.limits
 
-        if lower < result < upper:
-            losses.append(0)
-            continue
+        for i,flux in enumerate(result.flux):
+            if lower[i] < flux < upper[i]:
+                # if flux lies inside uncertainty interval
+                # then it's evaluated as the exact value
+                result.flux[i] = experimental_data.flux[i]
 
         if metric_fn is not None:
             losses.append(metric_fn(result, experimental_data))
@@ -208,7 +216,8 @@ def generate_input(base: SimulationInput, k0s: list[float]) -> SimulationInput:
 
 def get_mean_fitness(template,init_pop,k_validation, file_input, cosmica_path, iter_folder, lis_loader, metric_fn, exp_data, initial_k0)->List[float]:
 
-    all_fitness = []
+    all_fluxes = []
+
     starting_seed = template.random_seed
 
     for i in range(k_validation):
@@ -229,19 +238,30 @@ def get_mean_fitness(template,init_pop,k_validation, file_input, cosmica_path, i
 
         results = out.modulate(lis_loader)
 
-        print("Find results")
-        fitness_list = fitness_fn(results, exp_data, metric_fn=metric_fn)
+        print(results)
+        all_fluxes.append(results)
 
-        all_fitness.append(fitness_list)
+    print("Res found")
+    print(all_fluxes)
 
-    all_fitness = np.array(all_fitness)
+    flux_matrix = []
+    for row in all_fluxes:
+        flux_matrix.append([mod_result.flux for mod_result in row])
 
-    print(f"all Fitness: {all_fitness}")
+    mean_flux = np.mean(flux_matrix, axis=0)
 
-    mean_fitness = np.mean(all_fitness, axis=0)
-    print(f"Mean Fitness{mean_fitness}")
+    # using first row since lis and rig are the same for each row[i]
+    # mean was evaluated per column index
 
-    return mean_fitness.tolist()
+    for i, res in enumerate(all_fluxes[0]):
+        all_fluxes[0][i] = res._replace(flux=FluxVec(deepcopy(mean_flux[i])))
+
+    print(all_fluxes[0])
+    fitness = fitness_fn(all_fluxes[0], exp_data, metric_fn=metric_fn)
+
+    print(fitness)
+
+    return fitness
 
 
 
@@ -286,7 +306,7 @@ def run_optimization(sim: SimulationExperimentItem, data_dir: Path, cosmica_path
     template = base_input(data_dir, sim, rnd=random_seed, n_part=n_part)
     p_exp = data_dir / 'experimental' / sim.experimental_data_path
     exp_data = ExperimentalData.from_data(p_exp, (2, 3, 4, 5), rig_range=(0, 11))
-    parquet_dir = Path(__file__).parent / 'parquet' / 'k0_search'
+    parquet_dir = Path(__file__).parent / 'parquet' / 'k0_search_v3'
 
 
     for epoch in range(epochs):
@@ -441,7 +461,7 @@ def run_optimization(sim: SimulationExperimentItem, data_dir: Path, cosmica_path
                 "population":population_size,
                 "k_validation":k_validation,
                 "times_elapsed_per_epoch" : times_elapsed_per_epoch,
-                "version":"v2"
+                "version":VERSION
             }
 
         save_output_in_parquet(parquet_dir,best_params)
@@ -482,6 +502,7 @@ def main():
     )
 
 
+    #names_self_adaptive = ["NgIohTuned","NGOpt"] #,"CMA"
     names = ["CMA","PSO","DE","TwoPointsDE","TBPSA","RandomSearch"]
 
     run_optimization(
@@ -499,6 +520,7 @@ def main():
         min_improvement = 0.00001,
         k_validation = 4
     )
+
 
 
 
