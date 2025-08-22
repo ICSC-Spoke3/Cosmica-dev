@@ -213,19 +213,20 @@ def generate_input(base: SimulationInput, k0s: list[float],rigidities:RigidityVe
     return base
 
 
-def save_output_in_parquet(path_file_parquet_store_res: Path, best_params: List):
+def save_output_in_parquet(path_file_parquet_store_res: Path, best_params: Dict):
 
     os.makedirs(os.path.dirname(str(path_file_parquet_store_res)), exist_ok=True)
 
-    df_new = pd.DataFrame.from_records(best_params).reset_index(drop=True)
+    df_new = pd.DataFrame.from_dict(best_params, orient='index').reset_index(drop=True)
 
     if os.path.exists(path_file_parquet_store_res):
         df_existing = pd.read_parquet(path_file_parquet_store_res)
         df_combined = pd.concat([df_existing, df_new], ignore_index=True)
     else:
+        print("non exists")
         df_combined = df_new
 
-    df_combined.to_parquet(path_file_parquet_store_res, index=False, engine="pyarrow")
+    df_combined.to_parquet(path_file_parquet_store_res,  index=False, engine="pyarrow")
 
 def generate_initial_entry(number_of_entries:int,generation_entry_method:str|Callable,min_max_interval:tuple):
 
@@ -241,7 +242,7 @@ def generate_initial_entry(number_of_entries:int,generation_entry_method:str|Cal
                 # there is no check if boundaries are < 0
                 minimo = math.log(lower_bound)
                 massimo = math.log(upper_bound)
-                list.append(math.exp(minimo+(massimo-minimo)*random.random()))
+                list.append(minimo+(massimo-minimo)*random.random())
             return list
 
 
@@ -267,10 +268,12 @@ def rigidity_analysis(sampling: int = 6,
                       parquet_dir:Path = "",
                       file_input:Path ="",
                       lis_loader: LisLoader = None,
-                      max_iter = 100):
+                      max_iter = 100,
+                      rig_range:tuple= (0,1.816),
+                      n_part = 16384):
 
-    experimental_data = ExperimentalData.from_data(p_exp, (2, 3, 4, 5), rig_range=(0, 1.816))
-    template = base_input(data_dir, sim, rnd=random_seed, n_part=16384)
+    experimental_data = ExperimentalData.from_data(p_exp, (2, 3, 4, 5), rig_range=rig_range)
+    template = base_input(data_dir, sim, rnd=random_seed, n_part=n_part)
 
     rigidities = experimental_data.rig_flux.rigidity
     num_rigidities = len(rigidities)
@@ -278,7 +281,7 @@ def rigidity_analysis(sampling: int = 6,
     random_seed_i = random_seed
     for turn in range(sampling):
 
-        results_for_this_turn = []
+        results_for_this_turn = {}
 
         print(f"--- Starting Sampling Turn {turn + 1}/{sampling} ---")
 
@@ -293,7 +296,7 @@ def rigidity_analysis(sampling: int = 6,
         initial_candidates = generate_initial_entry(number_of_entries=number_of_entries,
                                                     generation_entry_method=generation_entry_method,
                                                     min_max_interval=min_max_interval)
-
+        print(f"{initial_candidates}")
         for bitmask in range(1, 1 << num_rigidities):
 
             selected_rigidities = RigidityVec([rig for i, rig in enumerate(rigidities) if bitmask & (1 << i)])
@@ -307,7 +310,7 @@ def rigidity_analysis(sampling: int = 6,
             print(f"  Testing Bitmask {bitmask:0{num_rigidities}b} with {len(selected_rigidities)} rigidities...")
 
             def f(k0):
-                inpt = generate_input(template, k0, rigidities=selected_rigidities,random_seed=random_seed)
+                inpt = generate_input(template, np.exp(k0), rigidities=selected_rigidities,random_seed=random_seed)
 
                 with open(file_input, 'w') as f:
                     yaml.dump(inpt.to_dict(), f, Dumper=yaml.Dumper)
@@ -329,22 +332,22 @@ def rigidity_analysis(sampling: int = 6,
             for i, k0_candidate in enumerate(initial_candidates):
                 res = minimize(f, k0_candidate, method="L-BFGS-B", options={"maxiter": max_iter},bounds=log_bounds)
 
-                opt_result = {
+                results_for_this_turn[f"{bitmask}-{turn}-{i}"] = {
                     "turn": turn,                               # From outer loop
                     "seed": random_seed_i,                      # From outer loop
                     "bitmask": f"{bitmask:0{num_rigidities}b}",  # From middle loop
-                    "selected_rigidities": selected_rigidities, # From middle loop
+                    "selected_rigidities": list(selected_rigidities), # From middle loop
                     "initial_k0": k0_candidate,                 # From inner loop
                     "optimized_k0": res.x[0] if res.x.size > 0 else None,
                     "final_fitness": res.fun,
                     "success": res.success,
                     "message": res.message,
-                    "n_iterations": res.nit
+                    "n_iterations": res.nit,
+                    "g(X)" :  "log"
                 }
-                results_for_this_turn.append(opt_result)
 
-
-        save_output_in_parquet(parquet_dir, results_for_this_turn)
+        print(results_for_this_turn)
+        save_output_in_parquet(parquet_dir / "rigidity_analysis_data", results_for_this_turn)
 
         print(f"--- Turn {turn + 1} complete. Results saved to {parquet_dir} ---\n")
 
@@ -368,7 +371,7 @@ def main():
 
     p_exp = data_dir / 'experimental' / sim.experimental_data_path
 
-    parquet_dir = Path(__file__).parent / 'parquet' / 'k0_rigidity_analysis'
+    parquet_dir = Path(__file__).parent / 'parquet'
     parquet_dir.mkdir(parents=True, exist_ok=True)
 
 
@@ -377,8 +380,8 @@ def main():
 
     rigidity_analysis(sampling=6,
                       min_max_interval=(5e-5,6e-4),
-                      number_of_entries=10,
-                      generation_entry_method="uniform",
+                      number_of_entries=6,
+                      generation_entry_method="log",
                       random_seed=42,
                       sim = sim,
                       data_dir = data_dir,
@@ -388,7 +391,8 @@ def main():
                       parquet_dir = parquet_dir,
                       file_input = file_input,
                       lis_loader = lis_loader,
-                      max_iter=1)
+                      max_iter=100,
+                      rig_range = (0,1.816))
 
 
 
