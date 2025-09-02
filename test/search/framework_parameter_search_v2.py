@@ -87,9 +87,6 @@ def fitness_fn(results: list[ModulationResult], experimental_data: ExperimentalD
     for result in results:
         lower,upper = experimental_data.limits
 
-        if lower < result < upper:
-            losses.append(0)
-            continue
 
         if metric_fn is not None:
             losses.append(metric_fn(result, experimental_data))
@@ -270,15 +267,13 @@ def main():
     optim_queue = OptimizerQueue(optimizers_list=[optimizer_FUZZYPSO])
 
 
-    K_VALIDATION = 1
-
     optim_queue.start(epochs=1,
                       procedure=get_results,
                       initial_value_parameter=init_pop,
                       generate_random_seed_each_epoch=True,
                       real_data=exp_data,
                       experimental_data_str = "Rigidity_Proton_AMS-02_PRL1272021271102_20180929_20181025.dat",
-                      k_validation = K_VALIDATION)
+                      )
 
 
 if __name__ == "__main__":
