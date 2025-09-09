@@ -144,7 +144,36 @@ class IsotopeOutput(NamedTuple):
 
         return cls(RigidityVec(input_rig_), output_rig_, output_dist_, np.array(n_particles_))
 
-    def modulate(self, lis: EnergyFlux, isotope: Isotope) -> tuple[RigidityFlux, ErrorVec, RigidityFlux]:
+    def modulate_energy(self, lis: EnergyFlux, isotope: Isotope) -> tuple[
+        EnergyFlux, ErrorVec, EnergyFlux]:
+        input_en = EnergyVec(self.input_rig)
+        output_en = [EnergyVec(o) for o in self.output_rig]
+
+        lis_en = lis.energy
+        lis_flux_en = lis.flux
+        lis_flux_en_in = func.lin_log_interpolation(lis_en, lis_flux_en, input_en)
+
+        C = func.beta_eval(input_en, isotope.T0) / self.n_particles
+
+        var = ErrorVec(np.zeros(len(input_en)))
+        j_mod = np.zeros(len(input_en))
+        for index_en in range(len(input_en)):
+            lis_flux_en_out = func.lin_log_interpolation(lis_en, lis_flux_en, output_en[index_en])
+
+            A = lis_flux_en_out / func.beta_eval(output_en[index_en], isotope.T0)
+            B, N = self.output_dist[index_en], self.n_particles[index_en]
+
+            j_mod[index_en] = np.sum(B * A)
+            var[index_en] = (np.sum(B * A ** 2) - np.sum(B * A) ** 2 / N)
+
+        j_mod *= C
+        var *= C ** 2
+
+        return (EnergyFlux(input_en.copy(), FluxVec(j_mod)), var,
+                EnergyFlux(input_en.copy(), lis_flux_en_in.copy()))
+
+    def modulate(self, lis: EnergyFlux, isotope: Isotope) -> tuple[
+        RigidityFlux, ErrorVec, RigidityFlux]:
         lis_rig = lis.energy.to_rigidity(isotope)
         lis_flux_en = lis.flux
         lis_flux_en_in = func.lin_log_interpolation(lis_rig, lis_flux_en, self.input_rig)
@@ -191,7 +220,7 @@ class SingleOutput(dict[Isotope, IsotopeOutput]):
             for iso, txt in txts.items()
         })
 
-    def modulate(self, lis_loader: LisLoader) -> ModulationResult:
+    def modulate(self, lis_loader: LisLoader, is_energy=False) -> ModulationResult:
         rig: Optional[RigidityVec] = None
         flux: Optional[FluxVec] = None
         var: Optional[ErrorVec] = None
@@ -199,7 +228,12 @@ class SingleOutput(dict[Isotope, IsotopeOutput]):
 
         for isotope, output in self.items():
             lis_spectrum = lis_loader[isotope]
-            j_rig_flux, err_var, j_lis_rig_flux = output.modulate(lis_spectrum, isotope)
+            if is_energy:
+                j_en_flux, err_var, j_lis_en_flux = output.modulate_energy(lis_spectrum, isotope)
+                j_rig_flux = j_en_flux.to_rigidity(isotope)
+                j_lis_rig_flux = j_lis_en_flux.to_rigidity(isotope)
+            else:
+                j_rig_flux, err_var, j_lis_rig_flux = output.modulate(lis_spectrum, isotope)
 
             if rig is None:
                 rig = j_rig_flux.rigidity
@@ -211,7 +245,8 @@ class SingleOutput(dict[Isotope, IsotopeOutput]):
             var += err_var
             lis_rig_flux += j_lis_rig_flux.flux
 
-        error = ErrorVec(np.sqrt(err_var) / flux)
+        #TODO: validate this with energy input
+        error = ErrorVec(np.sqrt(var) / flux)
 
         return ModulationResult(rig, flux, error, lis_rig_flux)
 
@@ -235,8 +270,8 @@ class SimulationOutput(list[SingleOutput]):
     def from_outputs(cls, *outputs: Union[SingleOutput, 'SimulationOutput']) -> 'SimulationOutput':
         return SimulationOutput([o if isinstance(o, SingleOutput) else o[0] for o in outputs])
 
-    def modulate(self, lis_loader: LisLoader) -> list[ModulationResult]:
-        return [single_output.modulate(lis_loader) for single_output in self]
+    def modulate(self, lis_loader: LisLoader, is_energy=False) -> list[ModulationResult]:
+        return [single_output.modulate(lis_loader, is_energy) for single_output in self]
 
 
 class ExperimentalData(NamedTuple):

@@ -21,7 +21,7 @@ if __name__ == '__main__':
                                              sorted(p_outputs.rglob('*part*/proton*.dat')),
                                              sorted(p_outputs.rglob('*part*/deuteron*.dat'))):
         v8 = SimulationOutput.from_yaml(yaml.load(v8_path.read_text(), Loader=yaml.CLoader)).modulate(lis_loader)[0]
-        v6 = SimulationOutput.from_txt([{'proton': v6_p_path.read_text(), 'deuteron': v6_p_path.read_text()}]).modulate(
+        v6 = SimulationOutput.from_txt([{'proton': v6_p_path.read_text(), 'deuteron': v6_d_path.read_text()}]).modulate(
             lis_loader)[0]
 
         spec = v8_path.parent.name.split('_')

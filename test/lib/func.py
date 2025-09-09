@@ -265,6 +265,7 @@ def en_to_rig_flux(en: np.ndarray, flux: np.ndarray, Z: int, A: int) -> tuple[np
     flux = np.array([flux * rig_to_en_flux_factor(t, r, Z, A) for t, r, flux in zip(en, rig, flux)])
     return rig, flux
 
+
 def en_to_rig_flux_factor(rig: np.ndarray, en: np.ndarray, Z: int, A: int) -> np.ndarray:
     """
     Convert rigidity to energy flux factor
@@ -281,7 +282,7 @@ def en_to_rig_flux_factor(rig: np.ndarray, en: np.ndarray, Z: int, A: int) -> np
         T0 = 5.11e-4
         A = 1.
     return A * A / (Z * Z) * (en + T0) / rig
-    # return Z * Z / (A * A) * rig / (en + T0)
+
 
 def rig_to_en_flux(rig: np.ndarray, flux: np.ndarray, Z: int, A: int) -> tuple[np.ndarray, np.ndarray]:
     """
