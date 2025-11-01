@@ -26,6 +26,7 @@ struct LaunchParam_t {
  */
 struct InputHeliosphericParametrizationProperties_t {
     float k0 = 0;
+    float k0_paral = 0, k0_perp = 0;
 };
 
 /**

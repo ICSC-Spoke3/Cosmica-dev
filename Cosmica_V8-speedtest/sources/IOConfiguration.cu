@@ -487,6 +487,49 @@ T node_to_value(const fkyaml::node &node) {
 }
 
 /**
+ * @brief Extract the value from a YAML node
+ * @param node the YAML node
+ * @param default_value the default value if not found
+ * @return the value
+ */
+template<typename T>
+T node_to_value(const fkyaml::node &node, T &&default_value) {
+    return node.get_value_or<T>(default_value);
+}
+
+/**
+ * @brief Extract the value from a YAML node given a path
+ * @param node the YAML node
+ * @param default_value the default value if not found
+ * @param path ... the path
+ * @return the value or default value
+ */
+template<typename T, typename... Paths>
+T path_to_value(const fkyaml::node &node, const T &default_value, Paths &&... path) {
+    auto current = node;
+    auto try_step = [&]<typename Key>(Key &&key) -> bool {
+        using U = std::decay_t<Key>;
+        if constexpr (std::is_convertible_v<U, std::string>) {
+            std::string k = key;
+            if (!current.is_mapping() || !current.contains(k))
+                return false;
+            current = current[k];
+            return true;
+        } else if constexpr (std::is_integral_v<U>) {
+            int i = static_cast<int>(key);
+            if (!current.is_sequence() || i < 0 || i >= static_cast<int>(current.size()))
+                return false;
+            current = current[i];
+            return true;
+        }
+        return false;
+    };
+    if ((try_step(path) && ...))
+        return current.get_value_or<T>(default_value);
+    return default_value;
+}
+
+/**
  * @brief Extract a vector from a YAML node
  * @param node the YAML node
  * @return the vector
@@ -586,13 +629,24 @@ node_to_heliosphere(const fkyaml::node &node, const unsigned n_sources, const un
             node_to_value<float>(static_node["hp_tail"][i]),
         };
         for (unsigned j = 0; j < n_param; ++j) {
+            // const InputHeliosphericParametrizationProperties_t ihpp{
+            // node_to_value<float>(dynamic_node["k0"][j][i], 0),
+            // node_to_value<float>(dynamic_node["k0_paral"][j][i], 0),
+            // node_to_value<float>(dynamic_node["k0_perp"][j][i], 0),
+            // };
             const InputHeliosphericParametrizationProperties_t ihpp{
-                node_to_value<float>(dynamic_node["k0"][j][i]),
+                path_to_value<float>(dynamic_node, 0, "k0", j, i),
+                path_to_value<float>(dynamic_node, 0, "k0_paral", j, i),
+                path_to_value<float>(dynamic_node, 0, "k0_perp", j, i),
             };
             float kxh, kyh, kzh, kxl, kyl, kzl;
             if (ihpp.k0 > 0) {
                 kxh = kxl = ihpp.k0;
                 kyh = kyl = ihpp.k0;
+                kzh = kzl = 0;
+            } else if (ihpp.k0_paral > 0 && ihpp.k0_perp > 0) {
+                kxh = kxl = ihpp.k0_paral;
+                kyh = kyl = ihpp.k0_paral;
                 kzh = kzl = 0;
             } else {
                 std::tie(kxh, kyh, kzh) = EvalK0(true, ihp.Polarity, z, ihp.SolarPhase, ihp.SmoothTilt, ihp.NMCR,
