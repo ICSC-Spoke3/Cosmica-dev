@@ -381,13 +381,15 @@ class HeliosphericParameters(NDArrayBase):
 class SimulationInput(NamedTuple):
     class DynamicParameters(NamedTuple):
         class DynamicHeliosphere(NamedTuple):
-            k0: list[np.ndarray]
+            k0: Optional[list[np.ndarray]] = None
+            k0_paral: Optional[list[np.ndarray]] = None
+            k0_perp: Optional[list[np.ndarray]] = None
 
         heliosphere: DynamicHeliosphere
 
         def to_dict(self):
             return {
-                'heliosphere': {k: [InlineList(v.tolist()) for v in vv] for k, vv in self.heliosphere._asdict().items()}
+                'heliosphere': {k: [InlineList(v.tolist()) for v in vv] for k, vv in self.heliosphere._asdict().items() if vv is not None}
             }
 
     class StaticParameters(NamedTuple):
