@@ -36,7 +36,6 @@ class OptimizerQueue:
 
     def start(self,
               real_data,
-              epochs: int,
               procedure: Callable = None,
               initial_value_parameter: List[float] = [0.0],
               generate_random_seed_each_epoch: bool = False,
@@ -45,106 +44,89 @@ class OptimizerQueue:
               n_part = 4096,
               **kwargs):
 
-        global FITNESS,ITER
-
         if procedure is None:
             raise ValueError("Procedure function must be provided.")
 
-        for optimizer in self.optimizer_to_test:
-            self.optimizer_queue.append(optimizer)
+
 
         k_validation = kwargs.get("k_validation",1)
 
 
-        for epoch in range(epochs):
-            print(f"\n--- Epoch {epoch + 1} ---")
 
-            print(f"\n--- Generating Random Seed ---")
-            if generate_random_seed_each_epoch:
-                random_seed = int(time.time() + epoch)
+        print(f"\n--- START  ---")
 
 
-            print(f"\n--- Used Seed {random_seed} ---")
-            random.seed(random_seed)
-            np.random.seed(random_seed)
-
-            # Start Epoch
-
-            # initial value parameter is a list of default value to test
-            # each value to test rappresent a n-dimensional vector in the space
-            dummy_inputs = initial_value_parameter
+        for optimizer in self.optimizer_to_test:
+            self.optimizer_queue.append(optimizer)
 
 
-            # -------------- INIT ------------------ ##
-            print(f"\n--- initial Value {dummy_inputs} ---")
+        print(f"\n--- Generating Random Seed ---")
+        if generate_random_seed_each_epoch:
+            random_seed = int(time.time())
 
-            start_time_epoch = time.time()
+        print(f"\n--- Used Seed {random_seed} ---")
+        random.seed(random_seed)
+        np.random.seed(random_seed)
 
-            results = procedure(dummy_inputs,random_seed)
-
-            end_time = time.time() - start_time_epoch
-
-            for optimizer in self.optimizer_queue[:]:
-
-                optimizer.run(seed=random_seed)
-
-                fitness = optimizer.evaluate_fitness(real_data, results)
-
-                optimizer.times_elapsed_per_epoch.append(end_time)
-
-                print(f"\n--- Telling :  {dummy_inputs} , {fitness}   ---")
-
-                optimizer.tell(known_solutions=dummy_inputs,fitness= fitness,is_starting_point = True)
-
-            # --------------- END INIT --------------------
+        # Start Epoch
+        # initial value parameter is a list of default value to test
+        # each value to test rappresent a n-dimensional vector in the space
+        dummy_inputs = initial_value_parameter
 
 
-            # ------------- INIT ITERATIONS --------------
+        # -------------- INIT ------------------ ##
+        print(f"\n--- initial Value {dummy_inputs} ---")
 
-            for optimizer in self.optimizer_queue[:]:
-                print(str(optimizer) + " turn")
 
+        start_time_epoch = time.time()
+        results = procedure(dummy_inputs,random_seed)
+        end_time = time.time() - start_time_epoch
+        for optimizer in self.optimizer_queue[:]:
+            optimizer.run(seed=random_seed)
+            fitness = optimizer.evaluate_fitness(real_data, results)
+            optimizer.times_elapsed_per_epoch.append(end_time)
+            print(f"\n--- Telling :  {dummy_inputs} , {fitness}   ---")
+            optimizer.tell(known_solutions=dummy_inputs,fitness= fitness,is_starting_point = True)
+        # --------------- END INIT --------------------
+
+        # ------------- INIT ITERATIONS --------------
+        for optimizer in self.optimizer_queue[:]:
+            print(str(optimizer) + " turn")
+            try:
                 while not optimizer.check_stopping_criteria():
                     print(f"\n--- Getting candidates   ---")
-
                     candidates = optimizer.ask(n=optimizer.budget)
-
                     print(f"\n--- (ASK) Candidates :  {candidates}    ---")
-
-
                     start_time_epoch = time.time()
-
                     results = procedure(candidates,random_seed)
                     fitness = optimizer.evaluate_fitness(real_data, results)
-
                     optimizer.times_elapsed_per_epoch.append(time.time() - start_time_epoch)
-
-
                     print(f"\n--- TELL :  {optimizer.last_asked} , {fitness}   ---")
-
                     optimizer.tell(fitness)
-
-
-                print(f"\n--- Optimizer {optimizer.name} reached stopping criteria   ---")
-
-                self.completed_list.append(optimizer)
-                self.optimizer_queue.remove(optimizer)
-
-                print(f"\n--- Optimizer {optimizer.name} saving results   ---")
-
+                    print(f"\n--- Optimizer {optimizer.name} reached stopping criteria   ---")
+                    self.completed_list.append(optimizer)
+                    print(f"\n--- Optimizer {optimizer.name} saving results   ---")
                 if optimizer.save_results_ended:
                     optimizer.save_results(experimental_data_str,default=True,n_part=n_part,k_validation=k_validation)
-
+            except Exception as e:
+                print("Errore durante l'esecuzione:", e)
+                optimizer.save_results(experimental_data_str + ':ERR',default=True,n_part=n_part,k_validation=k_validation)
+                continue
             print(f"Active: {len(self.optimizer_queue)}, To convergence: {len(self.completed_list)}")
 
 
-def extract_value(solution)->List:
+def extract_value(solution) -> List[float]:
     if hasattr(solution, 'value'):
-        return solution.value
+        val = solution.value
     elif hasattr(solution, 'X'):
-        return deepcopy(solution.X)
+        val = deepcopy(solution.X)
     else:
-        return solution
+        val = solution
+
+    if isinstance(val, (list, tuple, np.ndarray)):
+        return [float(v) for v in val]
+    else:
+        return [float(val)]
 
 
 def set_param_value(param_obj, value):
@@ -369,7 +351,7 @@ class Optimizer:
         return self.actual_iterations
 
     def evaluate_fitness(self, real_data: List, results: List) -> List[float]:
-        return [self.eval_metric(real_data, r) for r in results]
+        return [self.eval_metric(experimental_data = real_data,result = r) for r in results]
 
     def check_stopping_criteria(self) ->bool:
         '''
@@ -385,7 +367,7 @@ class Optimizer:
         else:
             raise Exception("None valid stopping criteria passed.")
 
-    def save_results(self,experimental_data_path = "",default: bool = True,n_part = 4096,k_validation= 2):
+    def save_results(self,experimental_data_path = "",default: bool = True,n_part = 16384,k_validation= 2):
         if not default:
             return
 
@@ -418,6 +400,8 @@ class Optimizer:
             best_x_each_epoch.append(extract_value(x))
 
         print(best_x_each_epoch)
+
+        print(f"steps {steps}")
 
         return {
             "best_x": best_x,
@@ -471,6 +455,8 @@ class StoppingCriteria:
                 return True
 
         return False
+
+
 
 
 

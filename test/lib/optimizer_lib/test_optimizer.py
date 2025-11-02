@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 import nevergrad as ng
 
 from test.lib.fstpso_ask_tell.fstpso import FuzzyPSO
-from test.lib.optimizer.optimizer import Optimizer, OptimizerQueue
+from test.lib.optimizer_lib.optimizer import Optimizer, OptimizerQueue
 
 
 def real_function(x):
