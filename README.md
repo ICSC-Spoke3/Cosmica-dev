@@ -4,6 +4,96 @@
 
 COde for a Speedy Montecarlo Involving Cuda Architecture (COSMICA) is a speedy and high precision Monte Carlo simulator of CR modulation, which solve the system of Stochastic Differential Equations (SDE) equivalent to the Parker Transport Equation (PTE). A sample of virtual particles is independently stochastic propagated backward in time from the detection position through the heliosphere to the external boundary. GPU parallelization of COSMICA code is a game changer in this field because it improves the computational time for a standard simulation from order of hundred of minutes to few of them. Furthermore, the code is capable of distributing the computations on clusters of machines with multiple GPUs, opening the way for scaling.
 
+## How to run the latest version
+Cosmica V8 is the latest version of the code.
+It features a new compilation system based on CMake, and new input-outputs format, easier to work with.
+To run an example of code, follow these steps.
+
+### Manual Compilation
+
+From the `Cosmica_V8-speedtest` directory, run the following instructions:
+```shell
+cmake -S . ./build -DCMAKE_CUDA_ARCHITECTURES=86
+cmake --build ./build --target Cosmica -- -j 10
+```
+This will be an executable file named `Cosmica` in the folder `build`.
+For Compute Capabilities different from 8.6 change the value in the first command.
+
+The main requirements are CUDA 12.9 drivers and CMake 3.30+.
+
+### Docker
+
+An alternative to manual compilation is usage with docker.
+This requires the NVIDIA Container Toolkit to be installed as well, to be able to use the GPUs on the host machine.
+To configure it, simply run the script `Cosmica_V8-speedtest/build_docker.sh`.
+The default CC is 8.0, to ensure optimal performance, check that your GPU is present in the list in the script, and eventually add it manually.
+To run Cosmica built with docker, use the script `Cosmica_V8-speedtest/launch_docker.py` which automatically maps the paths of the files in the arguments from the host to the container.
+It takes all the same arguments as the normal compiled code.
+
+### Arguments
+
+| Argument Name     | Optional | Description                                                                           |
+|-------------------|-----------|---------------------------------------------------------------------------------------|
+| `-i`, `--input`   | Yes       | Path of the input configuration file (`.yaml` or `.txt`).                              |
+| `-o`, `--output_dir` | Yes    | Path of the output directory, ending with "/".                                        |
+| `-v`, `--verbosity` | Yes     | Verbosity options (from most to least): trace, debug, info, warn, err, critical, off. |
+| `--log_file`      | Yes       | Logs destination instead of stdout.                                                   |
+| `--stdin`         | Yes       | Use stdin for input (YAML only). Input file is ignored.                               |
+| `--stdout`        | Yes       | Use stdout for output (YAML only). This disables stdout logging.                      |
+| `--legacy`        | Yes       | Use legacy `.txt` input and `.dat` output.                                            |
+| `--no_pid`        | Yes       | Don't append the process ID to the output file.                                       |
+
+### Example input
+An example YAML file is formatted as follows:
+```yaml
+random_seed: 72
+output_path: proton_deuteron_20111116_20111212_4096_1_72
+rigidities: [1.08, 1.245, 1.42, 1.61, 1.815, 2.035, 2.275, 2.535, 2.82, 3.13, 3.465, 3.83, 4.225, 4.655, 5.125, 5.635, 6.185, 6.78, 7.425, 8.12, 8.87, 9.68, 10.55]
+isotopes:
+  proton:
+    nucleon_rest_mass: 0.938272
+    mass_number: 1.0
+    charge: 1.0
+  deuteron:
+    nucleon_rest_mass: 0.938272
+    mass_number: 2.0
+    charge: 1.0
+sources:
+  r: [1.0]
+  th: [1.5707963267948966]
+  phi: [0.0]
+relative_bin_amplitude: 0.00855
+n_particles: 4096
+n_regions: 15
+dynamic:
+  heliosphere:
+    k0:
+    - [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    - [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+static:
+  heliosphere:
+    ssn: [92.387, 89.414, 88.052, 88.193, 88.628, 85.615, 78.704, 69.687, 61.436, 54.558, 49.942, 47.34, 45.357, 42.635, 38.213]
+    v0: [384.0, 363.3, 410.04, 426.3, 455.11, 464.81, 451.89, 435.44, 441.78, 416.11, 435.26, 381.93, 427.93, 381.75, 402.96]
+    tilt_angle: [66.9, 69.6, 71.1, 66.7, 67.1, 64.5, 63.5, 63.7, 69.9, 65.2, 56.1, 53.6, 48.2, 48.8, 40.4]
+    smooth_tilt: [66.142, 66.617, 67.408, 67.008, 66.092, 64.825, 63.267, 61.533, 58.975, 57.042, 55.583, 53.642, 52.15, 49.167, 46.442]
+    b_field: [5.059, 5.741, 5.725, 5.096, 5.007, 5.281, 5.575, 5.356, 4.863, 5.986, 5.656, 4.541, 4.659, 4.246, 4.937]
+    polarity: [-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0]
+    solar_phase: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    nmcr: [274.307, 270.473, 271.815, 274.32, 274.113, 272.754, 272.504, 273.648, 276.23, 268.111, 272.785, 281.366, 279.909, 276.43, 279.955]
+    ts_nose: [72.55, 72.19, 71.8, 71.4, 70.95, 70.57, 70.23, 69.84, 69.42, 69.05, 68.69, 68.37, 68.13, 67.91, 67.72]
+    ts_tail: [77.97, 77.52, 77.05, 76.58, 76.08, 75.63, 75.23, 74.74, 74.27, 73.86, 73.48, 73.25, 73.06, 72.89, 72.78]
+    hp_nose: [125.31, 126.24, 127.1, 127.99, 128.82, 129.66, 130.48, 131.2, 131.92, 132.57, 133.19, 133.83, 134.43, 135.04, 135.67]
+    hp_tail: [140.29, 141.22, 142.04, 142.78, 143.42, 143.99, 144.52, 145.03, 145.53, 146.09, 146.62, 147.19, 147.78, 148.38, 148.96]
+  heliosheat:
+    k0: [3.0e-05]
+    v0: [402.96]
+```
+
+### Running benchmarks
+To run the benchmark set from the paper, run the script `Cosmica_V8-speedtest/test/benchmark/make_inputs.py` which generates all the inputs in the folders `Cosmica_V8-speedtest/test/data/benchmark/*`, followed by the script `Cosmica_V8-speedtest/test/benchmark/run_tests.py`.
+Modify the second script to choose which benchmarks to run, as the entire set is extremely large.
+
+
 ## License
 
 Distributed under the GNU Affero General Public License v3.0 License. See [LICENSE](https://github.com/ICSC-Spoke3/Cosmica-dev/blob/main/LICENSE) for more information.
