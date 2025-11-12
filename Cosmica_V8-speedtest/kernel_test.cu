@@ -276,6 +276,11 @@ int main(int argc, char *argv[]) {
                                               RandStates.get(), Maxs);
         cudaDeviceSynchronize();
 
+        // std::ofstream out(SimParameters.output_file + "_t_fly.csv");
+        // for (std::size_t i = 0; i < NPartsPerGPU; ++i) {
+        //     out << QuasiParts.t_fly[i] << '\n';
+        // }
+
         THREAD_BENCHMARKS[cpu_thread_id]->AddEvent("Propagation completed");
 
         spdlog::info("Propagation complete [GPU: {}]", gpu_id);
