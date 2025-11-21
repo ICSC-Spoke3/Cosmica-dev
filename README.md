@@ -28,7 +28,7 @@ This approach requires the NVIDIA Container Toolkit, that must be installed to l
 To configure it, simply run the script `Cosmica_V8-speedtest/build_docker.sh`.
 The default compiler is CC 8.0; to ensure optimal performance, check that your GPU is present in the list in the script, and eventually add it manually.
 To run Cosmica built with docker, use the script `Cosmica_V8-speedtest/launch_docker.py` which automatically maps the paths of the files in the arguments from the host to the container.
-It takes all the same arguments as the normal compiled code.
+The docker version accepts the same arguments as the normal compiled code, which are described below.
 
 ### Arguments
 
