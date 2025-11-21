@@ -2,7 +2,7 @@
 
 ## Description
 
-COde for a Speedy Montecarlo Involving Cuda Architecture (COSMICA) is a speedy and high precision Monte Carlo simulator of CR modulation, which solve the system of Stochastic Differential Equations (SDE) equivalent to the Parker Transport Equation (PTE). A sample of independent virtual particles is stochastically propagated backward in time through the heliosphere, from the detection position to the external boundary. GPU parallelization of COSMICA code is a extremely useful for this task, because it strongly reduces the computational time for a standard simulation from hours to a few minutes. Moreover, COSMICA can distribute the computations over clusters of machines equipped with multiple GPUs, opening the way for further scaling.
+COde for a Speedy Montecarlo Involving Cuda Architecture (COSMICA) is a speedy and high precision Monte Carlo simulator of Cosmic Rays (CR) modulation, which solve the system of Stochastic Differential Equations (SDE) equivalent to the Parker Transport Equation (PTE). A sample of independent virtual particles is stochastically propagated backward in time through the heliosphere, from the detection position to the external boundary. GPU parallelization of COSMICA code is a extremely useful for this task, because it strongly reduces the computational time for a standard simulation from hours to a few minutes. Moreover, COSMICA can distribute the computations over clusters of machines equipped with multiple GPUs, opening the way for further scaling.
 
 ## How to run the latest version
 Cosmica V8 is the latest version of the code.
@@ -143,7 +143,7 @@ All performance indicators are evaluated in 'SimTimePlot_speedup.ipynb'
 ![plot3](test_plots/Figure_AMS-02_PRL2015_Proton.png))
 
 ## COSMICA 1D model
-Here there are the codes and building scripts of the COSMICA 1D model of Cosmic Rays (CR) propagation in the heliosphere.
+The Cosmica-1D directory contains the source code and building scripts for the COSMICA 1D model of CRs propagation in the heliosphere.
 These are the simplified version of the COSMICA code, which is 2D in modelling and 3D in propagation. The main algorithm is maintained, but the propagation and implementation is reduced to its essential 1D components.
 This version of the model can be taken as toy model to understand the algorithm and perform some test or start to develop a different physical propagation model.
 
