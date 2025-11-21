@@ -44,11 +44,17 @@ It takes all the same arguments as the normal compiled code.
 | `--no_pid`        | Yes       | Don't append the process ID to the output file.                                       |
 
 ### Example input
+In order to run a simulation, the user must provide a YAML file with the configuration of the simulation.
+This contains the particle information, the rigidity values, the particle source positions, the heliosphere parameters (both dynamic and static).
 An example YAML file is formatted as follows:
 ```yaml
+# The random seed is used to have reproducible simulations. On the same machine, two simulations with equal random seed will produce identical results.
 random_seed: 72
+# The path of the output files
 output_path: proton_deuteron_20111116_20111212_4096_1_72
+# The list of the output rigidities on which the simulation is run
 rigidities: [1.08, 1.245, 1.42, 1.61, 1.815, 2.035, 2.275, 2.535, 2.82, 3.13, 3.465, 3.83, 4.225, 4.655, 5.125, 5.635, 6.185, 6.78, 7.425, 8.12, 8.87, 9.68, 10.55]
+# The dictionary (name: info) of the isotopes to evaluate
 isotopes:
   proton:
     nucleon_rest_mass: 0.938272
@@ -58,18 +64,32 @@ isotopes:
     nucleon_rest_mass: 0.938272
     mass_number: 2.0
     charge: 1.0
+# The source position backwards in time, if multiple are specified, they are evaluated in consecutive Carrington rotations (periods)
 sources:
   r: [1.0]
   th: [1.5707963267948966]
   phi: [0.0]
+# The size of the bins in the output histograms
 relative_bin_amplitude: 0.00855
+# The number of replicas of identical particles for each instance (with equal rigidity, dynamic parameters, isotope, period) 
 n_particles: 4096
+# The number of regions in which the heliosphere is subdivided
 n_regions: 15
+# The dynamic parameters are special parameters of which multiple sets can be specified, and they will all be run at the same time.
+# It is equivalent to running separate sequential simulations, with different parameters, but it improves the performance of the simulation,
+# as it saturates the GPU better
+# If multiple parameters are not required, just specify a single row
 dynamic:
-  heliosphere:
+  heliosphere: # At the moment only heliosphere dynamic parameters are supported
+    # In this example, two sets of k0 values are specified, one using the value 0.002 in the first zone, and the other using 0.003
+    # For the field k0, the value 0.0 indicates that the simulation uses a deterministic heuristic, based on the static parameters, to estimate the k0 value
+    # The length of each row is determined by "n_regions + len(sources) - 1" as it represents the heliosphere during the entire propagation
     k0:
-    - [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    - [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    - [0.0002, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    - [0.0003, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+# The static parameters are fixed of all simulations of this file. They are subdivided in heliosphere and heliosheat.
+# For the heliosphere, the length of each row is determined by "n_regions + len(sources) - 1", like for the dynamic parameters
+# For the heliosheat, which is composed of just one zone, the length of each row is just "len(sources)"
 static:
   heliosphere:
     ssn: [92.387, 89.414, 88.052, 88.193, 88.628, 85.615, 78.704, 69.687, 61.436, 54.558, 49.942, 47.34, 45.357, 42.635, 38.213]
