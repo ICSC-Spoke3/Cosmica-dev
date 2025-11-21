@@ -48,7 +48,7 @@ In order to run a simulation, the user must provide a YAML file with the configu
 This contains the particle information, the rigidity values, the particle source positions, the heliosphere parameters (both dynamic and static).
 An example YAML file is formatted as follows:
 ```yaml
-# The random seed is used to have reproducible simulations. On the same machine, two simulations with equal random seed will produce identical results.
+# The random seed is used to have reproducible simulations. On the same machine, two simulations with equal random seed will produce identical results, if omitted the simulation is random
 random_seed: 72
 # The path of the output files
 output_path: proton_deuteron_20111116_20111212_4096_1_72
