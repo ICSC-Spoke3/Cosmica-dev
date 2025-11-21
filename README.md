@@ -16,17 +16,17 @@ From the `Cosmica_V8-speedtest` directory, run the following instructions:
 cmake -S . ./build -DCMAKE_CUDA_ARCHITECTURES=86
 cmake --build ./build --target Cosmica -- -j 10
 ```
-This will be an executable file named `Cosmica` in the folder `build`.
+This step will create an executable file named `Cosmica` in the folder `build`.
 For Compute Capabilities different from 8.6 change the value in the first command.
 
-The main requirements are CUDA 12.9 drivers and CMake 3.30+.
+The main requirements for COSMICA are CUDA 12.9 drivers and CMake 3.30+.
 
 ### Docker
 
 An alternative to manual compilation is usage with docker.
-This requires the NVIDIA Container Toolkit to be installed as well, to be able to use the GPUs on the host machine.
+This approach requires the NVIDIA Container Toolkit, that must be installed to leverage the GPUs available on the host machine.
 To configure it, simply run the script `Cosmica_V8-speedtest/build_docker.sh`.
-The default CC is 8.0, to ensure optimal performance, check that your GPU is present in the list in the script, and eventually add it manually.
+The default compiler is CC 8.0; to ensure optimal performance, check that your GPU is present in the list in the script, and eventually add it manually.
 To run Cosmica built with docker, use the script `Cosmica_V8-speedtest/launch_docker.py` which automatically maps the paths of the files in the arguments from the host to the container.
 It takes all the same arguments as the normal compiled code.
 
