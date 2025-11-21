@@ -2,7 +2,7 @@
 
 ## Description
 
-COde for a Speedy Montecarlo Involving Cuda Architecture (COSMICA) is a speedy and high precision Monte Carlo simulator of CR modulation, which solve the system of Stochastic Differential Equations (SDE) equivalent to the Parker Transport Equation (PTE). A sample of virtual particles is independently stochastic propagated backward in time from the detection position through the heliosphere to the external boundary. GPU parallelization of COSMICA code is a game changer in this field because it improves the computational time for a standard simulation from order of hundred of minutes to few of them. Furthermore, the code is capable of distributing the computations on clusters of machines with multiple GPUs, opening the way for scaling.
+COde for a Speedy Montecarlo Involving Cuda Architecture (COSMICA) is a speedy and high precision Monte Carlo simulator of Cosmic Rays (CR) modulation, which solve the system of Stochastic Differential Equations (SDE) equivalent to the Parker Transport Equation (PTE). A sample of independent virtual particles is stochastically propagated backward in time through the heliosphere, from the detection position to the external boundary. GPU parallelization of COSMICA code is a extremely useful for this task, because it strongly reduces the computational time for a standard simulation from hours to a few minutes. Moreover, COSMICA can distribute the computations over clusters of machines equipped with multiple GPUs, opening the way for further scaling.
 
 ## How to run the latest version
 Cosmica V8 is the latest version of the code.
@@ -16,17 +16,17 @@ From the `Cosmica_V8-speedtest` directory, run the following instructions:
 cmake -S . ./build -DCMAKE_CUDA_ARCHITECTURES=86
 cmake --build ./build --target Cosmica -- -j 10
 ```
-This will be an executable file named `Cosmica` in the folder `build`.
+This step will create an executable file named `Cosmica` in the folder `build`.
 For Compute Capabilities different from 8.6 change the value in the first command.
 
-The main requirements are CUDA 12.9 drivers and CMake 3.30+.
+The main requirements for COSMICA are CUDA 12.9 drivers and CMake 3.30+.
 
 ### Docker
 
 An alternative to manual compilation is usage with docker.
-This requires the NVIDIA Container Toolkit to be installed as well, to be able to use the GPUs on the host machine.
+This approach requires the NVIDIA Container Toolkit, that must be installed to leverage the GPUs available on the host machine.
 To configure it, simply run the script `Cosmica_V8-speedtest/build_docker.sh`.
-The default CC is 8.0, to ensure optimal performance, check that your GPU is present in the list in the script, and eventually add it manually.
+The default compiler is CC 8.0; to ensure optimal performance, check that your GPU is present in the list in the script, and eventually add it manually.
 To run Cosmica built with docker, use the script `Cosmica_V8-speedtest/launch_docker.py` which automatically maps the paths of the files in the arguments from the host to the container.
 It takes all the same arguments as the normal compiled code.
 
@@ -163,7 +163,7 @@ All performance indicators are evaluated in 'SimTimePlot_speedup.ipynb'
 ![plot3](test_plots/Figure_AMS-02_PRL2015_Proton.png))
 
 ## COSMICA 1D model
-Here there are the codes and building scripts of the COSMICA 1D model of Cosmic Rays (CR) propagation in the heliosphere.
+The Cosmica-1D directory contains the source code and building scripts for the COSMICA 1D model of CRs propagation in the heliosphere.
 These are the simplified version of the COSMICA code, which is 2D in modelling and 3D in propagation. The main algorithm is maintained, but the propagation and implementation is reduced to its essential 1D components.
 This version of the model can be taken as toy model to understand the algorithm and perform some test or start to develop a different physical propagation model.
 
