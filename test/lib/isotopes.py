@@ -1,8 +1,9 @@
 """
 Isotopes module.
 """
+from typing import NamedTuple
 
-IONS = {  # Z    A   T0[GeV/n]      Name
+IONS_dict = {  # Z    A   T0[GeV/n]      Name
     "Electron": [(-1., 1., 5.109989e-04, "Electron")],
     "Antiproton": [(-1., 1., 0.938272, "Antiproton")],
     "Positron": [(1., 1., 5.109989e-04, "Positron")],
@@ -225,7 +226,7 @@ IONS = {  # Z    A   T0[GeV/n]      Name
 
 }
 
-ISOTOPES = {iso[-1]: iso for isos in IONS.values() for iso in isos}
+ISOTOPES_dict = {iso[-1]: iso for isos in IONS_dict.values() for iso in isos}
 
 
 def find_isotope(isotope):
@@ -234,7 +235,7 @@ def find_isotope(isotope):
     :param isotope:
     :return:
     """
-    return ISOTOPES.get(isotope)
+    return ISOTOPES_dict.get(isotope)
 
 
 def find_ion_or_isotope(ioi):
@@ -243,8 +244,28 @@ def find_ion_or_isotope(ioi):
     :param ioi:
     :return:
     """
-    if ion := IONS.get(ioi):
+    if ion := IONS_dict.get(ioi):
         return ion
     if iso := find_isotope(ioi):
         return [iso]
     return []
+
+class Isotope(NamedTuple):
+    name: str
+    Z: int
+    A: int
+    T0: float
+
+    def __eq__(self, other: 'Isotope') -> bool:
+        return self.Z == other.Z and self.A == other.A and self.T0 == other.T0
+
+ISOTOPES = {iso[3].lower(): Isotope(iso[3].lower(), iso[0], iso[1], iso[2]) for isos in IONS_dict.values() for iso in isos}
+
+class Ion(NamedTuple):
+    name: str
+    isotopes: list[Isotope]
+
+    def __eq__(self, other: 'Ion') -> bool:
+        return all(s == o for s, o in zip(self.isotopes, other.isotopes))
+
+IONS = {name.lower(): Ion(name.lower(), [ISOTOPES[iso[3].lower()] for iso in isos]) for name, isos in IONS_dict.items()}

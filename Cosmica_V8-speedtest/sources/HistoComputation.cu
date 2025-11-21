@@ -36,10 +36,11 @@ __global__ void kernel_max(const ThreadQuasiParticles_t *a, float *d, const int 
 /**
  * @brief Generate random numbers for the particles for initialization of each thread
  * @param state curandStatePhilox4_32_10_t state
+ * @param size size of the random state vector
  * @param seed unsigned long seed for the random number generator
 *  @note same seed for all threads but different random sequences along the random array for each thread
  */
-__global__ void init_rdmgenerator(curandStatePhilox4_32_10_t *state, const unsigned long seed) {
-    const unsigned id = threadIdx.x + blockIdx.x * blockDim.x;
-    curand_init(seed, id, 0, &state[id]);
+__global__ void init_rdmgenerator(curandStatePhilox4_32_10_t *state, const unsigned size, const unsigned long seed) {
+    if (const unsigned id = threadIdx.x + blockIdx.x * blockDim.x; id < size)
+        curand_init(seed, id, 0, &state[id]);
 }

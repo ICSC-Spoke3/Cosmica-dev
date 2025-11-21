@@ -8,19 +8,20 @@
  * @param histograms The histograms of the instances
  * @param failed The number of particles that failed to be added to the histogram
  */
-__global__ void SimpleHistogram(const ThreadIndexes_t indexes, const float *R, InstanceHistograms histograms,
-                                unsigned *failed) {
+__global__ void SimpleHistogram(const ThreadIndexes_t indexes, const float *R, InstanceHistograms *histograms,
+                                unsigned **failed) {
     const unsigned id = threadIdx.x + blockIdx.x * blockDim.x;
     if (id >= indexes.size) return;
 
     const auto index = indexes.get(id);
+    const auto rig = index.rig;
     const auto inst = index.instance(Constants.NIsotopes);
-    const auto &hist = histograms[inst];
+    const auto &hist = histograms[rig][inst];
 
     if (log10f(R[id]) > hist.LogBin0_lowEdge) {
         const int DestBin = static_cast<int>(floorf((log10f(R[id]) - hist.LogBin0_lowEdge) / hist.DeltaLogR));
         atomicAdd(&hist.BoundaryDistribution[DestBin], 1);
     } else {
-        atomicAdd(&failed[inst], 1);
+        atomicAdd(&failed[rig][inst], 1);
     }
 }

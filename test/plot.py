@@ -1,13 +1,17 @@
-from glob import glob
-from os.path import join as pjoin, dirname
-import numpy as np
-from matplotlib import pyplot as plt
-from matplotlib import colors as mcolors
+import sys
+from pathlib import Path
 
-from lib.files_utils import load_simulation_outputs_yaml, load_simulation_output, load_simulation_outputs, \
-    load_simulation_list, load_lis
-from lib.modulation import evaluate_modulation
-from lib.files_utils import load_experimental_data
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from typing import Optional, Any
+
+import yaml
+
+import numpy as np
+from matplotlib import colors as mcolors
+from matplotlib import pyplot as plt
+
+from test.lib.files_utils import SimulationList, LisLoader, SimulationOutput, ExperimentalData, ModulationResult
 
 # Setting rc params for all plots
 
@@ -33,128 +37,191 @@ cmap = mcolors.LinearSegmentedColormap.from_list('custom_colormap', list(zip(col
 
 # cmap = 'inferno'
 
+def plot_fluxes(results: list[ModulationResult], raw_results: list[ExperimentalData], results_labels=(),
+                raw_results_labels=(), title=None, plot_path=None):
+    assert len(results) == len(results_labels), 'Missing labels'
+    assert len(raw_results) == len(raw_results_labels), 'Missing raw labels'
 
-def evaluate_output(outputs, experimental_data, lis, plot_path=None):
+    fig, axs = plt.subplots(2, 1, figsize=(10, 10))
+    ax1, ax2 = axs.flatten()
+
+    if title is not None:
+        fig.suptitle(title, fontsize=20)
+
+    # AXIS 1
+    ax1.plot(*results[0].lis_flux, label=fr'$\text{{Local Interstellar Spectrum (LIS)}}$',
+             color='navy', linestyle='--', linewidth=1.5)
+
+    for i, (res, label) in enumerate(zip(results, results_labels)):
+        ax1.plot(*res.rig_flux, label=fr'$\text{{Simulated: {label}}}$', linewidth=2, color=f'C{i}')
+
+    for i, (raw, label) in enumerate(zip(raw_results, raw_results_labels)):
+        if raw.limits is None:
+            ax1.scatter(*raw.rig_flux, label=fr'$\text{{{label}}}$',
+                        marker='x', color=f'C{i + len(results)}', s=300)
+        else:
+            ax1.errorbar(*raw.rig_flux, yerr=list(raw.limits), label=fr'$\text{{{label}}}$',
+                         fmt='o', color='crimson', markersize=5, capsize=4, elinewidth=1)
+
+    ax1.set_xscale('log')
+    ax1.set_yscale('log')
+    ax1.set_xlabel(r'$\text{Energy Rigidity (GV)}$', fontsize=16)
+    ax1.set_ylabel(r'$\text{Flux } \left(\frac{1}{\mathrm{GeV}/n \, \mathrm{m}^2 \, \mathrm{sr} \, \mathrm{s}}\right)$',
+                   fontsize=16)
+
+    ax1.tick_params(axis='both', which='major', labelsize=12)
+    ax1.tick_params(axis='both', which='minor', labelsize=10)
+
+    ax1.grid(visible=True, which='major', linestyle='-', linewidth=0.75, alpha=0.8)
+    ax1.grid(visible=True, which='minor', linestyle=':', linewidth=0.5, alpha=0.5)
+
+    ax1.legend(loc='upper right', fontsize=12, frameon=True)
+
+    # AXIS 2
+    norm = raw_results[1].flux
+    ax2.plot(results[0].rigidity, (results[0].lis - norm) / norm,
+             label=fr'$\text{{Local Interstellar Spectrum (LIS)}}$',
+             color='navy', linestyle='--', linewidth=1.5)
+
+    for i, (raw, label) in enumerate(zip(raw_results, raw_results_labels)):
+        if raw.limits is None:
+            ax2.scatter(raw.rigidity, (raw.flux - norm) / norm, label=fr'$\text{{{label}}}$',
+                        marker='x', color=f'C{i + len(results)}', s=300)
+        else:
+            ax2.errorbar(raw.rigidity, (raw.flux - norm) / norm, yerr=[raw.limits[0] / norm, raw.limits[1] / norm],
+                         label=fr'$\text{{{label}}}$',
+                         fmt='o', color='crimson', markersize=5, capsize=4, elinewidth=1)
+
+    for i, (res, label) in enumerate(zip(results, results_labels)):
+        ax2.scatter(res.rigidity, (res.flux - norm) / norm, label=fr'$\text{{Simulated: {label}}}$', color=f'C{i}')
+
+    ax2.set_title('Relative')
+    ax2.set_ylim((-.1, .1))
+    ax2.set_xscale('log')
+
+    plt.subplots_adjust(right=0.8)
+    plt.tight_layout()
+
+    return fig, ax1, ax2, norm
+
+
+def evaluate_output(outputs: SimulationOutput, experimental_data: ExperimentalData, raw_data: ExperimentalData,
+                    lis_loader: LisLoader, labels: tuple[list[str], list[str]], plot_path: Optional[Path] = None):
     """
     Evaluate the output of a simulation and compare it with experimental data.
     :param output_path: path to the output file
     :param experimental_data: experimental data
-    :param lis: LIS data
+    :param lis_loader: LIS data
     :param rig_in: if the output is in energy
     :param plot_path: path to save the plot, if None the plot is not saved
     :return: RMSE between the simulation and the experimental data
     """
 
-    # outputs = [load_simulation_outputs(o, y) for o, y in zip(outputs, yamls)]
+    results = [o.trim(0, 11) for o in outputs.modulate(lis_loader)]
 
-    # sim_en_rig, sim_j_mod, j_lis = evaluate_modulation(outputs, lis)
-    mods = [evaluate_modulation(o, lis) for o in outputs]
-    exp_en_rig, exp_j_mod, exp_inf, exp_sup = experimental_data.T
+    assert np.allclose(results[0].rigidity, experimental_data.rigidity, rtol=0.02 * results[0].rigidity)
+    assert np.allclose(results[0].rigidity, raw_data.rigidity, rtol=0.02 * results[0].rigidity)
+    for i, (r1, r2) in enumerate(zip(results[:-1], results[1:])):
+        assert np.allclose(r1.rigidity, r2.rigidity, rtol=0.02 * r1.rigidity), (i, i + 1)
 
     rmses = []
-    for i, (sim_en_rig, sim_j_mod, j_lis) in enumerate(mods):
-        assert np.allclose(sim_en_rig, exp_en_rig, rtol=0.02 * sim_en_rig), i
-
-        rmse = np.sqrt(np.square(np.subtract(sim_j_mod, exp_j_mod)).mean())
+    for i, res in enumerate(results):
+        rmse = np.sqrt(np.square(np.subtract(res.flux, experimental_data.flux)).mean())
         rmses.append(rmse)
 
-    diffs = np.abs((mods[0][1] - mods[1][1]) / mods[0][1])
-    print('diff', diffs.mean(), diffs.max())
-    err0 = np.abs(exp_j_mod - mods[0][1]) / exp_j_mod
-    print('err0', err0.mean(), err0.max())
-    err1 = np.abs(exp_j_mod - mods[1][1]) / exp_j_mod
-    print('err1', err1.mean(), err1.max())
+    # diffs = np.abs((fluxes[0] - fluxes[1]) / fluxes[0])
+    # print('diff', diffs.mean(), diffs.max())
+    # for i, f in enumerate(fluxes):
+    #     err = np.abs(raw_j_mod - f) / raw_j_mod
+    #     print(f'err_{i}', err.mean(), err.max())
+
+    fig, ax1, ax2, norm = plot_fluxes(
+        results,
+        [raw_data, experimental_data],
+        labels[0], labels[1],
+        'Comparison', plot_path
+    )
+
+    # norm = lin_log_interpolation(rig, norm, results[:, 0])
+    #
+    # ax1.plot(results[:, 0], results[:, 1], label=fr'$\text{{LISS}}$',)
+    # ax1.plot(results[:, 0], results[:, 2], label=fr'$\text{{V6}}$',)
+    # ax1.plot(results[:, 0], results[:, 3], label=fr'$\text{{V8}}$',)
+    # ax1.legend(loc='upper right', fontsize=12, frameon=True)
+    #
+    # ax2.scatter(results[:, 0], (results[:, 1]-norm)/norm, label=fr'$\text{{LISS}}$',)
+    # ax2.scatter(results[:, 0], (results[:, 2]-norm)/norm, label=fr'$\text{{V6}}$',)
+    # ax2.scatter(results[:, 0], (results[:, 3]-norm)/norm, label=fr'$\text{{V8}}$',)
 
     if plot_path is not None:
-        fig, ax = plt.subplots(figsize=(12, 8))
-
-        # Plot simulation and LIS
-        for i, (sim_en_rig, sim_j_mod, j_lis) in enumerate(mods):
-            ax.plot(sim_en_rig, sim_j_mod, label=fr'$\text{{Simulated: Cosmica {i}}}$', linewidth=2, color=f'C{i}')
-
-        ax.plot(sim_en_rig, j_lis, label=fr'$\text{{Local Interstellar Spectrum (LIS) {i}}}$',
-                color='navy', linestyle='--', linewidth=1.5)
-
-        # Plot experimental data with error bars
-        ax.errorbar(exp_en_rig, exp_j_mod, yerr=[exp_inf, exp_sup], fmt='o',
-                    label=r'$\text{Experimental Data}$', color='crimson', markersize=5, capsize=4, elinewidth=1)
-        # ax.scatter(exp_en_rig, exp_j_mod, marker='o',
-        #            label=r'$\text{Experimental Data}$', color='crimson', s=5)
-
-        ax.set_xscale('log')
-        ax.set_yscale('log')
-        ax.set_xlabel(r'$\text{Energy Rigidity (GV)}$', fontsize=16)
-        ax.set_ylabel(
-            r'$\text{Flux } \left(\frac{1}{\mathrm{GeV}/n \, \mathrm{m}^2 \, \mathrm{sr} \, \mathrm{s}}\right)$',
-            fontsize=16)
-        ax.set_title(
-            rf'$\text{{Comparison of }} {list(outputs[0].keys())} \text{{ Simulation with Experimental Data}}$',
-            fontsize=20,
-            pad=20)
-
-        ax.tick_params(axis='both', which='major', labelsize=12)
-        ax.tick_params(axis='both', which='minor', labelsize=10)
-
-        ax.grid(visible=True, which='major', linestyle='-', linewidth=0.75, alpha=0.8)  # Prominent major grid
-        ax.grid(visible=True, which='minor', linestyle=':', linewidth=0.5, alpha=0.5)  # Subtle minor grid
-
-        ax.legend(loc='upper right', fontsize=12, frameon=True)
-        plt.subplots_adjust(right=0.8)
-
-        plt.tight_layout()
         plt.savefig(plot_path, dpi=300)
         plt.close()
+    else:
+        plt.show()
 
     return rmses, diffs
 
 
-def get_out(outputs, init_date):
-    if outputs[0].endswith('.dat'):
-        proton_res = next(filter(lambda f: init_date in f and 'Proton' in f, outputs), None)
-        deuteron_res = next(filter(lambda f: init_date in f and 'Deuteron' in f, outputs), None)
-        if not all([proton_res, deuteron_res]):
-            return None
-        res = load_simulation_outputs([proton_res, deuteron_res])
-    else:
-        proton_deuteron_res = next(filter(lambda f: init_date in f, outputs), None)
-        if not proton_deuteron_res:
-            return None
-        res = load_simulation_outputs(proton_deuteron_res, yaml=True)
-    return res
+def match_file(files: list[Path], *vals: Any) -> Optional[Path]:
+    return next(filter(lambda f: all((str(v).lower() in f.name.lower() for v in vals)), files), None)
+
+
+def get_out(outputs: list[Path], init_date: int) -> SimulationOutput:
+    if outputs[0].suffix == '.dat':
+        proton_res = match_file(outputs, init_date, 'proton')
+        deuteron_res = match_file(outputs, init_date, 'deuteron')
+        with open(proton_res, 'r') as fp, open(deuteron_res, 'r') as fd:
+            return SimulationOutput.from_txt([{'proton': fp.read(), 'deuteron': fd.read()}])
+
+    proton_deuteron_res = match_file(outputs, init_date)
+    with open(proton_deuteron_res, 'r') as f:
+        return SimulationOutput.from_yaml(yaml.load(f, Loader=yaml.SafeLoader))
 
 
 if __name__ == "__main__":
-    ROOTDIR = pjoin(dirname(__file__), 'data')
-    plis = pjoin(ROOTDIR, 'LIS_Default2020_Proton')
-    pinputs = pjoin(ROOTDIR, 'inputs')
+    data_dir = Path(__file__).parent / 'data'
+    p_sims = data_dir / 'Simulations.list'
+    p_lis = data_dir / 'LIS_Default2020_Proton'
+    p_inputs = data_dir / 'inputs'
+    p_exp = (data_dir / 'experimental').glob('*.dat')
+    p_raw = (data_dir / 'helmod').glob('*.txt')
+    p_plots = data_dir / 'plots'
 
-    poutputs_a = pjoin(ROOTDIR, 'outputs', 'v6', '*.dat')
-    # poutputs_b = pjoin(ROOTDIR, 'outputs', 'v6.1', '*.dat')
-    poutputs_b = pjoin(ROOTDIR, 'outputs', 'v8', '*.yaml')
+    p_outputs = [
+        (data_dir / 'outputs' / 'v6').glob('*.dat'),
+        (data_dir / 'outputs' / 'v8').glob('*.yaml'),
+        # (data_dir / 'outputs' / 'v8s').glob('*.dat'),
+        (data_dir / 'outputs' / 'v6.1').glob('*.dat'),
+        # (data_dir / 'outputs' / 'v8.1').glob('*.yaml'),
+        # (data_dir / 'outputs' / 'v8.1s').glob('*.dat'),
+        (data_dir / 'outputs' / 'v8m').glob('*.yaml'),
+        # (data_dir / 'outputs' / 'v8.1m').glob('*.yaml'),
+    ]
+    labels = (['V6 (1)', 'V8 (1)', 'V6 (2)', 'V8 (1, mul)'],
+              ['HelMod', 'Experimental'])
+    # labels = (['V6 (1)', 'V8 (1)', 'V8 (1, sep)', 'V6 (2)', 'V8 (2)', 'V8 (2, sep)', 'V8 (1, mul)', 'V8 (2, mul)'],
+    #           ['HelMod', 'Experimental'])
+    # labels = (('V6', 'V6 (random)', 'V8', 'V8 (many)', 'V8 (sep)'), ('HelMod', 'Experimental'))
 
-    pexp = pjoin(ROOTDIR, 'outfile')
-    psims = pjoin(ROOTDIR, f'Simulations.list')
-    pplots = pjoin(dirname(__file__), 'plots')
+    sim_list = SimulationList.from_listfile(p_sims)
+    lis_loader = LisLoader(p_lis)
 
-    sim_list = load_simulation_list(psims)
-    lis = load_lis(plis)
-
-    outputs_a = sorted(glob(poutputs_a), reverse=True)
-    outputs_b = sorted(glob(poutputs_b), reverse=True)
+    outputs = [sorted(p, reverse=True) for p in p_outputs]
+    experimental = sorted(p_exp, reverse=True)
+    helmod = sorted(p_raw, reverse=True)
 
     diffs = []
-    for sim_name, ions, file_name, init_date, end_date, rad, lat, lon in sim_list:
-        print(sim_name, init_date)
-        res_a = get_out(outputs_a, init_date)
-        res_b = get_out(outputs_b, init_date)
-        if res_a is None or res_b is None:
-            print(res_a is None, res_b is None)
-            continue
+    for sim in sim_list:
+        print(sim)
+        init_date = sim.period[0]
+        results = SimulationOutput.from_outputs(*[get_out(o, init_date) for o in outputs])
 
-        exp_data = load_experimental_data(pexp, file_name, cols=(2, 3, 4, 5), rig_range=(0, 100), to_rig=(1, 1))
-        rmse, diff = evaluate_output([res_a, res_b], exp_data, lis, pjoin(pplots, f'{sim_name}.png'))
+        exp_data = ExperimentalData.from_data(match_file(experimental, init_date), (2, 3, 4, 5))
+        raw_data = ExperimentalData.from_data(match_file(helmod, init_date), (0, 1))
+
+        rmse, diff = evaluate_output(results, exp_data, raw_data, lis_loader, labels, p_plots / f'{sim.name}.png')
         diffs.append(diff)
         print(rmse)
         print()
-    diffs = np.array(diffs)
-    print(diffs.mean(), diffs.max())
+    # diffs = np.array(diffs)
+    # print(diffs.mean(), diffs.max())
