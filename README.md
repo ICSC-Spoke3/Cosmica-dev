@@ -2,7 +2,7 @@
 
 ## Description
 
-COde for a Speedy Montecarlo Involving Cuda Architecture (COSMICA) is a speedy and high precision Monte Carlo simulator of CR modulation, which solve the system of Stochastic Differential Equations (SDE) equivalent to the Parker Transport Equation (PTE). A sample of virtual particles is independently stochastic propagated backward in time from the detection position through the heliosphere to the external boundary. GPU parallelization of COSMICA code is a game changer in this field because it improves the computational time for a standard simulation from order of hundred of minutes to few of them. Furthermore, the code is capable of distributing the computations on clusters of machines with multiple GPUs, opening the way for scaling.
+COde for a Speedy Montecarlo Involving Cuda Architecture (COSMICA) is a speedy and high precision Monte Carlo simulator of CR modulation, which solve the system of Stochastic Differential Equations (SDE) equivalent to the Parker Transport Equation (PTE). A sample of independent virtual particles is stochastically propagated backward in time through the heliosphere, from the detection position to the external boundary. GPU parallelization of COSMICA code is a extremely useful for this task, because it strongly reduces the computational time for a standard simulation from hours to a few minutes. Moreover, COSMICA can distribute the computations over clusters of machines equipped with multiple GPUs, opening the way for further scaling.
 
 ## How to run the latest version
 Cosmica V8 is the latest version of the code.
